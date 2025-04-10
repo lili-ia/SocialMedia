@@ -26,7 +26,8 @@ public class PostService : IPostService
         
         if (user == null)
         {
-            return Result<Post>.FailureResult("User not found.");
+            return Result<Post>.FailureResult(
+                "Couldn't find a user with such id.", ErrorType.NotFound);
         }
 
         var newPost = _mapper.Map<Post>(postDto);
@@ -40,7 +41,9 @@ public class PostService : IPostService
         catch (Exception e)
         {
             _logger.LogError(e, "An error occurred while creating a post.");
-            return Result<Post>.FailureResult($"An error occurred while creating this post: {e.Message}");
+            
+            return Result<Post>.FailureResult(
+                $"An error occurred while creating this post: {e.Message}", ErrorType.ServerError);
         }
 
         return Result<Post>.SuccessResult(newPost);
@@ -51,14 +54,18 @@ public class PostService : IPostService
         try
         {
             var post = await _db.Posts.FindAsync(postId);
+            
             return post != null 
                 ? Result<Post>.SuccessResult(post) 
-                : Result<Post>.FailureResult($"Couldn't find a post with id {postId}.");
+                : Result<Post>.FailureResult(
+                    $"Couldn't find a post with id {postId}.", ErrorType.NotFound);
         }
         catch (Exception e)
         {
             _logger.LogError(e, "An error occurred while retrieving a post.");
-            return Result<Post>.FailureResult($"An error occurred while retrieving post with id {postId}: {e.Message}");
+            
+            return Result<Post>.FailureResult(
+                $"An error occurred while retrieving post with id {postId}: {e.Message}", ErrorType.ServerError);
         }
     }
 
@@ -69,14 +76,17 @@ public class PostService : IPostService
             var posts = await _db.Posts
                 .Where(p => p.UserId == userId && p.IsActive == isActive)
                 .ToListAsync();
-
+            
             return Result<List<Post>>.SuccessResult(posts);
         }
         catch (Exception e)
         {
-            _logger.LogError(e, $"An error occurred while retrieving {(isActive ? "public" : "archived")} posts.");
+            _logger.LogError(
+                $"An error occurred while retrieving {(isActive ? "public" : "archived")} posts : {e.Message}");
             
-            return Result<List<Post>>.FailureResult($"An error occurred while retrieving user {userId}'s {(isActive ? "public" : "archived")} posts.");
+            return Result<List<Post>>.FailureResult(
+                $"An error occurred while retrieving user {userId}'s {(isActive ? "public" : "archived")} posts.",
+                ErrorType.ServerError);
         }
     }
 
@@ -88,7 +98,7 @@ public class PostService : IPostService
 
             if (post == null)
             {
-                return Result<Post>.FailureResult("Post not found.");
+                return Result<Post>.FailureResult("Post not found.", ErrorType.NotFound);
             }
             
             _mapper.Map(postDto, post); 
@@ -100,7 +110,9 @@ public class PostService : IPostService
         {
             _logger.LogError(e, "An error occurred while updating a post.");
             
-            return Result<Post>.FailureResult($"An error occurred while retrieving post with id {postDto.PostId}: {e.Message}");
+            return Result<Post>.FailureResult(
+                $"An error occurred while retrieving post with id {postDto.PostId}: {e.Message}",
+                ErrorType.ServerError);
         }
     }
 
@@ -111,7 +123,8 @@ public class PostService : IPostService
             var postToDelete = await _db.Posts.FindAsync(postId);
             
             if (postToDelete == null) 
-                return Result<bool>.FailureResult($"There is no posts with such id");
+                return Result<bool>.FailureResult(
+                    $"There is no posts with such id", ErrorType.NotFound);
             
             _db.Posts.Remove(postToDelete);
             await _db.SaveChangesAsync();
@@ -122,7 +135,9 @@ public class PostService : IPostService
         {
             _logger.LogError(e, "An error occurred while deleting a post.");
 
-            return Result<bool>.FailureResult($"An error occurred while deleting post with id {postId}: {e.Message}");
+            return Result<bool>.FailureResult(
+                $"An error occurred while deleting post with id {postId}: {e.Message}",
+                ErrorType.ServerError);
         }
     }
     
@@ -133,7 +148,8 @@ public class PostService : IPostService
             var post = await _db.Posts.FindAsync(postId);
 
             if (post == null)
-                return Result<Post>.FailureResult($"There is no posts with such id");
+                return Result<Post>.FailureResult(
+                    $"There is no posts with such id", ErrorType.NotFound);
 
             post.IsActive = activeStatus;
             await _db.SaveChangesAsync();
@@ -144,7 +160,37 @@ public class PostService : IPostService
         {
             _logger.LogError(e, "An error occurred while deleting a post.");
 
-            return Result<Post>.FailureResult($"An error occurred while updating post with id {postId}: {e.Message}");
+            return Result<Post>.FailureResult(
+                $"An error occurred while updating post with id {postId}: {e.Message}",
+                ErrorType.ServerError);
+        }
+    }
+
+    public async Task<Result<List<Post>>> GetPostsOfUsername(string username)
+    {
+        try
+        {
+            var user = await _db.Users
+                .Include(u => u.Posts)
+                .FirstOrDefaultAsync(u => u.Username == username);
+
+            if (user == null)
+            {
+                return Result<List<Post>>.FailureResult(
+                    "Couldn't find a user with such username.", ErrorType.NotFound);
+            }
+                
+            var posts = user.Posts.ToList();
+            
+            return Result<List<Post>>.SuccessResult(posts);
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, $"An error occurred while retrieving {username}'s posts.");
+
+            return Result<List<Post>>.FailureResult(
+                $"An error occurred while retrieving {username}'s posts.", ErrorType.ServerError
+            );
         }
     }
 }

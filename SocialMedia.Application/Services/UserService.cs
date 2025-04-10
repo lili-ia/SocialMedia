@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+﻿using AutoMapper;
 using Infrastructure;
 using Infrastructure.Contracts;
 using Microsoft.EntityFrameworkCore;
@@ -14,17 +14,20 @@ public class UserService : IUserService
     private readonly IPasswordService _passwordService;
     private readonly ILogger<UserService> _logger;
     private readonly IJwtService _jwtService;
+    private readonly IMapper _mapper;
     
     public UserService(
         SocialMediaContext db, 
         IPasswordService passwordService,
         ILogger<UserService> logger, 
-        IJwtService jwtService)
+        IJwtService jwtService,
+        IMapper mapper)
     {
         _db = db;
         _passwordService = passwordService;
         _logger = logger;
         _jwtService = jwtService;
+        _mapper = mapper;
     }
     
     public async Task<Result<User>> RegisterAsync(RegisterDto dto)
@@ -33,15 +36,12 @@ public class UserService : IUserService
         
         if (userExists)
         {
-            return Result<User>.FailureResult($"User with email {dto.Email} already exists");
+            return Result<User>.FailureResult(
+                $"User with email {dto.Email} already exists", ErrorType.Validation);
         }
 
-        var newUser = new User
-        {
-            Email = dto.Email,
-            PasswordHash = _passwordService.HashPassword(dto.RawPassword),
-            Username = dto.Username
-        };
+        var newUser = _mapper.Map<User>(dto);
+        newUser.PasswordHash = _passwordService.HashPassword(dto.RawPassword);
 
         try
         {
@@ -51,7 +51,8 @@ public class UserService : IUserService
         catch (Exception e)
         {
             _logger.LogError(e.Message);
-            return Result<User>.FailureResult($"An error occured while registering the user");
+            return Result<User>.FailureResult(
+                $"An error occured while registering the user", ErrorType.ServerError);
         }
     
         return Result<User>.SuccessResult(newUser);
@@ -63,14 +64,14 @@ public class UserService : IUserService
 
         if (user == null)
         {
-            return Result<string>.FailureResult("Invalid login attempt.");
+            return Result<string>.FailureResult("Invalid login attempt.", ErrorType.Validation);
         }
 
         var isPasswordValid = _passwordService.VerifyPassword(user.PasswordHash, dto.RawPassword);
 
         if (!isPasswordValid)
         {
-            return Result<string>.FailureResult("Invalid login attempt.");
+            return Result<string>.FailureResult("Invalid login attempt.", ErrorType.Validation);
         }
 
         var token = _jwtService.GenerateToken(user.UserId.ToString(), user.Email);

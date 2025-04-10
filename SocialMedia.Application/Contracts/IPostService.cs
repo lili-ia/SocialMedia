@@ -16,5 +16,7 @@ public interface IPostService
     Task<Result<bool>> DeletePost(int postId);
 
     Task<Result<Post>> ChangePostActiveStatus(int postId, bool activeStatus);
+
+    Task<Result<List<Post>>> GetPostsOfUsername(string username);
 }
 

@@ -1,3 +1,5 @@
-﻿namespace SocialMedia.Application.DTOs;
+﻿using System.ComponentModel.DataAnnotations;
 
-public record UpdatePostDto(int PostId, string Text);
+namespace SocialMedia.Application.DTOs;
+
+public record UpdatePostDto([Required] int PostId, [Required] string Text);

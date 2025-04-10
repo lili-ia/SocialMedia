@@ -2,4 +2,4 @@
 
 namespace SocialMedia.Application.DTOs;
 
-public record LoginDto([EmailAddress] string Email, string RawPassword);
+public record LoginDto([EmailAddress] [Required] string Email, [Required] string RawPassword);
