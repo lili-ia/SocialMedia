@@ -1,0 +1,20 @@
+﻿using Infrastructure;
+using SocialMedia.Application.DTOs;
+
+namespace SocialMedia.Application.Contracts;
+
+public interface IPostService
+{
+    Task<Result<Post>> CreatePost(CreatePostDto postDto, int userId);
+    
+    Task<Result<Post>> GetPost(int postId);
+
+    Task<Result<List<Post>>> GetPostsByUserAndActiveStatus(int userId, bool isActive);
+
+    Task<Result<Post>> UpdatePost(UpdatePostDto postDto);
+    
+    Task<Result<bool>> DeletePost(int postId);
+
+    Task<Result<Post>> ChangePostActiveStatus(int postId, bool activeStatus);
+}
+
