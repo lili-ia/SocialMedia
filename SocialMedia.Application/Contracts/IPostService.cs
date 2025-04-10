@@ -11,9 +11,9 @@ public interface IPostService
 
     Task<Result<List<Post>>> GetPostsByUserAndActiveStatus(int userId, bool isActive);
 
-    Task<Result<Post>> UpdatePost(UpdatePostDto postDto);
+    Task<Result<Post>> UpdatePost(UpdatePostDto postDto, int userId);
     
-    Task<Result<bool>> DeletePost(int postId);
+    Task<Result<bool>> DeletePost(int postId, int userId);
 
     Task<Result<Post>> ChangePostActiveStatus(int postId, bool activeStatus);
 

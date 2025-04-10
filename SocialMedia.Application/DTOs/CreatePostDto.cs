@@ -1,3 +1,5 @@
-﻿namespace SocialMedia.Application.DTOs;
+﻿using System.ComponentModel.DataAnnotations;
 
-public record CreatePostDto(string Text);
+namespace SocialMedia.Application.DTOs;
+
+public record CreatePostDto([Required] string Text);

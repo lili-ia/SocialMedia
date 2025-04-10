@@ -1,6 +1,9 @@
-﻿using Infrastructure;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SocialMedia.Application.Contracts;
+using SocialMedia.Application.DTOs;
+using SocialMedia.Extensions;
 
 namespace SocialMedia.Controllers;
 
@@ -15,40 +18,79 @@ public class PostsController : ControllerBase
         _postService = postService;
     }
     
-
-    [HttpGet]
+    [HttpGet("{postId}")]
     public async Task<IActionResult> GetPost([FromRoute] int postId)
     {
         var result = await _postService.GetPost(postId);
 
-        return result switch
-        {
-            
-        };
+        return result.ToActionResult();
     }
 
     [HttpGet]
-    public IActionResult<IActionResult> GetPostsOfUsername([FromQuery] string username)
+    public async Task<IActionResult> GetPostsOfUsername([FromQuery] string username)
     {
-        
+        var result = await _postService.GetPostsOfUsername(username);
+
+        return result.ToActionResult();
     }
 
-    public IActionResult<IActionResult> UpdatePost()
+    [Authorize]
+    [HttpPut("{postId}")]
+    public async Task<IActionResult> UpdatePost([FromRoute] UpdatePostDto dto)
     {
+        var userStringId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (userStringId == null)
+            return Unauthorized("User not found");
         
+        int.TryParse(userStringId, out int userIntId);
+        var result = await _postService.UpdatePost(dto, userIntId);
+        
+        return result.ToActionResult();
     }
     
-    public IActionResult<IActionResult> CreatePost()
+    [Authorize]
+    [HttpPost]
+    public async Task<IActionResult> CreatePost([FromBody] CreatePostDto dto)
     {
-        
+        var userStringId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (userStringId == null)
+            return Unauthorized("User not found");
+
+        int.TryParse(userStringId, out int userIntId);
+        var result = await _postService.CreatePost(dto, userIntId);
+
+        return result.ToActionResult();
     }
     
-    public IActionResult<IActionResult> DeletePost()
+    [Authorize]
+    [HttpDelete("{postId}")]
+    public async Task<IActionResult> DeletePost([FromBody] int postId)
     {
+        var userStringId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (userStringId == null)
+            return Unauthorized("User not found");
         
+        int.TryParse(userStringId, out int userIntId);
+        var result = await _postService.DeletePost(postId, userIntId);
+
+        return result.ToActionResult();
     }
-    // Get Posts by Active Status
-    // Update Post
-    // Create Post
-    // Delete Post
+
+    [Authorize]
+    [HttpGet("hidden")]
+    public async Task<IActionResult> GetHiddenPosts()
+    {
+        var userStringId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (userStringId == null)
+            return Unauthorized("User not found");
+        
+        int.TryParse(userStringId, out int userIntId);
+        var result = await _postService.GetPostsByUserAndActiveStatus(userIntId, isActive: false);
+        
+        return result.ToActionResult();
+    }
 }

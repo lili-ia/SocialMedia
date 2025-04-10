@@ -22,10 +22,12 @@ public class Result<T>
         ErrorType = errorType;
         Success = false;
     }
-
+    
     public static Result<T> SuccessResult(T value) => new(value);
     public static Result<T> FailureResult(string errorMessage, ErrorType errorType = Application.ErrorType.Unknown)
         => new(errorMessage, errorType);
+    
+    public static Result<T> NoContentResult() => new Result<T>(default!); 
 }
 
 public enum ErrorType
@@ -33,5 +35,7 @@ public enum ErrorType
     NotFound,
     Validation,
     ServerError,
-    Unknown
+    Unknown, 
+    Unauthorized, 
+    Forbidden,
 }

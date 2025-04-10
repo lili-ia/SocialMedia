@@ -90,7 +90,7 @@ public class PostService : IPostService
         }
     }
 
-    public async Task<Result<Post>> UpdatePost(UpdatePostDto postDto)
+    public async Task<Result<Post>> UpdatePost(UpdatePostDto postDto, int userId)
     {
         try
         {
@@ -100,6 +100,10 @@ public class PostService : IPostService
             {
                 return Result<Post>.FailureResult("Post not found.", ErrorType.NotFound);
             }
+            
+            if (post.UserId != userId)
+                return Result<Post>.FailureResult(
+                    $"Not enough permissions.", ErrorType.Forbidden);
             
             _mapper.Map(postDto, post); 
             await _db.SaveChangesAsync();
@@ -116,17 +120,21 @@ public class PostService : IPostService
         }
     }
 
-    public async Task<Result<bool>> DeletePost(int postId)
+    public async Task<Result<bool>> DeletePost(int postId, int userId)
     {
         try
         {
-            var postToDelete = await _db.Posts.FindAsync(postId);
+            var post = await _db.Posts.FindAsync(postId);
             
-            if (postToDelete == null) 
+            if (post == null) 
                 return Result<bool>.FailureResult(
                     $"There is no posts with such id", ErrorType.NotFound);
             
-            _db.Posts.Remove(postToDelete);
+            if (post.UserId != userId)
+                return Result<bool>.FailureResult(
+                    $"Not enough permissions.", ErrorType.Forbidden);
+            
+            _db.Posts.Remove(post);
             await _db.SaveChangesAsync();
             
             return Result<bool>.SuccessResult(true);
