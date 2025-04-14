@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using Infrastructure;
+using Infrastructure.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Contracts;
@@ -32,6 +33,7 @@ public class PostService : IPostService
 
         var newPost = _mapper.Map<Post>(postDto);
         newPost.UserId = userId;
+        newPost.CreatedAt = DateTime.Now;
         
         try
         {
@@ -90,11 +92,11 @@ public class PostService : IPostService
         }
     }
 
-    public async Task<Result<Post>> UpdatePost(UpdatePostDto postDto, int userId)
+    public async Task<Result<Post>> UpdatePost(UpdatePostDto postDto, int postId, int userId)
     {
         try
         {
-            var post = await _db.Posts.FindAsync(postDto.PostId);
+            var post = await _db.Posts.FindAsync(postId);
 
             if (post == null)
             {
@@ -106,6 +108,7 @@ public class PostService : IPostService
                     $"Not enough permissions.", ErrorType.Forbidden);
             
             _mapper.Map(postDto, post); 
+            post.UpdatedAt = DateTime.Now;
             await _db.SaveChangesAsync();
             
             return Result<Post>.SuccessResult(post);
@@ -115,7 +118,7 @@ public class PostService : IPostService
             _logger.LogError(e, "An error occurred while updating a post.");
             
             return Result<Post>.FailureResult(
-                $"An error occurred while retrieving post with id {postDto.PostId}: {e.Message}",
+                $"An error occurred while retrieving post with id {postId}: {e.Message}",
                 ErrorType.ServerError);
         }
     }

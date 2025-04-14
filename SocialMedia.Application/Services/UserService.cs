@@ -1,10 +1,12 @@
 ﻿using AutoMapper;
 using Infrastructure;
 using Infrastructure.Contracts;
+using Infrastructure.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Contracts;
 using SocialMedia.Application.DTOs;
+using SocialMedia.DTOs;
 
 namespace SocialMedia.Application.Services;
 
@@ -77,5 +79,30 @@ public class UserService : IUserService
         var token = _jwtService.GenerateToken(user.UserId.ToString(), user.Email);
 
         return Result<string>.SuccessResult(token);
+    }
+
+    public async Task<Result<User>> UpdateProfileAsync(UpdateUserDto dto, int userId)
+    {
+        var user = await _db.Users.FindAsync(userId);
+
+        if (user == null)
+        {
+            return Result<User>.FailureResult($"Couldn`t find a user with id {userId}", ErrorType.NotFound);
+        }
+
+        try
+        {
+            _mapper.Map(dto, user);
+            await _db.SaveChangesAsync();
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e.Message);
+            
+            return Result<User>.FailureResult(
+                $"An error occured while updating user info.", ErrorType.ServerError);
+        }
+
+        return Result<User>.SuccessResult(user);
     }
 }

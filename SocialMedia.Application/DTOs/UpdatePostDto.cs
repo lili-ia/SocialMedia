@@ -2,4 +2,4 @@
 
 namespace SocialMedia.Application.DTOs;
 
-public record UpdatePostDto([Required] int PostId, [Required] string Text);
+public record UpdatePostDto([Required] string Text);

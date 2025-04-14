@@ -1,6 +1,6 @@
 using System.Text;
-using Infrastructure;
 using Infrastructure.Contracts;
+using Infrastructure.Models;
 using Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -24,6 +24,8 @@ builder.Services.AddLogging();
 builder.Services.AddTransient<IJwtService, JwtService>();
 builder.Services.AddTransient<IPasswordHasher<object>, PasswordHasher<object>>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IPostService, PostService>();
+builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddTransient<IPasswordService, PasswordService>();
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer(options =>

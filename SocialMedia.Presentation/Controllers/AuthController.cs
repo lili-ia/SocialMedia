@@ -28,15 +28,13 @@ public class AuthController : ControllerBase
             return BadRequest(ModelState);
 
         var result = await _userService.RegisterAsync(registerDto);
+
+        if (!result.Success) 
+            return BadRequest(result.ErrorMessage);
         
-        if (result.Success)
-        {
-            _logger.LogInformation($"User with email {registerDto.Email} registered successfully.");
+        _logger.LogInformation($"User with email {registerDto.Email} registered successfully.");
 
-            return Ok();
-        }
-
-        return BadRequest(result.ErrorMessage);
+        return Ok();
     }
 
     [HttpPost("login")]

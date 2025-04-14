@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
-using Infrastructure;
+using Infrastructure.Models;
 using SocialMedia.Application.DTOs;
+using SocialMedia.DTOs;
 
 namespace SocialMedia.Application.Mappings;
 
@@ -12,5 +13,6 @@ public class AutoMapperProfile : Profile
         CreateMap<Post, UpdatePostDto>();
         CreateMap<CreatePostDto, Post>();
         CreateMap<UpdatePostDto, Post>();
+        CreateMap<UpdateUserDto, User>();
     }
 }

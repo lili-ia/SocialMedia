@@ -36,7 +36,7 @@ public class PostsController : ControllerBase
 
     [Authorize]
     [HttpPut("{postId}")]
-    public async Task<IActionResult> UpdatePost([FromRoute] UpdatePostDto dto)
+    public async Task<IActionResult> UpdatePost([FromBody] UpdatePostDto dto, [FromRoute] int postId)
     {
         var userStringId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
@@ -44,7 +44,7 @@ public class PostsController : ControllerBase
             return Unauthorized("User not found");
         
         int.TryParse(userStringId, out int userIntId);
-        var result = await _postService.UpdatePost(dto, userIntId);
+        var result = await _postService.UpdatePost(dto, postId, userIntId);
         
         return result.ToActionResult();
     }
@@ -66,7 +66,7 @@ public class PostsController : ControllerBase
     
     [Authorize]
     [HttpDelete("{postId}")]
-    public async Task<IActionResult> DeletePost([FromBody] int postId)
+    public async Task<IActionResult> DeletePost([FromRoute] int postId)
     {
         var userStringId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
