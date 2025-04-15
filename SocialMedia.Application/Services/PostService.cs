@@ -1,6 +1,6 @@
 ﻿using AutoMapper;
+using Domain.Entities;
 using Infrastructure;
-using Infrastructure.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Contracts;
@@ -21,9 +21,9 @@ public class PostService : IPostService
         _mapper = mapper;
     }
     
-    public async Task<Result<Post>> CreatePost(CreatePostDto postDto, int userId)
+    public async Task<Result<Post>> CreatePost(CreatePostDto postDto, int userId, CancellationToken cancellationToken)
     {
-        var user = await _db.Users.FindAsync(userId);
+        var user = await _db.Users.FindAsync(new object?[] { userId }, cancellationToken: cancellationToken);
         
         if (user == null)
         {
@@ -38,7 +38,7 @@ public class PostService : IPostService
         try
         {
             _db.Posts.Add(newPost);
-            await _db.SaveChangesAsync();
+            await _db.SaveChangesAsync(cancellationToken);
         }
         catch (Exception e)
         {
@@ -51,11 +51,11 @@ public class PostService : IPostService
         return Result<Post>.SuccessResult(newPost);
     }
     
-    public async Task<Result<Post>> GetPost(int postId)
+    public async Task<Result<Post>> GetPost(int postId, CancellationToken cancellationToken)
     {
         try
         {
-            var post = await _db.Posts.FindAsync(postId);
+            var post = await _db.Posts.FindAsync(new object?[] { postId }, cancellationToken: cancellationToken);
             
             return post != null 
                 ? Result<Post>.SuccessResult(post) 
@@ -71,13 +71,13 @@ public class PostService : IPostService
         }
     }
 
-    public async Task<Result<List<Post>>> GetPostsByUserAndActiveStatus(int userId, bool isActive)
+    public async Task<Result<List<Post>>> GetPostsByUserAndActiveStatus(int userId, bool isActive, CancellationToken cancellationToken)
     {
         try
         {
             var posts = await _db.Posts
                 .Where(p => p.UserId == userId && p.IsActive == isActive)
-                .ToListAsync();
+                .ToListAsync(cancellationToken: cancellationToken);
             
             return Result<List<Post>>.SuccessResult(posts);
         }
@@ -92,11 +92,11 @@ public class PostService : IPostService
         }
     }
 
-    public async Task<Result<Post>> UpdatePost(UpdatePostDto postDto, int postId, int userId)
+    public async Task<Result<Post>> UpdatePost(UpdatePostDto postDto, int postId, int userId, CancellationToken cancellationToken)
     {
         try
         {
-            var post = await _db.Posts.FindAsync(postId);
+            var post = await _db.Posts.FindAsync(new object?[] { postId }, cancellationToken: cancellationToken);
 
             if (post == null)
             {
@@ -109,7 +109,7 @@ public class PostService : IPostService
             
             _mapper.Map(postDto, post); 
             post.UpdatedAt = DateTime.Now;
-            await _db.SaveChangesAsync();
+            await _db.SaveChangesAsync(cancellationToken);
             
             return Result<Post>.SuccessResult(post);
         }
@@ -123,11 +123,11 @@ public class PostService : IPostService
         }
     }
 
-    public async Task<Result<bool>> DeletePost(int postId, int userId)
+    public async Task<Result<bool>> DeletePost(int postId, int userId, CancellationToken cancellationToken)
     {
         try
         {
-            var post = await _db.Posts.FindAsync(postId);
+            var post = await _db.Posts.FindAsync(new object?[] { postId }, cancellationToken: cancellationToken);
             
             if (post == null) 
                 return Result<bool>.FailureResult(
@@ -138,7 +138,7 @@ public class PostService : IPostService
                     $"Not enough permissions.", ErrorType.Forbidden);
             
             _db.Posts.Remove(post);
-            await _db.SaveChangesAsync();
+            await _db.SaveChangesAsync(cancellationToken);
             
             return Result<bool>.SuccessResult(true);
         }
@@ -152,18 +152,18 @@ public class PostService : IPostService
         }
     }
     
-    public async Task<Result<Post>> ChangePostActiveStatus(int postId, bool activeStatus)
+    public async Task<Result<Post>> ChangePostActiveStatus(int postId, bool activeStatus, CancellationToken cancellationToken)
     {
         try
         {
-            var post = await _db.Posts.FindAsync(postId);
+            var post = await _db.Posts.FindAsync(new object?[] { postId }, cancellationToken: cancellationToken);
 
             if (post == null)
                 return Result<Post>.FailureResult(
                     $"There is no posts with such id", ErrorType.NotFound);
 
             post.IsActive = activeStatus;
-            await _db.SaveChangesAsync();
+            await _db.SaveChangesAsync(cancellationToken);
             
             return Result<Post>.SuccessResult(post);
         }
@@ -177,13 +177,13 @@ public class PostService : IPostService
         }
     }
 
-    public async Task<Result<List<Post>>> GetPostsOfUsername(string username)
+    public async Task<Result<List<Post>>> GetPostsOfUsername(string username, CancellationToken cancellationToken)
     {
         try
         {
             var user = await _db.Users
                 .Include(u => u.Posts)
-                .FirstOrDefaultAsync(u => u.Username == username);
+                .FirstOrDefaultAsync(u => u.Username == username, cancellationToken: cancellationToken);
 
             if (user == null)
             {

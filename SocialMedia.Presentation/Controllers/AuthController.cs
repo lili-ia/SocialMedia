@@ -20,14 +20,14 @@ public class AuthController : ControllerBase
     }
     
     [HttpPost("register")]
-    public async Task<IActionResult> Register([FromBody] RegisterDto registerDto)
+    public async Task<IActionResult> Register([FromBody] RegisterDto registerDto, CancellationToken ct)
     {
         _logger.LogInformation("Register method in controller executed");
         
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var result = await _userService.RegisterAsync(registerDto);
+        var result = await _userService.RegisterAsync(registerDto, ct);
 
         if (!result.Success) 
             return BadRequest(result.ErrorMessage);
@@ -38,14 +38,14 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
-    public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
+    public async Task<IActionResult> Login([FromBody] LoginDto loginDto, CancellationToken ct)
     {
         _logger.LogInformation("Login method in controller executed");
         
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var result = await _userService.LoginAsync(loginDto);
+        var result = await _userService.LoginAsync(loginDto, ct);
         
         if (result.Success)
         {

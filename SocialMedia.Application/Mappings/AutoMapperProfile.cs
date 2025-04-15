@@ -1,5 +1,5 @@
 ﻿using AutoMapper;
-using Infrastructure.Models;
+using Domain.Entities;
 using SocialMedia.Application.DTOs;
 using SocialMedia.DTOs;
 

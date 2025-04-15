@@ -1,4 +1,6 @@
-﻿namespace SocialMedia.Application;
+﻿using Domain.Entities;
+
+namespace SocialMedia.Application;
 
 public class Result<T>
 {

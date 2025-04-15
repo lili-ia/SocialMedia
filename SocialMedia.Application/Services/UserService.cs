@@ -1,7 +1,7 @@
 ﻿using AutoMapper;
+using Domain.Entities;
 using Infrastructure;
 using Infrastructure.Contracts;
-using Infrastructure.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Contracts;
@@ -32,9 +32,9 @@ public class UserService : IUserService
         _mapper = mapper;
     }
     
-    public async Task<Result<User>> RegisterAsync(RegisterDto dto)
+    public async Task<Result<User>> RegisterAsync(RegisterDto dto, CancellationToken cancellationToken)
     {
-        var userExists = await _db.Users.AnyAsync(u => u.Email == dto.Email);
+        var userExists = await _db.Users.AnyAsync(u => u.Email == dto.Email, cancellationToken);
         
         if (userExists)
         {
@@ -47,8 +47,8 @@ public class UserService : IUserService
 
         try
         {
-            await _db.Users.AddAsync(newUser);
-            await _db.SaveChangesAsync();
+            await _db.Users.AddAsync(newUser, cancellationToken);
+            await _db.SaveChangesAsync(cancellationToken);
         }
         catch (Exception e)
         {
@@ -60,9 +60,9 @@ public class UserService : IUserService
         return Result<User>.SuccessResult(newUser);
     }
 
-    public async Task<Result<string>> LoginAsync(LoginDto dto)
+    public async Task<Result<string>> LoginAsync(LoginDto dto, CancellationToken cancellationToken)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == dto.Email, cancellationToken);
 
         if (user == null)
         {
@@ -81,7 +81,7 @@ public class UserService : IUserService
         return Result<string>.SuccessResult(token);
     }
 
-    public async Task<Result<User>> UpdateProfileAsync(UpdateUserDto dto, int userId)
+    public async Task<Result<User>> UpdateProfileAsync(UpdateUserDto dto, int userId, CancellationToken cancellationToken)
     {
         var user = await _db.Users.FindAsync(userId);
 
@@ -93,7 +93,7 @@ public class UserService : IUserService
         try
         {
             _mapper.Map(dto, user);
-            await _db.SaveChangesAsync();
+            await _db.SaveChangesAsync(cancellationToken);
         }
         catch (Exception e)
         {
