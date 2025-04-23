@@ -10,13 +10,13 @@ namespace SocialMedia.Controllers;
 [ApiController]
 public class AuthController : ControllerBase
 {
-    private readonly IUserService _userService;
+    private readonly IAuthService _authService;
     private readonly ILogger<AuthController> _logger;
     
-    public AuthController(IUserService userService, ILogger<AuthController> logger)
+    public AuthController(ILogger<AuthController> logger, IAuthService authService)
     {
-        _userService = userService;
         _logger = logger;
+        _authService = authService;
     }
     
     [HttpPost("register")]
@@ -27,7 +27,7 @@ public class AuthController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var result = await _userService.RegisterAsync(registerDto, ct);
+        var result = await _authService.RegisterAsync(registerDto, ct);
 
         if (!result.Success) 
             return BadRequest(result.ErrorMessage);
@@ -45,7 +45,7 @@ public class AuthController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var result = await _userService.LoginAsync(loginDto, ct);
+        var result = await _authService.LoginAsync(loginDto, ct);
         
         if (result.Success)
         {

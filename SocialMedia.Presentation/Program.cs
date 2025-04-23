@@ -1,28 +1,46 @@
 using System.Text;
-using Infrastructure;
-using Infrastructure.Contracts;
 using Infrastructure.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using SocialMedia;
+using SocialMedia.Application;
 using SocialMedia.Application.Contracts;
 using SocialMedia.Application.Mappings;
 using SocialMedia.Application.Services;
+using SocialMedia.Application.UseCases;
+using SocialMedia.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
 var config = builder.Configuration;
 var connectionString = config.GetConnectionString("Default");
-builder.Services.AddControllers();
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowLocalhostDev", policy =>
+    {
+        policy
+            .SetIsOriginAllowed(origin =>
+                origin.StartsWith("http://localhost:")) // Allow any localhost port
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
+});
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
+builder.Services.AddControllers();
 builder.Services.AddDbContext<SocialMediaContext>(options => options.UseSqlServer(connectionString));
 builder.Services.AddAutoMapper(typeof(AutoMapperProfile).Assembly);
 builder.Services.AddLogging();
 builder.Services.AddTransient<IJwtService, JwtService>();
 builder.Services.AddTransient<IPasswordHasher<object>, PasswordHasher<object>>();
+builder.Services.AddScoped<ISendMessageUseCase, SendMessageUseCase>();
+builder.Services.AddScoped<ILikePostUseCase, LikePostUseCase>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IChatService, ChatService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IPostService, PostService>();
 builder.Services.AddScoped<ICommentService, CommentService>();
@@ -42,12 +60,35 @@ builder.Services.AddAuthentication("Bearer")
             ValidateIssuerSigningKey = true
                 
         };
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) &&
+                    (path.StartsWithSegments("/chathub")))
+                {
+                    context.Token = accessToken;
+                }
+
+                return Task.CompletedTask;
+            }
+        };
     });
 
 var app = builder.Build();
 
+app.UseLoggerMiddleware();
+app.UseCors("AllowLocalhostDev");
+app.UseRouting();
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapControllers();
+app.UseStaticFiles();
 app.UseSwagger();
 app.UseSwaggerUI();
+app.MapHub<ChatHub>("/chathub");
 app.Run();
 

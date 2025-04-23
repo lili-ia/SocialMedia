@@ -1,4 +1,4 @@
-﻿namespace Infrastructure.Contracts;
+﻿namespace SocialMedia.Application.Contracts;
 
 public interface IPasswordService
 {

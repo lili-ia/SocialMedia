@@ -1,5 +1,5 @@
-﻿using Infrastructure.Contracts;
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
+using SocialMedia.Application.Contracts;
 
 namespace Infrastructure.Services;
 

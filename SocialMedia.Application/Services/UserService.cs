@@ -1,12 +1,9 @@
 ﻿using AutoMapper;
 using Domain.Entities;
-using Infrastructure;
-using Infrastructure.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Contracts;
 using SocialMedia.Application.DTOs;
-using SocialMedia.DTOs;
 
 namespace SocialMedia.Application.Services;
 
@@ -30,55 +27,6 @@ public class UserService : IUserService
         _logger = logger;
         _jwtService = jwtService;
         _mapper = mapper;
-    }
-    
-    public async Task<Result<User>> RegisterAsync(RegisterDto dto, CancellationToken cancellationToken)
-    {
-        var userExists = await _db.Users.AnyAsync(u => u.Email == dto.Email, cancellationToken);
-        
-        if (userExists)
-        {
-            return Result<User>.FailureResult(
-                $"User with email {dto.Email} already exists", ErrorType.Validation);
-        }
-
-        var newUser = _mapper.Map<User>(dto);
-        newUser.PasswordHash = _passwordService.HashPassword(dto.RawPassword);
-
-        try
-        {
-            await _db.Users.AddAsync(newUser, cancellationToken);
-            await _db.SaveChangesAsync(cancellationToken);
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e.Message);
-            return Result<User>.FailureResult(
-                $"An error occured while registering the user", ErrorType.ServerError);
-        }
-    
-        return Result<User>.SuccessResult(newUser);
-    }
-
-    public async Task<Result<string>> LoginAsync(LoginDto dto, CancellationToken cancellationToken)
-    {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == dto.Email, cancellationToken);
-
-        if (user == null)
-        {
-            return Result<string>.FailureResult("Invalid login attempt.", ErrorType.Validation);
-        }
-
-        var isPasswordValid = _passwordService.VerifyPassword(user.PasswordHash, dto.RawPassword);
-
-        if (!isPasswordValid)
-        {
-            return Result<string>.FailureResult("Invalid login attempt.", ErrorType.Validation);
-        }
-
-        var token = _jwtService.GenerateToken(user.UserId.ToString(), user.Email);
-
-        return Result<string>.SuccessResult(token);
     }
 
     public async Task<Result<User>> UpdateProfileAsync(UpdateUserDto dto, int userId, CancellationToken cancellationToken)
@@ -104,5 +52,45 @@ public class UserService : IUserService
         }
 
         return Result<User>.SuccessResult(user);
+    }
+
+    public async Task<Result<UserProfileDto>> GetUserInfoAsync(int userId, CancellationToken cancellationToken)
+    {
+        var user = await _db.Users.FindAsync(userId, cancellationToken);
+        
+        if (user == null)
+        {
+            return Result<UserProfileDto>.FailureResult($"Couldn`t find a user with id {userId}", ErrorType.NotFound);
+        }
+
+        var userDto = _mapper.Map<UserProfileDto>(user);
+        
+        return Result<UserProfileDto>.SuccessResult(userDto);
+    }
+
+    public async Task<Result<UserProfileDto>> UpdateProfilePic(int userId, string filePath, CancellationToken ct)
+    {
+        var user = await _db.Users.FindAsync(userId, ct);
+        
+        if (user == null)
+        {
+            return Result<UserProfileDto>.FailureResult($"Couldn`t find a user with id {userId}", ErrorType.NotFound);
+        }
+
+        try
+        {
+            user.ProfilePicUrl = filePath;
+            await _db.SaveChangesAsync(ct);
+            var dto = _mapper.Map<UserProfileDto>(user);
+
+            return Result<UserProfileDto>.SuccessResult(dto);
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e.Message);
+            
+            return Result<UserProfileDto>.FailureResult(
+                $"An error occured while updating user profile pic.", ErrorType.ServerError);
+        }
     }
 }

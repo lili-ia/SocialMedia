@@ -13,10 +13,10 @@
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       </PackageReference>
-      <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.3" />
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\SocialMedia.Application\SocialMedia.Application.csproj" />
       <ProjectReference Include="..\SocialMedia.Domain\SocialMedia.Domain.csproj" />
     </ItemGroup>
 
