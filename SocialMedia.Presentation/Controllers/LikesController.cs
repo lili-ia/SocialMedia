@@ -10,11 +10,11 @@ namespace SocialMedia.Controllers;
 [Route("api/posts")]
 public class LikesController : ControllerBase
 {
-    private readonly ILikePostUseCase _likePostUseCase;
+    private readonly ILikeService _likeService;
     
-    public LikesController(ILikePostUseCase likePostUseCase)
+    public LikesController(ILikeService likeService)
     {
-        _likePostUseCase = likePostUseCase;
+        _likeService = likeService;
     }
 
     [Authorize]
@@ -28,7 +28,7 @@ public class LikesController : ControllerBase
         
         int.TryParse(userStringId, out int userIntId);
 
-        var result = await _likePostUseCase.ExecuteAsync(postId, userIntId, ct);
+        var result = await _likeService.LikePostAsync(postId, userIntId, ct);
 
         return result.ToActionResult();
     }

@@ -1,5 +1,4 @@
 using System.Text;
-using Infrastructure.Messaging;
 using Infrastructure.Messaging.Producers;
 using Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -40,13 +39,14 @@ builder.Services.AddLogging();
 builder.Services.AddTransient<IJwtService, JwtService>();
 builder.Services.AddTransient<IPasswordHasher<object>, PasswordHasher<object>>();
 builder.Services.AddScoped<ISendMessageUseCase, SendMessageUseCase>();
-builder.Services.AddScoped<ILikePostUseCase, LikePostUseCase>();
 builder.Services.AddScoped<IEventProducer, KafkaProducerService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IChatService, ChatService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IPostService, PostService>();
 builder.Services.AddScoped<ICommentService, CommentService>();
+builder.Services.AddScoped<ILikeService, LikeService>();
+builder.Services.AddScoped<IFollowService, FollowService>();
 builder.Services.AddTransient<IPasswordService, PasswordService>();
 builder.Services.AddSignalR();
 builder.Services.AddAuthentication("Bearer")

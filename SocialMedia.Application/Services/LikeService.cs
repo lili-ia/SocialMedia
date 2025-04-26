@@ -5,20 +5,16 @@ using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Contracts;
 using SocialMedia.Application.DTOs;
 
-namespace SocialMedia.Application.UseCases;
+namespace SocialMedia.Application.Services;
 
-public class LikePostUseCase : ILikePostUseCase
+public class LikeService : ILikeService
 {
     private readonly SocialMediaContext _db;
     private readonly ILogger _logger;
     private readonly IMapper _mapper;
     private readonly IEventProducer _eventProducer;
     
-    public LikePostUseCase(
-        SocialMediaContext db, 
-        ILogger<LikePostUseCase> logger, 
-        IMapper mapper, 
-        IEventProducer eventProducer)
+    public LikeService(SocialMediaContext db, ILogger logger, IMapper mapper, IEventProducer eventProducer)
     {
         _db = db;
         _logger = logger;
@@ -26,7 +22,7 @@ public class LikePostUseCase : ILikePostUseCase
         _eventProducer = eventProducer;
     }
     
-    public async Task<Result<PostLikeDto>> ExecuteAsync(int postId, int userId, CancellationToken ct)
+    public async Task<Result<PostLikeDto>> LikePostAsync(int postId, int userId, CancellationToken ct)
     {
         var post = await _db.Posts.FindAsync(postId);
 
@@ -34,14 +30,14 @@ public class LikePostUseCase : ILikePostUseCase
         {
             return Result<PostLikeDto>.FailureResult("Couldn`t find a post with such id", ErrorType.NotFound);
         }
-
+        
         var user = await _db.Users.FindAsync(userId);
         
         if (user == null)
         {
             return Result<PostLikeDto>.FailureResult("Couldn`t find a user with such id", ErrorType.NotFound);
         }
-
+        
         var existingLike = _db.PostLikes.Any(pl => pl.UserId == userId && pl.PostId == postId);
 
         if (existingLike)
@@ -80,5 +76,35 @@ public class LikePostUseCase : ILikePostUseCase
             
             return Result<PostLikeDto>.FailureResult($"An error occured while liking post with id ${postId}");
         }
+    }
+
+    public Task<Result<bool>> UnlikePostAsync(int postId, int userId, CancellationToken ct)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<Result<bool>> IsPostLikedAsync(int postId, int userId, CancellationToken ct)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<Result<int>> GetPostLikeCountAsync(int postId, CancellationToken ct)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<Result<List<Guid>>> GetLikedPostsByUserAsync(int userId, CancellationToken ct)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<Result<int>> GetTotalLikesGivenByUserAsync(int userId, CancellationToken ct)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<Result<List<UserDto>>> GetUsersWhoLikedPostAsync(int postId, CancellationToken ct)
+    {
+        throw new NotImplementedException();
     }
 }
