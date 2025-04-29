@@ -28,6 +28,15 @@ builder.Services.AddCors(options =>
             .AllowAnyMethod()
             .AllowCredentials();
     });
+    options.AddPolicy("Production", policy =>
+    {
+        policy
+            .SetIsOriginAllowed(origin =>
+                origin.StartsWith("https://socialmediapp.azurewebsites.net")) 
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
 });
 
 builder.Services.AddEndpointsApiExplorer();
@@ -84,14 +93,18 @@ builder.Services.AddAuthentication("Bearer")
 var app = builder.Build();
 
 app.UseLoggerMiddleware();
-app.UseCors("AllowLocalhostDev");
+app.UseCors(app.Environment.IsDevelopment() ? "AllowLocalhostDev" : "Production");
+app.UseHttpsRedirection();
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.UseStaticFiles();
-app.UseSwagger();
-app.UseSwaggerUI();
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 app.MapHub<ChatHub>("/chathub");
 app.Run();
 

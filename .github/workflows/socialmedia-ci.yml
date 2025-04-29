@@ -7,7 +7,7 @@ on:
       - master
 
 env:
-  AZURE_WEBAPP_NAME: socialmedia-api
+  AZURE_WEBAPP_NAME: socialmediapp
   AZURE_WEBAPP_PACKAGE_PATH: './SocialMedia.Presentation/publish'
   DOTNET_VERSION: '9.x'
   SOLUTION_PATH: 'SocialMedia.sln'
