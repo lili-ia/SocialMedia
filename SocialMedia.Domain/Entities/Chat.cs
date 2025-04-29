@@ -3,7 +3,6 @@
 public class Chat
 {
     public int ChatId { get; set; }
-
     public bool? IsGroup { get; set; }
 
     public string? Title { get; set; }

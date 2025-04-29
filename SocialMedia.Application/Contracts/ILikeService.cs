@@ -12,9 +12,7 @@ public interface ILikeService
     
     Task<Result<int>> GetPostLikeCountAsync(int postId, CancellationToken ct);
     
-    Task<Result<List<Guid>>> GetLikedPostsByUserAsync(int userId, CancellationToken ct);
-    
     Task<Result<int>> GetTotalLikesGivenByUserAsync(int userId, CancellationToken ct);
 
-    Task<Result<List<UserDto>>> GetUsersWhoLikedPostAsync(int postId, CancellationToken ct);
+    Task<Result<List<UsernameDto>>> GetUsersWhoLikedPostAsync(int postId, CancellationToken ct);
 }

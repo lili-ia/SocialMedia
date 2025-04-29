@@ -17,5 +17,6 @@ public class AutoMapperProfile : Profile
         CreateMap<RegisterDto, User>();
         CreateMap<PostLike, PostLikeDto>();
         CreateMap<Follow, FollowDto>();
+        CreateMap<User, UsernameDto>();
     }
 }
