@@ -10,7 +10,7 @@ env:
   AZURE_WEBAPP_NAME: socialmedia-api
   AZURE_WEBAPP_PACKAGE_PATH: './SocialMedia.Presentation/publish'
   DOTNET_VERSION: '9.x'
-  SOLUTION_PATH: 'SocialMedia'
+  SOLUTION_PATH: 'SocialMedia.sln'
   API_PROJECT_PATH: 'SocialMedia.Presentation'
   PUBLISH_DIR: './publish'
 
