@@ -16,7 +16,7 @@ using SocialMedia.Extensions;
 var builder = WebApplication.CreateBuilder(args);
 
 var config = builder.Configuration;
-var connectionString = config.GetConnectionString("Default");
+var connectionString = config.GetConnectionString("DefaultProduction");
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowLocalhostDev", policy =>
