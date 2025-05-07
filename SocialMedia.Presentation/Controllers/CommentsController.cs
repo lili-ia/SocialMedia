@@ -39,7 +39,7 @@ public class CommentsController : ControllerBase
         return result.ToActionResult();
     }
     
-    [HttpPut("{commentID}")]
+    [HttpPut("{commentId}")]
     public async Task<IActionResult> UpdateComment([FromBody] CommentDTO dto, [FromRoute] int commentId, CancellationToken cancellationToken)
     {
         var userStringId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;

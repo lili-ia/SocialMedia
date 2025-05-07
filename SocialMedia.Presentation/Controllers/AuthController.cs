@@ -1,6 +1,4 @@
-﻿
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Mvc;
 using SocialMedia.Application.Contracts;
 using SocialMedia.Application.DTOs;
 
@@ -58,4 +56,25 @@ public class AuthController : ControllerBase
         
         return Unauthorized(result.ErrorMessage);
     }
+    
+    [HttpPost("refresh-token")]
+    public async Task<IActionResult> RefreshToken([FromBody] string refreshToken, CancellationToken ct)
+    {
+        _logger.LogInformation("RefreshToken method in controller executed");
+
+        if (string.IsNullOrWhiteSpace(refreshToken))
+            return BadRequest("Refresh token is required.");
+
+        var result = await _authService.RefreshTokenAsync(refreshToken, ct);
+
+        if (!result.Success)
+        {
+            _logger.LogWarning($"Failed token refresh attempt: {result.ErrorMessage}");
+            return Unauthorized(result.ErrorMessage);
+        }
+
+        _logger.LogInformation("Access token successfully refreshed.");
+        return Ok(new { Token = result.Value });
+    }
+    
 }
