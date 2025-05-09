@@ -55,6 +55,7 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IPostService, PostService>();
 builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<ILikeService, LikeService>();
+builder.Services.AddScoped<IFeedService, FeedService>();
 builder.Services.AddScoped<IFollowService, FollowService>();
 builder.Services.AddTransient<IPasswordService, PasswordService>();
 builder.Services.AddSignalR();

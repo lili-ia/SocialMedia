@@ -140,6 +140,16 @@ public class LikeService : ILikeService
         return Result<bool>.SuccessResult(existingLike);
     }
 
+    public async Task<Dictionary<int, int>> GetPostsLikeCountsAsync(List<int> postsIds, CancellationToken ct)
+    {
+        var result = await _db.PostLikes
+            .Where(pl => postsIds.Contains(pl.PostId))
+            .GroupBy(pl => pl.PostId)
+            .ToDictionaryAsync(pl => pl.Key, pl => pl.Count(), ct);
+
+        return result;
+    }
+
     public async Task<Result<int>> GetPostLikeCountAsync(int postId, CancellationToken ct)
     {
         var post = await _db.Posts
