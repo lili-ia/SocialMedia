@@ -1,22 +1,22 @@
-﻿namespace Domain.Entities;
+﻿using Domain.Enums;
 
-public class Message
+namespace Domain.Entities;
+
+public class Message : BaseEntity
 {
-    public int MessageId { get; set; }
+    public Guid SenderId { get; set; }
 
-    public int? SenderId { get; set; }
+    public string Content { get; set; } = "";
 
-    public string? Content { get; set; }
+    public DateTime Timestamp { get; set; } = DateTime.Now;
 
-    public DateTime? Timestamp { get; set; }
+    public MessageType MessageType { get; set; } = Enums.MessageType.System;
 
-    public int? MessageType { get; set; }
+    public bool IsEdited { get; set; } = false;
 
-    public bool? IsEdited { get; set; }
+    public bool IsRead { get; set; } = false;
 
-    public bool? IsRead { get; set; }
-
-    public int? ChatId { get; set; }
+    public Guid ChatId { get; set; }
 
     public virtual Chat? Chat { get; set; }
 

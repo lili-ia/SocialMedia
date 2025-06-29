@@ -1,12 +1,10 @@
 ﻿namespace Domain.Entities;
 
-public partial class RefreshToken
+public partial class RefreshToken : BaseEntity
 {
-    public int Id { get; set; }
-
     public string Token { get; set; } = null!;
 
-    public int UserId { get; set; }
+    public Guid UserId { get; set; }
 
     public DateTime Expires { get; set; }
 

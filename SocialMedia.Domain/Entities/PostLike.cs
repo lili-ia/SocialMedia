@@ -2,11 +2,11 @@
 
 public class PostLike
 {
-    public int UserId { get; set; }
+    public Guid UserId { get; set; }
     
-    public int PostId { get; set; }
+    public Guid PostId { get; set; }
     
-    public DateTime LikedAt { get; set; }
+    public DateTime LikedAt { get; set; } = DateTime.Now;
     
     public virtual User User { get; set; }
     

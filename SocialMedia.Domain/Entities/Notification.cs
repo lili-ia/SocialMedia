@@ -1,18 +1,18 @@
-﻿namespace Domain.Entities;
+﻿using Domain.Enums;
 
-public class Notification
+namespace Domain.Entities;
+
+public class Notification : BaseEntity
 {
-    public int NotificationId { get; set; }
+    public Guid RecipientId { get; set; }
+
+    public NotificationType Type { get; set; } = NotificationType.System;
+
+    public bool IsRead { get; set; } = false;
     
-    public int RecipientId { get; set; }
+    public DateTime Timestamp { get; set; } = DateTime.Now;
     
-    public string Type { get; set; }
-    
-    public bool IsRead { get; set; }
-    
-    public DateTime Timestamp { get; set; }
-    
-    public Dictionary<string, string> Data { get; set; }
+    public Dictionary<string, string> Data { get; set; } =  new();
     
     public virtual User Recipient { get; set; }
 }

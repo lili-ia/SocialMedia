@@ -1,24 +1,27 @@
-﻿namespace Domain.Entities;
+﻿using Domain.Enums;
 
-public class User
+namespace Domain.Entities;
+
+public class User : BaseEntity
 {
-    public int UserId { get; set; }
+    public string Username { get; set; } = "";
 
-    public string? Username { get; set; }
+    public DateTime BirthDate { get; set; } = DateTime.Now;
 
-    public DateTime? BirthDate { get; set; }
+    public string Email { get; set; } = "";
 
-    public string? Email { get; set; }
-
-    public string? PasswordHash { get; set; }
+    public string PasswordHash { get; set; } = "";
 
     public string? ProfilePicUrl { get; set; }
 
     public string? Bio { get; set; }
 
-    public int? Status { get; set; }
+    public UserStatus Status { get; set; } = UserStatus.Pending;
 
     public DateTime? LastSeen { get; set; }
+
+
+    public UserRole UserRole { get; set; } = UserRole.User;
 
     public virtual ICollection<Comment> Comments { get; set; } = new List<Comment>();
 

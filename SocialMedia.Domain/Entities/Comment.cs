@@ -1,16 +1,14 @@
 ﻿namespace Domain.Entities;
 
-public class Comment
+public class Comment : BaseEntity
 {
-    public int CommentId { get; set; }
+    public string Text { get; set; } = "";
 
-    public string Text { get; set; }
+    public Guid UserId { get; set; }
 
-    public int UserId { get; set; }
+    public Guid PostId { get; set; }
 
-    public int PostId { get; set; }
-
-    public DateTime CreatedAt { get; set; }
+    public DateTime CreatedAt { get; set; } =  DateTime.Now;
 
     public DateTime? UpdatedAt { get; set; }
 
