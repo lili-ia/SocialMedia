@@ -4,17 +4,17 @@ namespace SocialMedia.Application.Contracts;
 
 public interface ICommentService
 {
-    Task<Result<Comment>> CreateComment(string text, int postId, int userId, CancellationToken cancellationToken);
+    Task<Result<Comment>> CreateComment(string text, Guid postId, Guid userId, CancellationToken cancellationToken);
     
-    Task<Result<Comment>> GetComment(int commentId, CancellationToken cancellationToken);
+    Task<Result<Comment>> GetComment(Guid commentId, CancellationToken cancellationToken);
     
-    Task<Result<Comment>> UpdateComment(int commentId, string text, int userId, CancellationToken cancellationToken);
+    Task<Result<Comment>> UpdateComment(Guid commentId, string text, Guid userId, CancellationToken cancellationToken);
     
-    Task<Result<bool>> DeleteComment(int commentId, int userId, CancellationToken cancellationToken);
+    Task<Result<bool>> DeleteComment(Guid commentId, Guid userId, CancellationToken cancellationToken);
     
-    Task<Result<List<Comment>>> GetCommentsForPost(int postId, CancellationToken cancellationToken);
+    Task<Result<List<Comment>>> GetCommentsForPost(Guid postId, CancellationToken cancellationToken);
     
-    Task<Result<int>> GetPostCommentsCountAsync(int postId, CancellationToken cancellationToken);
+    Task<Result<int>> GetPostCommentsCountAsync(Guid postId, CancellationToken cancellationToken);
     
-    Task<Dictionary<int,int>> GetPostsCommentsCountsAsync(List<int> postsIds, CancellationToken cancellationToken);
+    Task<Dictionary<Guid,int>> GetPostsCommentsCountsAsync(List<Guid> postsIds, CancellationToken cancellationToken);
 }

@@ -16,7 +16,7 @@ public class CommentService : ICommentService
         _logger = logger;
     }
     
-    public async Task<Result<Comment>> CreateComment(string text, int postId, int userId, CancellationToken cancellationToken)
+    public async Task<Result<Comment>> CreateComment(string text, Guid postId, Guid userId, CancellationToken cancellationToken)
     {
         var user = await _db.Users.FindAsync(new object?[] { userId }, cancellationToken: cancellationToken);
 
@@ -58,7 +58,7 @@ public class CommentService : ICommentService
         return Result<Comment>.SuccessResult(newComment);
     }
 
-    public async Task<Result<Comment>> GetComment(int commentId, CancellationToken cancellationToken)
+    public async Task<Result<Comment>> GetComment(Guid commentId, CancellationToken cancellationToken)
     {
         try
         {
@@ -78,7 +78,7 @@ public class CommentService : ICommentService
         }
     }
 
-    public async Task<Result<Comment>> UpdateComment(int commentId, string text, int userId, CancellationToken cancellationToken)
+    public async Task<Result<Comment>> UpdateComment(Guid commentId, string text, Guid userId, CancellationToken cancellationToken)
     {
         try
         {
@@ -109,7 +109,7 @@ public class CommentService : ICommentService
         }
     }
 
-    public async Task<Result<bool>> DeleteComment(int commentId, int userId, CancellationToken cancellationToken)
+    public async Task<Result<bool>> DeleteComment(Guid commentId, Guid userId, CancellationToken cancellationToken)
     {
         try
         {
@@ -138,13 +138,13 @@ public class CommentService : ICommentService
         }
     }
 
-    public async Task<Result<List<Comment>>> GetCommentsForPost(int postId, CancellationToken cancellationToken)
+    public async Task<Result<List<Comment>>> GetCommentsForPost(Guid postId, CancellationToken cancellationToken)
     {
         try
         {
             var post = await _db.Posts
                 .Include(p => p.Comments)
-                .FirstOrDefaultAsync(p => p.PostId == postId, cancellationToken: cancellationToken);
+                .FirstOrDefaultAsync(p => p.Id == postId, cancellationToken: cancellationToken);
 
             if (post == null)
             {
@@ -166,11 +166,11 @@ public class CommentService : ICommentService
         }
     }
 
-    public async Task<Result<int>> GetPostCommentsCountAsync(int postId, CancellationToken cancellationToken)
+    public async Task<Result<int>> GetPostCommentsCountAsync(Guid postId, CancellationToken cancellationToken)
     {
         var post = await _db.Posts
             .Include(p => p.Comments)
-            .Where(p => p.PostId == postId)
+            .Where(p => p.Id == postId)
             .FirstOrDefaultAsync(cancellationToken);
         
         if (post == null)
@@ -183,7 +183,7 @@ public class CommentService : ICommentService
         return Result<int>.SuccessResult(count); 
     }
 
-    public async Task<Dictionary<int, int>> GetPostsCommentsCountsAsync(List<int> postsIds, CancellationToken cancellationToken)
+    public async Task<Dictionary<Guid, int>> GetPostsCommentsCountsAsync(List<Guid> postsIds, CancellationToken cancellationToken)
     {
         var result = await _db.Comments
             .Where(c => postsIds.Contains(c.PostId))

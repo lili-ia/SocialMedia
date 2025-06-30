@@ -1,4 +1,5 @@
 ﻿using Domain.Entities;
+using Domain.Enums;
 using Domain.Events;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Contracts;
@@ -21,7 +22,7 @@ public class NotificationService : INotificationService
     {
         var notification = new Notification
         {
-            Type = "PostLiked",
+            Type = NotificationType.Like,
             RecipientId = eventData.ToUserId,
             IsRead = false,
             Timestamp = eventData.Timestamp,
@@ -50,7 +51,7 @@ public class NotificationService : INotificationService
     {
         var notification = new Notification
         {
-            Type = "UserFollowed",
+            Type = NotificationType.Follow,
             RecipientId = eventData.FolloweeId,
             IsRead = false,
             Timestamp = eventData.Timestamp,

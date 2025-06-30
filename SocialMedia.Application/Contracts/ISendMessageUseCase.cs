@@ -4,5 +4,5 @@ namespace SocialMedia.Application.Contracts;
 
 public interface ISendMessageUseCase
 {
-    Task<Message> ExecuteAsync(int chatId, string content, int senderId, CancellationToken ct);
+    Task<Message> ExecuteAsync(Guid chatId, string content, Guid senderId, CancellationToken ct);
 }

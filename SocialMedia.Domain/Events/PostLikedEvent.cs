@@ -5,14 +5,14 @@ namespace Domain.Events;
 public class PostLikedEvent : NotificationEvent
 {
     [Required]
-    public int FromUserId { get; set; }
+    public Guid FromUserId { get; set; }
     
     [Required]
     public string FromUsername { get; set; }
     
     [Required]
-    public int ToUserId { get; set; }
+    public Guid ToUserId { get; set; }
     
     [Required]
-    public int PostId { get; set; }
+    public Guid PostId { get; set; }
 }

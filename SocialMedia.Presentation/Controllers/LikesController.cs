@@ -19,16 +19,16 @@ public class LikesController : ControllerBase
 
     [Authorize]
     [HttpPost("{postId}/like")]
-    public async Task<IActionResult> LikePost([FromRoute] int postId, CancellationToken ct)
+    public async Task<IActionResult> LikePost([FromRoute] Guid postId, CancellationToken ct)
     {
         var userStringId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
         if (userStringId == null)
             return Unauthorized("User not found");
         
-        int.TryParse(userStringId, out int userIntId);
+        Guid.TryParse(userStringId, out Guid userGuidId);
 
-        var result = await _likeService.LikePostAsync(postId, userIntId, ct);
+        var result = await _likeService.LikePostAsync(postId, userGuidId, ct);
 
         return result.ToActionResult();
     }

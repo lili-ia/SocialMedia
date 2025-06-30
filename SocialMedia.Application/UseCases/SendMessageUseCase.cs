@@ -17,7 +17,7 @@ public class SendMessageUseCase : ISendMessageUseCase
         _chatService = chatService;
     }
     
-    public async Task<Message> ExecuteAsync(int chatId, string content, int senderId, CancellationToken ct)
+    public async Task<Message> ExecuteAsync(Guid chatId, string content, Guid senderId, CancellationToken ct)
     {
         var chat = await _db.Chats.FindAsync(chatId);
 
@@ -27,7 +27,7 @@ public class SendMessageUseCase : ISendMessageUseCase
             
             if (result.Success)
             {
-                chatId = result.Value.ChatId;
+                chatId = result.Value.Id;
             }
         }
         var message = new Message()

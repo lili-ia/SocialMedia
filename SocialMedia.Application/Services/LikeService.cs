@@ -23,7 +23,7 @@ public class LikeService : ILikeService
         _eventProducer = eventProducer;
     }
     
-    public async Task<Result<PostLikeDto>> LikePostAsync(int postId, int userId, CancellationToken ct)
+    public async Task<Result<PostLikeDto>> LikePostAsync(Guid postId, Guid userId, CancellationToken ct)
     {
         var post = await _db.Posts.FindAsync(postId);
 
@@ -79,7 +79,7 @@ public class LikeService : ILikeService
         }
     }
 
-    public async Task<Result<bool>> UnlikePostAsync(int postId, int userId, CancellationToken ct)
+    public async Task<Result<bool>> UnlikePostAsync(Guid postId, Guid userId, CancellationToken ct)
     {
         var post = await _db.Posts.FindAsync(postId);
 
@@ -119,7 +119,7 @@ public class LikeService : ILikeService
         }
     }
 
-    public async Task<Result<bool>> IsPostLikedAsync(int postId, int userId, CancellationToken ct)
+    public async Task<Result<bool>> IsPostLikedAsync(Guid postId, Guid userId, CancellationToken ct)
     {
         var post = await _db.Posts.FindAsync(postId);
 
@@ -140,7 +140,7 @@ public class LikeService : ILikeService
         return Result<bool>.SuccessResult(existingLike);
     }
 
-    public async Task<Dictionary<int, int>> GetPostsLikeCountsAsync(List<int> postsIds, CancellationToken ct)
+    public async Task<Dictionary<Guid, int>> GetPostsLikeCountsAsync(List<Guid> postsIds, CancellationToken ct)
     {
         var result = await _db.PostLikes
             .Where(pl => postsIds.Contains(pl.PostId))
@@ -150,11 +150,11 @@ public class LikeService : ILikeService
         return result;
     }
 
-    public async Task<Result<int>> GetPostLikeCountAsync(int postId, CancellationToken ct)
+    public async Task<Result<int>> GetPostLikeCountAsync(Guid postId, CancellationToken ct)
     {
         var post = await _db.Posts
             .Include(p => p.PostLikes)
-            .Where(p => p.PostId == postId)
+            .Where(p => p.Id == postId)
             .FirstOrDefaultAsync(ct);
         
         if (post == null)
@@ -167,12 +167,12 @@ public class LikeService : ILikeService
         return Result<int>.SuccessResult(count); 
     }
     
-    public Task<Result<int>> GetTotalLikesGivenByUserAsync(int userId, CancellationToken ct)
+    public Task<Result<int>> GetTotalLikesGivenByUserAsync(Guid userId, CancellationToken ct)
     {
         throw new NotImplementedException();
     }
 
-    public async Task<Result<List<UsernameDto>>> GetUsersWhoLikedPostAsync(int postId, CancellationToken ct)
+    public async Task<Result<List<UsernameDto>>> GetUsersWhoLikedPostAsync(Guid postId, CancellationToken ct)
     {
         var postLikes = await _db.PostLikes
             .Include(pl => pl.User)

@@ -14,7 +14,7 @@ public class ChatHub : Hub
         _logger = logger;
     }
 
-    public async Task SendMessage(int chatId, string content)
+    public async Task SendMessage(Guid chatId, string content)
     {
         var cancellationToken = Context.ConnectionAborted;
         
@@ -30,21 +30,21 @@ public class ChatHub : Hub
             return;
         }
 
-        if (userStringId != null && int.TryParse(userStringId, out int userIntId))
+        if (userStringId != null && Guid.TryParse(userStringId, out Guid userGuidId))
         {
             try
             {
-                var message = await _sendMessageUseCase.ExecuteAsync(chatId, content, userIntId, cancellationToken);
+                var message = await _sendMessageUseCase.ExecuteAsync(chatId, content, userGuidId, cancellationToken);
                 _logger.LogInformation(
                     "User {UserIdentifier} successfully sent a message to chat {ChatId}.", 
                     userStringId, chatId);
-                await Clients.All.SendAsync("ReceiveMessage",userIntId,  message.Content, cancellationToken: cancellationToken);
+                await Clients.All.SendAsync("ReceiveMessage",userGuidId,  message.Content, cancellationToken: cancellationToken);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, 
                     "Error while sending message in chat {ChatId} by user {UserId}.", 
-                    chatId, userIntId);
+                    chatId, userGuidId);
                 await Clients.Caller
                     .SendAsync("Error", "Something went wrong while sending the message.");
             }

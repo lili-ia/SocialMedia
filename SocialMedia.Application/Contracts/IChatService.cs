@@ -9,9 +9,9 @@ public interface IChatService
 
     Task<Result<List<Message>>> GetMessagesByChatId(
         CancellationToken cancellationToken, 
-        int chatId,
+        Guid chatId,
         int skipCount = 0,
         int pageSize = 10);
 
-    Task<Result<List<ChatDto>>> GetAllChats(int userId, CancellationToken cancellationToken);
+    Task<Result<List<ChatDto>>> GetAllChats(Guid userId, CancellationToken cancellationToken);
 }

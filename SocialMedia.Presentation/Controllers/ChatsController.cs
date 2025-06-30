@@ -26,8 +26,8 @@ public class ChatsController : ControllerBase
         if (userStringId == null)
             return Unauthorized("User not found");
         
-        int.TryParse(userStringId, out int userIntId);
-        var result = await _chatService.GetAllChats(userIntId, cancellationToken);
+        Guid.TryParse(userStringId, out Guid userGuidId);
+        var result = await _chatService.GetAllChats(userGuidId, cancellationToken);
 
         return result.ToActionResult();
     }
@@ -36,7 +36,7 @@ public class ChatsController : ControllerBase
     [HttpGet("{chatId}")]
     public async Task<IActionResult> GetMessagesForThisChat(
         CancellationToken cancellationToken,
-        [FromRoute] int chatId, 
+        [FromRoute] Guid chatId, 
         [FromQuery] int page = 1, 
         [FromQuery] int pageSize = 10)
     {

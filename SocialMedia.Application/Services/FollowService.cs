@@ -27,7 +27,7 @@ public class FollowService : IFollowService
         _eventProducer = eventProducer;
     }
 
-    public async Task<Result<FollowDto>> FollowAsync(int followerId, int followeeId, CancellationToken ct)
+    public async Task<Result<FollowDto>> FollowAsync(Guid followerId, Guid followeeId, CancellationToken ct)
     {
         var follower = await _db.Users.FindAsync(followerId);
 
@@ -86,32 +86,32 @@ public class FollowService : IFollowService
         }
     }
 
-    public Task<Result<bool>> UnfollowUserAsync(int followerId, int followeeId, CancellationToken ct)
+    public Task<Result<bool>> UnfollowUserAsync(Guid followerId, Guid followeeId, CancellationToken ct)
     {
         throw new NotImplementedException();
     }
 
-    public Task<Result<bool>> IsFollowingAsync(int followerId, int followeeId, CancellationToken ct)
+    public Task<Result<bool>> IsFollowingAsync(Guid followerId, Guid followeeId, CancellationToken ct)
     {
         throw new NotImplementedException();
     }
 
-    public Task<IEnumerable<UserDto>> GetFollowersAsync(int userId, CancellationToken ct)
+    public Task<IEnumerable<UserDto>> GetFollowersAsync(Guid userId, CancellationToken ct)
     {
         throw new NotImplementedException();
     }
 
-    public Task<IEnumerable<UserDto>> GetFollowingAsync(int userId, CancellationToken ct)
+    public Task<IEnumerable<UserDto>> GetFollowingAsync(Guid userId, CancellationToken ct)
     {
         throw new NotImplementedException();
     }
 
-    public Task<Result<int>> GetFollowersCountAsync(int userId, CancellationToken ct)
+    public Task<Result<int>> GetFollowersCountAsync(Guid userId, CancellationToken ct)
     {
         throw new NotImplementedException();
     }
 
-    public Task<Result<int>> GetFollowingCountAsync(int userId, CancellationToken ct)
+    public Task<Result<int>> GetFollowingCountAsync(Guid userId, CancellationToken ct)
     {
         throw new NotImplementedException();
     }

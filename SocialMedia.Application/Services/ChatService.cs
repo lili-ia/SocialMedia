@@ -45,14 +45,14 @@ public class ChatService : IChatService
 
     public async Task<Result<List<Message>>> GetMessagesByChatId(
         CancellationToken cancellationToken,
-        int chatId,  
+        Guid chatId,  
         int skipCount = 0,
         int pageSize = 10)
     {
         try
         {
             var messages = await _db.Messages
-                .Where(m => m.ChatId == chatId)
+                .Where(m => m.Id == chatId)
                 .OrderByDescending(m => m.Timestamp)
                 .Skip(skipCount)
                 .Take(pageSize)
@@ -70,7 +70,7 @@ public class ChatService : IChatService
         }
     }
 
-    public async Task<Result<List<ChatDto>>> GetAllChats(int userId, CancellationToken cancellationToken)
+    public async Task<Result<List<ChatDto>>> GetAllChats(Guid userId, CancellationToken cancellationToken)
     {
         
         var user = await _db.Users.FindAsync(userId, cancellationToken);
@@ -97,10 +97,10 @@ public class ChatService : IChatService
                 })
                 .Select(x => new ChatDto
                 {
-                    ChatId = x.Chat.ChatId,
+                    ChatId = x.Chat.Id,
                     LastMessageContent = x.LastMessage.Content,
                     LastMessageUser = x.LastMessage.Sender.Username,
-                    LastMessageFromMe = x.LastMessage.Sender.UserId == userId
+                    LastMessageFromMe = x.LastMessage.Sender.Id == userId
                 })
                 .ToListAsync(cancellationToken);
 

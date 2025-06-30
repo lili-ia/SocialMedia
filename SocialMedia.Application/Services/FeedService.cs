@@ -26,7 +26,7 @@ public class FeedService : IFeedService
         _mapper = mapper;
     }
 
-    public async Task<List<PostFeedDto>> GetFeedAsync(int userId, CancellationToken ct, int page = 1, int pageSize = 20)
+    public async Task<List<PostFeedDto>> GetFeedAsync(Guid userId, CancellationToken ct, int page = 1, int pageSize = 20)
     {
         var followsIds = await _db.Follows
             .Where(f => f.FollowerId == userId)
@@ -47,7 +47,7 @@ public class FeedService : IFeedService
     }
 
     public async Task<List<PostFeedDto>> GetRecentPostsFromUsers(
-        List<int> followsIds, 
+        List<Guid> followsIds, 
         CancellationToken ct, 
         int page = 1, 
         int pageSize = 20)
@@ -63,7 +63,7 @@ public class FeedService : IFeedService
         if (!posts.Any())
             return new List<PostFeedDto>();
 
-        var postIds = posts.Select(p => p.PostId).ToList();
+        var postIds = posts.Select(p => p.Id).ToList();
 
         var likeCounts = await _likeService.GetPostsLikeCountsAsync(postIds, ct);
         var commentCounts = await _commentService.GetPostsCommentsCountsAsync(postIds, ct);
@@ -71,8 +71,8 @@ public class FeedService : IFeedService
         var result = posts.Select(post =>
         {
             var dto = _mapper.Map<PostFeedDto>(post);
-            dto.LikesCount = likeCounts.GetValueOrDefault(post.PostId, 0);
-            dto.CommentsCount = commentCounts.GetValueOrDefault(post.PostId, 0);
+            dto.LikesCount = likeCounts.GetValueOrDefault(post.Id, 0);
+            dto.CommentsCount = commentCounts.GetValueOrDefault(post.Id, 0);
             
             return dto;
         }).ToList();
@@ -81,7 +81,7 @@ public class FeedService : IFeedService
     }
     
     public async Task<List<PostFeedDto>> GetMostPopularPostsAsync(
-        List<int> excludeUserIds,
+        List<Guid> excludeUserIds,
         DateTime since,
         int page,
         int pageSize,
@@ -99,7 +99,7 @@ public class FeedService : IFeedService
         if (!posts.Any())
             return new List<PostFeedDto>();
 
-        var postIds = posts.Select(p => p.PostId).ToList();
+        var postIds = posts.Select(p => p.Id).ToList();
 
         var likeCounts = await _likeService.GetPostsLikeCountsAsync(postIds, ct);
         var commentCounts = await _commentService.GetPostsCommentsCountsAsync(postIds, ct);
@@ -107,8 +107,8 @@ public class FeedService : IFeedService
         var result = posts.Select(post =>
         {
             var dto = _mapper.Map<PostFeedDto>(post);
-            dto.LikesCount = likeCounts.GetValueOrDefault(post.PostId, 0);
-            dto.CommentsCount = commentCounts.GetValueOrDefault(post.PostId, 0);
+            dto.LikesCount = likeCounts.GetValueOrDefault(post.Id, 0);
+            dto.CommentsCount = commentCounts.GetValueOrDefault(post.Id, 0);
             return dto;
         }).ToList();
 

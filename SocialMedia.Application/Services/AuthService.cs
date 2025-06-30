@@ -68,10 +68,10 @@ public class AuthService : IAuthService
             return Result<AuthResponseDto>.FailureResult("Invalid login attempt.", ErrorType.Validation);
         }
 
-        var accessToken = _jwtService.GenerateToken(user.UserId.ToString(), user.Email);
+        var accessToken = _jwtService.GenerateToken(user.Id.ToString(), user.Email);
         var refreshToken = _jwtService.GenerateRefreshToken();
         // TODO: include IP and Device Info 
-        refreshToken.UserId = user.UserId;
+        refreshToken.UserId = user.Id;
 
         try
         {

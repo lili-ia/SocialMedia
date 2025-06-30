@@ -36,4 +36,6 @@ public class User : BaseEntity
     public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
     
     public virtual ICollection<PostLike> PostLikes { get; set; }
+    
+    public virtual ICollection<Notification> Notifications { get; set; }
 }

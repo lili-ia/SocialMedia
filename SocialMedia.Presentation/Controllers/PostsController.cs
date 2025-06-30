@@ -19,7 +19,7 @@ public class PostsController : ControllerBase
     }
     
     [HttpGet("{postId}")]
-    public async Task<IActionResult> GetPost([FromRoute] int postId, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetPost([FromRoute] Guid postId, CancellationToken cancellationToken)
     {
         var result = await _postService.GetPost(postId, cancellationToken);
 
@@ -36,15 +36,15 @@ public class PostsController : ControllerBase
 
     [Authorize]
     [HttpPut("{postId}")]
-    public async Task<IActionResult> UpdatePost([FromBody] UpdatePostDto dto, [FromRoute] int postId, CancellationToken cancellationToken)
+    public async Task<IActionResult> UpdatePost([FromBody] UpdatePostDto dto, [FromRoute] Guid postId, CancellationToken cancellationToken)
     {
         var userStringId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
         if (userStringId == null)
             return Unauthorized("User not found");
         
-        int.TryParse(userStringId, out int userIntId);
-        var result = await _postService.UpdatePost(dto, postId, userIntId, cancellationToken);
+        Guid.TryParse(userStringId, out Guid userGuidId);
+        var result = await _postService.UpdatePost(dto, postId, userGuidId, cancellationToken);
         
         return result.ToActionResult();
     }
@@ -58,23 +58,23 @@ public class PostsController : ControllerBase
         if (userStringId == null)
             return Unauthorized("User not found");
 
-        int.TryParse(userStringId, out int userIntId);
-        var result = await _postService.CreatePost(dto, userIntId, cancellationToken);
+        Guid.TryParse(userStringId, out Guid userGuidId);
+        var result = await _postService.CreatePost(dto, userGuidId, cancellationToken);
 
         return result.ToActionResult();
     }
     
     [Authorize]
     [HttpDelete("{postId}")]
-    public async Task<IActionResult> DeletePost([FromRoute] int postId, CancellationToken cancellationToken)
+    public async Task<IActionResult> DeletePost([FromRoute] Guid postId, CancellationToken cancellationToken)
     {
         var userStringId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
         if (userStringId == null)
             return Unauthorized("User not found");
         
-        int.TryParse(userStringId, out int userIntId);
-        var result = await _postService.DeletePost(postId, userIntId, cancellationToken);
+        Guid.TryParse(userStringId, out Guid userGuidId);
+        var result = await _postService.DeletePost(postId, userGuidId, cancellationToken);
 
         return result.ToActionResult();
     }
@@ -88,8 +88,8 @@ public class PostsController : ControllerBase
         if (userStringId == null)
             return Unauthorized("User not found");
         
-        int.TryParse(userStringId, out int userIntId);
-        var result = await _postService.GetPostsByUserAndActiveStatus(userIntId, isActive: false, cancellationToken);
+        Guid.TryParse(userStringId, out Guid userGuidId);
+        var result = await _postService.GetPostsByUserAndActiveStatus(userGuidId, isActive: false, cancellationToken);
         
         return result.ToActionResult();
     }

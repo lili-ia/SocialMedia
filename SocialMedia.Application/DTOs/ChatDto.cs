@@ -2,7 +2,7 @@
 
 public class ChatDto
 {
-    public int ChatId { get; set; }
+    public Guid ChatId { get; set; }
 
     public bool? IsGroup { get; set; }
 

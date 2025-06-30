@@ -16,7 +16,7 @@ using SocialMedia.Extensions;
 var builder = WebApplication.CreateBuilder(args);
 
 var config = builder.Configuration;
-var connectionString = config.GetConnectionString("DefaultProduction");
+var connectionString = config.GetConnectionString("AzureSqlConnection");
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowLocalhostDev", policy =>
@@ -28,6 +28,7 @@ builder.Services.AddCors(options =>
             .AllowAnyMethod()
             .AllowCredentials();
     });
+    
     options.AddPolicy("Production", policy =>
     {
         policy
