@@ -1,6 +1,7 @@
 using Domain.Entities;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Contracts;
+using SocialMedia.Persistence;
 
 namespace SocialMedia.Application.UseCases;
 

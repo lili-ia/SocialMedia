@@ -6,12 +6,12 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using SocialMedia;
-using SocialMedia.Application;
 using SocialMedia.Application.Contracts;
 using SocialMedia.Application.Mappings;
 using SocialMedia.Application.Services;
 using SocialMedia.Application.UseCases;
 using SocialMedia.Extensions;
+using SocialMedia.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 

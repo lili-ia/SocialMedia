@@ -2,6 +2,7 @@ using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using SocialMedia.Application.Contracts;
 using SocialMedia.Application.DTOs;
+using SocialMedia.Persistence;
 
 namespace SocialMedia.Application.Services;
 

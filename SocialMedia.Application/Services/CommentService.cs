@@ -2,6 +2,7 @@ using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Contracts;
+using SocialMedia.Persistence;
 
 namespace SocialMedia.Application.Services;
 

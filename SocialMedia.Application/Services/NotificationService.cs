@@ -3,6 +3,7 @@ using Domain.Enums;
 using Domain.Events;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Contracts;
+using SocialMedia.Persistence;
 
 namespace SocialMedia.Application.Services;
 
