@@ -41,31 +41,19 @@ public partial class SocialMediaContext : DbContext
             entity.HasMany(u => u.Comments)
                 .WithOne(c => c.User)
                 .HasForeignKey(c => c.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.SetNull);
 
             // User -> Messages (one-to-many)
             entity.HasMany(u => u.Messages)
                 .WithOne(m => m.Sender) 
                 .HasForeignKey(m => m.SenderId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.SetNull);
 
             // User -> Posts (one-to-many)
             entity.HasMany(u => u.Posts)
                 .WithOne(p => p.User)
                 .HasForeignKey(p => p.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
-
-            // User -> Followees (one-to-many)
-            entity.HasMany(u => u.Followees)
-                .WithOne(f => f.Follower)  
-                .HasForeignKey(f => f.FollowerId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            // User -> Followers (one-to-many)
-            entity.HasMany(u => u.Followers)
-                .WithOne(f => f.Followee)  
-                .HasForeignKey(f => f.FolloweeId)
-                .OnDelete(DeleteBehavior.Restrict);
 
             // User -> RefreshTokens (one-to-many)
             entity.HasMany(u => u.RefreshTokens)
@@ -78,8 +66,43 @@ public partial class SocialMediaContext : DbContext
                 .WithOne(rt => rt.Recipient)
                 .HasForeignKey(rt => rt.RecipientId)
                 .OnDelete(DeleteBehavior.Cascade);
+            
+            entity.Property(u => u.Username)
+                .IsRequired()
+                .HasMaxLength(50);
+
+            entity.Property(u => u.Email)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(u => u.PasswordHash)
+                .IsRequired()
+                .HasMaxLength(255);
+
+            entity.Property(u => u.ProfilePicUrl)
+                .HasMaxLength(255);
+
+            entity.Property(u => u.Bio)
+                .HasMaxLength(500);
+
+            entity.HasCheckConstraint("CK_User_BirthDate", "BirthDate <= GETDATE()");
+            
+            entity.HasIndex(u => u.Email).IsUnique();
+            
+            entity.HasIndex(u => u.Username).IsUnique();
+
         });
 
+        modelBuilder.Entity<Chat>(entity =>
+        {
+            entity.Property(c => c.Title)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.HasCheckConstraint("CK_Chat_Title_NotEmpty", "LEN(Title) > 0");
+        });
+
+        
         modelBuilder.Entity<Message>(entity =>
         {
             // Message -> Chat (many-to-one)
@@ -87,17 +110,27 @@ public partial class SocialMediaContext : DbContext
                 .WithMany(c => c.Messages)
                 .HasForeignKey(m => m.ChatId)
                 .OnDelete(DeleteBehavior.Cascade);
+            
+            entity.Property(m => m.Content)
+                .IsRequired()
+                .HasMaxLength(2000);
+
+            entity.Property(m => m.Timestamp)
+                .HasDefaultValueSql("GETDATE()");
         });
         
         modelBuilder.Entity<PostLike>(entity =>
         {
             entity.HasKey(pl => new { pl.UserId, pl.PostId });
+            
+            entity.Property(pl => pl.LikedAt)
+                .HasDefaultValueSql("GETDATE()");
 
             // Relationship to User
             entity.HasOne(pl => pl.User)
                 .WithMany(u => u.PostLikes)
                 .HasForeignKey(pl => pl.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
 
             // Relationship to Post
             entity.HasOne(pl => pl.Post)
@@ -106,13 +139,48 @@ public partial class SocialMediaContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
         });
         
+        modelBuilder.Entity<Comment>(entity =>
+        {
+            entity.Property(c => c.Text)
+                .IsRequired()
+                .HasMaxLength(1000);
+
+            entity.Property(c => c.CreatedAt)
+                .HasDefaultValueSql("GETDATE()");
+        });
+
+        
+        modelBuilder.Entity<Follow>(entity =>
+        {
+            entity.HasKey(f => new { f.FollowerId, f.FolloweeId });
+            
+            entity.HasOne(f => f.Follower)
+                .WithMany(u => u.Followees)
+                .HasForeignKey(f => f.FollowerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(f => f.Followee)
+                .WithMany(u => u.Followers)
+                .HasForeignKey(f => f.FolloweeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.Property(f => f.FollowedAt)
+                .HasDefaultValueSql("GETDATE()");
+        });
+        
         modelBuilder.Entity<Post>(entity =>
         {
             // Post - Comments (one-to-many)
             entity.HasMany(p => p.Comments)
                 .WithOne(c => c.Post) 
                 .HasForeignKey(c => c.PostId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
+            
+            entity.Property(p => p.Text)
+                .HasMaxLength(2000);
+
+            entity.Property(p => p.CreatedAt)
+                .HasDefaultValueSql("GETDATE()");
         });
         
         modelBuilder.Entity<Notification>(entity =>
@@ -123,5 +191,22 @@ public partial class SocialMediaContext : DbContext
                     v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, (JsonSerializerOptions?)null))
                 .HasColumnType("nvarchar(max)");
         });
+        
+        modelBuilder.Entity<RefreshToken>(entity =>
+        {
+            entity.Property(rt => rt.Token)
+                .IsRequired()
+                .HasMaxLength(450);
+
+            entity.Property(rt => rt.IpAddress)
+                .HasMaxLength(45);
+
+            entity.Property(rt => rt.DeviceInfo)
+                .HasMaxLength(500);
+
+            entity.Property(rt => rt.CreatedAt)
+                .HasDefaultValueSql("GETDATE()");
+        });
+
     }
 }
