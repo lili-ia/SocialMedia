@@ -29,6 +29,8 @@ public partial class SocialMediaContext : DbContext
     
     public virtual DbSet<PasswordResetToken> PasswordResetTokens { get; set; }
     
+    public virtual DbSet<EmailConfirmationToken> EmailConfirmationTokens { get; set; }
+    
     public virtual DbSet<PostLike> PostLikes { get; set; }
     
     public virtual DbSet<Follow> Follows { get; set; }
@@ -211,6 +213,30 @@ public partial class SocialMediaContext : DbContext
         });
 
         modelBuilder.Entity<PasswordResetToken>(entity =>
+        {
+            entity.Property(x => x.UserId)
+                .IsRequired();
+
+            entity.Property(x => x.Token)
+                .IsRequired()
+                .HasMaxLength(256);  
+
+            entity.Property(x => x.CreatedAt)
+                .IsRequired();
+
+            entity.Property(x => x.ExpiresAt)
+                .IsRequired();
+
+            entity.Property(x => x.IsUsed)
+                .IsRequired();
+
+            entity.HasOne(x => x.User)
+                .WithMany()         
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+        
+        modelBuilder.Entity<EmailConfirmationToken>(entity =>
         {
             entity.Property(x => x.UserId)
                 .IsRequired();
