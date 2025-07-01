@@ -1,4 +1,5 @@
 using System.Text;
+using Infrastructure.Email;
 using Infrastructure.Messaging.Producers;
 using Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -58,6 +59,11 @@ builder.Services.AddAutoMapper(typeof(AutoMapperProfile).Assembly);
 builder.Services.AddLogging();
 builder.Services.AddTransient<IJwtService, JwtService>();
 builder.Services.AddTransient<IPasswordHasher<object>, PasswordHasher<object>>();
+
+builder.Services.Configure<SmtpSettings>(
+    builder.Configuration.GetSection("SmtpSettings"));
+builder.Services.AddTransient<IEmailSender, SmtpEmailSender>();
+
 builder.Services.AddScoped<ISendMessageUseCase, SendMessageUseCase>();
 builder.Services.AddScoped<IEventProducer, KafkaProducerService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -70,6 +76,7 @@ builder.Services.AddScoped<IFeedService, FeedService>();
 builder.Services.AddScoped<IFollowService, FollowService>();
 builder.Services.AddTransient<IPasswordService, PasswordService>();
 builder.Services.AddSignalR();
+
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer(options =>
     {
