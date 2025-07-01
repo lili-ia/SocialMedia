@@ -192,4 +192,41 @@ public class AuthService : IAuthService
         
         return Result<bool>.SuccessResult(true);
     }
+
+    public async Task<Result<bool>> ResetPasswordAsync(ResetPasswordRequest request)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+
+        if (user == null)
+        {
+            return Result<bool>.FailureResult("Invalid email or token", ErrorType.BadRequest);
+        }
+        
+        var hashedToken = _passwordService.HashPassword(request.Token);
+
+        var token = await _db.PasswordResetTokens
+            .FirstOrDefaultAsync(t => 
+                t.UserId == user.Id && t.Token == hashedToken && !t.IsUsed);
+
+        if (token == null || token.ExpiresAt < DateTime.UtcNow)
+        {
+            return Result<bool>.FailureResult("Invalid or expired token", ErrorType.Forbidden);
+        }
+
+        token.IsUsed = true;
+        user.PasswordHash = _passwordService.HashPassword(request.NewPassword);
+
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e.Message);
+            
+            return Result<bool>.FailureResult("An internal error occured", ErrorType.ServerError); 
+        }
+        
+        return Result<bool>.SuccessResult(true);
+    }
 }

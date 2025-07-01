@@ -15,6 +15,7 @@ public static class ResultExtensions
             { ErrorType: ErrorType.Validation } => new BadRequestObjectResult(result.ErrorMessage),
             { ErrorType: ErrorType.Forbidden } => new ObjectResult(result.ErrorMessage) { StatusCode = 403 },
             { ErrorType: ErrorType.ServerError } => new ObjectResult(result.ErrorMessage) { StatusCode = 500 },
+            { ErrorType: ErrorType.BadRequest } => new BadRequestObjectResult(result.ErrorMessage),
             _ => new ObjectResult("Unexpected error") { StatusCode = 500 }
         };
     }

@@ -40,4 +40,5 @@ public enum ErrorType
     Unknown, 
     Unauthorized, 
     Forbidden,
+    BadRequest
 }

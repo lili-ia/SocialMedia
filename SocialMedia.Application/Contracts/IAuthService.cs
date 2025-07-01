@@ -12,4 +12,6 @@ public interface IAuthService
     Task<Result<AuthResponseDto>> RefreshTokenAsync(string refreshToken, CancellationToken cancellationToken);
 
     Task<Result<bool>> RequestPasswordResetAsync(string email);
+
+    Task<Result<bool>> ResetPasswordAsync(ResetPasswordRequest request);
 }
