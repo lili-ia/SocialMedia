@@ -1,4 +1,5 @@
-﻿using AutoMapper;
+﻿using System.Security.Cryptography;
+using AutoMapper;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -15,14 +16,22 @@ public class AuthService : IAuthService
     private readonly IPasswordService _passwordService;
     private readonly ILogger<AuthService> _logger;
     private readonly IJwtService _jwtService;
+    private readonly IEmailSender _emailSender;
     
-    public AuthService(SocialMediaContext db, IMapper mapper, IPasswordService passwordService, ILogger<AuthService> logger, IJwtService jwtService)
+    public AuthService(
+        SocialMediaContext db, 
+        IMapper mapper, 
+        IPasswordService passwordService, 
+        ILogger<AuthService> logger, 
+        IJwtService jwtService, 
+        IEmailSender sender)
     {
         _db = db;
         _mapper = mapper;
         _passwordService = passwordService;
         _logger = logger;
         _jwtService = jwtService;
+        _emailSender = sender;
     }
     
     public async Task<Result<User>> RegisterAsync(RegisterDto dto, CancellationToken cancellationToken)
@@ -139,5 +148,48 @@ public class AuthService : IAuthService
         };
 
         return Result<AuthResponseDto>.SuccessResult(authResponse);
+    }
+
+    public async Task<Result<bool>> RequestPasswordResetAsync(string email)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == email);
+
+        if (user == null)
+        {
+            return Result<bool>.SuccessResult(true);
+        }
+
+        var rawToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
+        var hashedToken = _passwordService.HashPassword(rawToken);
+
+        var token = new PasswordResetToken
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            Token = hashedToken,
+            CreatedAt = DateTime.UtcNow,
+            ExpiresAt = DateTime.UtcNow.AddHours(1),
+            IsUsed = false
+        };
+
+        try
+        {
+            await _db.PasswordResetTokens.AddAsync(token);
+            await _db.SaveChangesAsync();
+            
+            var resetLink = $"https://example.com/reset-password?token={Uri.EscapeDataString(rawToken)}&email={Uri.EscapeDataString(email)}";
+            var subject = "Password Reset Request";
+            var body = $"<p>To reset your password, click the link below:</p><p><a href='{resetLink}'>Reset Password</a></p>";
+
+            await _emailSender.SendEmailAsync(email, subject, body);
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e.Message);
+            return Result<bool>.FailureResult(
+                $"Internal server error. Try later.", ErrorType.ServerError);
+        }
+        
+        return Result<bool>.SuccessResult(true);
     }
 }
