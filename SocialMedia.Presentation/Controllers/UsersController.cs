@@ -21,7 +21,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpPut("{userId}")]
-    public async Task<IActionResult> UpdateUser([FromBody] UpdateUserDto dto, [FromRoute] int userId, CancellationToken cancellationToken)
+    public async Task<IActionResult> UpdateUser([FromBody] UpdateUserDto dto, [FromRoute] Guid userId, CancellationToken cancellationToken)
     {
         var result = await _userService.UpdateProfileAsync(dto, userId, cancellationToken);
 
@@ -37,20 +37,22 @@ public class UsersController : ControllerBase
         if (userStringId == null)
             return Unauthorized("User not found");
         
-        int.TryParse(userStringId, out int userIntId);
-        var result = await _userService.GetUserInfoAsync(userIntId, ct);
+        Guid.TryParse(userStringId, out Guid userGuidId);
+        var result = await _userService.GetOwnProfileInfoAsync(userGuidId, ct);
 
         return result.ToActionResult();
     }
 
     [Authorize]
     [HttpPost("{userId}/pic")]
-    public async Task<IActionResult> UploadProfilePic([FromRoute] int userId, IFormFile file, CancellationToken ct)
+    public async Task<IActionResult> UploadProfilePic(IFormFile file, CancellationToken ct)
     {
         var userStringId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
         if (userStringId == null)
+        {
             return Unauthorized("User not found");
+        }
         
         if (file == null || file.Length == 0)
         {
@@ -69,9 +71,9 @@ public class UsersController : ControllerBase
         }
 
         var profilePicUrl = $"/uploads/{fileName}";
-        int.TryParse(userStringId, out int userIntId);
+        Guid.TryParse(userStringId, out Guid userGuidId);
         
-        var result = await _userService.UpdateProfilePic(userIntId, profilePicUrl, ct);
+        var result = await _userService.UpdateProfilePic(userGuidId, profilePicUrl, ct);
 
         return result.ToActionResult();
     }

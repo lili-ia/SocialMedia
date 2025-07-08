@@ -12,12 +12,15 @@ public class AutoMapperProfile : Profile
         CreateMap<Post, UpdatePostDto>();
         CreateMap<CreatePostDto, Post>();
         CreateMap<UpdatePostDto, Post>();
+        CreateMap<Post, PostFeedDto>();
+        
         CreateMap<UpdateUserDto, User>();
-        CreateMap<User, UserProfileDto>();
+        CreateMap<User, PrivateUserProfileDto>();
+        CreateMap<User, PublicUserProfileDto>();
         CreateMap<RegisterDto, User>();
+        
         CreateMap<PostLike, PostLikeDto>();
         CreateMap<Follow, FollowDto>();
         CreateMap<User, UsernameDto>();
-        CreateMap<Post, PostFeedDto>();
     }
 }

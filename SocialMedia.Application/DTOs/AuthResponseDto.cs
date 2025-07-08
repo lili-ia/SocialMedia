@@ -2,7 +2,7 @@
 
 public class AuthResponseDto
 {
-    public string AccessToken { get; set; }
+    public string AccessToken { get; init; } = null!;
     
-    public string RefreshToken { get; set; }
+    public string RefreshToken { get; init; } = null!;
 };

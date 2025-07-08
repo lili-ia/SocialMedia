@@ -2,4 +2,4 @@ using System.ComponentModel.DataAnnotations;
 
 namespace SocialMedia.Application.DTOs;
 
-public record CommentDTO([Required] string Text);
+public record CreateCommentDto([Required] string Text);

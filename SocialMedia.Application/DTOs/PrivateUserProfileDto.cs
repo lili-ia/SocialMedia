@@ -1,6 +1,6 @@
 ﻿namespace SocialMedia.Application.DTOs;
 
-public class UserProfileDto
+public class PrivateUserProfileDto
 {
     public int UserId { get; set; }
     

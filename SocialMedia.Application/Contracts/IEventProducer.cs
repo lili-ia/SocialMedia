@@ -2,5 +2,5 @@
 
 public interface IEventProducer
 {
-    Task SendMessageAsync<TEvent>(string topic, TEvent @event, CancellationToken cancellationToken);
+    Task SendMessageAsync<TEvent>(string topic, TEvent @event, CancellationToken ct);
 }

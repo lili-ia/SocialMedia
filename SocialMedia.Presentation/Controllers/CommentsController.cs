@@ -26,7 +26,7 @@ public class CommentsController : ControllerBase
     }
     
     [HttpPost]
-    public async Task<IActionResult> CreateComment([FromBody] CommentDTO dto, Guid postId, CancellationToken cancellationToken)
+    public async Task<IActionResult> CreateComment([FromBody] CreateCommentDto dto, Guid postId, CancellationToken cancellationToken)
     {
         var userStringId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
@@ -40,7 +40,7 @@ public class CommentsController : ControllerBase
     }
     
     [HttpPut("{commentId}")]
-    public async Task<IActionResult> UpdateComment([FromBody] CommentDTO dto, [FromRoute] Guid commentId, CancellationToken cancellationToken)
+    public async Task<IActionResult> UpdateComment([FromBody] CreateCommentDto dto, [FromRoute] Guid commentId, CancellationToken cancellationToken)
     {
         var userStringId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
