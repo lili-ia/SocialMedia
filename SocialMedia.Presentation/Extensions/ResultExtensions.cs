@@ -7,16 +7,30 @@ public static class ResultExtensions
 {
     public static ActionResult ToActionResult<T>(this Result<T> result)
     {
-        return result switch
+        if (result.Success)
         {
-            { Success: true, Value: not null } => new OkObjectResult(result.Value),
-            { Success: true, Value: null } => new NoContentResult(),
-            { ErrorType: ErrorType.NotFound } => new NotFoundObjectResult(result.ErrorMessage),
-            { ErrorType: ErrorType.Validation } => new BadRequestObjectResult(result.ErrorMessage),
-            { ErrorType: ErrorType.Forbidden } => new ObjectResult(result.ErrorMessage) { StatusCode = 403 },
-            { ErrorType: ErrorType.ServerError } => new ObjectResult(result.ErrorMessage) { StatusCode = 500 },
-            { ErrorType: ErrorType.BadRequest } => new BadRequestObjectResult(result.ErrorMessage),
-            _ => new ObjectResult("Unexpected error") { StatusCode = 500 }
+            return new OkObjectResult(new ApiResponse<T>
+            {
+                Success = true,
+                Data = result.Value
+            });
+        }
+
+        var errorResponse = new ApiResponse<T>
+        {
+            Success = false,
+            Error = result.ErrorMessage ?? "Unknown error"
+        };
+
+        return result.ErrorType switch
+        {
+            ErrorType.NotFound => new NotFoundObjectResult(errorResponse),
+            ErrorType.Unauthorized => new UnauthorizedObjectResult(errorResponse),
+            ErrorType.Validation => new BadRequestObjectResult(errorResponse),
+            ErrorType.Forbidden => new ObjectResult(errorResponse) { StatusCode = 403 },
+            ErrorType.ServerError => new ObjectResult(errorResponse) { StatusCode = 500 },
+            ErrorType.BadRequest => new BadRequestObjectResult(errorResponse),
+            _ => new ObjectResult(new ApiResponse<T> { Success = false, Error = "Unexpected error" }) { StatusCode = 500 }
         };
     }
 }

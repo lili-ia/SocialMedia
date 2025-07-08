@@ -1,5 +1,6 @@
 ﻿using Domain.Entities;
 using SocialMedia.Application.DTOs;
+using SocialMedia.Application.Requests;
 
 namespace SocialMedia.Application.Contracts;
 
