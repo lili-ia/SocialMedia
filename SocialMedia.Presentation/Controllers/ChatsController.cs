@@ -19,7 +19,7 @@ public class ChatsController : ControllerBase
     
     [Authorize]
     [HttpGet]
-    public async Task<IActionResult> GetAllChats(CancellationToken cancellationToken)
+    public async Task<IActionResult> GetAllChatsAsync(CancellationToken cancellationToken)
     {
         var userStringId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
@@ -27,21 +27,21 @@ public class ChatsController : ControllerBase
             return Unauthorized("User not found");
         
         Guid.TryParse(userStringId, out Guid userGuidId);
-        var result = await _chatService.GetAllChats(userGuidId, cancellationToken);
+        var result = await _chatService.GetAllChatsAsync(userGuidId, cancellationToken);
 
         return result.ToActionResult();
     }
 
     [Authorize]
     [HttpGet("{chatId}")]
-    public async Task<IActionResult> GetMessagesForThisChat(
+    public async Task<IActionResult> GetMessagesForThisChatAsync(
         CancellationToken cancellationToken,
         [FromRoute] Guid chatId, 
         [FromQuery] int page = 1, 
         [FromQuery] int pageSize = 10)
     {
         var skipCount = (page - 1) * pageSize;
-        var result = await _chatService.GetMessagesByChatId(cancellationToken, chatId, skipCount, pageSize);
+        var result = await _chatService.GetMessagesByChatIdAsync(cancellationToken, chatId, skipCount, pageSize);
 
         return result.ToActionResult();
     }

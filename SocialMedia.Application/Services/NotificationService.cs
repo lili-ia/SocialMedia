@@ -19,7 +19,7 @@ public class NotificationService : INotificationService
         _logger = logger;
         _notificationSender = notificationSender;
     }
-    public async Task NotifyPostLiked(PostLikedEvent eventData)
+    public async Task NotifyPostLikedAsync(PostLikedEvent eventData)
     {
         var notification = new Notification
         {
@@ -48,7 +48,7 @@ public class NotificationService : INotificationService
         }
     }
 
-    public async Task NotifyUserFollowed(FollowedEvent eventData)
+    public async Task NotifyUserFollowedAsync(FollowedEvent eventData)
     {
         var notification = new Notification
         {
@@ -76,12 +76,12 @@ public class NotificationService : INotificationService
         }
     }
 
-    public Task NotifyMessageReceived(MessageReceivedEvent eventData)
+    public Task NotifyMessageReceivedAsync(MessageReceivedEvent eventData)
     {
         throw new NotImplementedException();
     }
 
-    public Task NotifyPostCommented(PostCommentedEvent eventData)
+    public Task NotifyPostCommentedAsync(PostCommentedEvent eventData)
     {
         throw new NotImplementedException();
     }

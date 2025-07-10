@@ -18,15 +18,15 @@ public class CommentsController : ControllerBase
     }
     
     [HttpGet("{commentId}")]
-    public async Task<IActionResult> GetComment(Guid commentId, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetCommentAsync(Guid commentId, CancellationToken cancellationToken)
     {
-        var result = await _commentService.GetComment(commentId, cancellationToken);
+        var result = await _commentService.GetCommentAsync(commentId, cancellationToken);
         
         return result.ToActionResult();
     }
     
     [HttpPost]
-    public async Task<IActionResult> CreateComment([FromBody] CreateCommentDto dto, Guid postId, CancellationToken cancellationToken)
+    public async Task<IActionResult> CreateCommentAsync([FromBody] CreateCommentDto dto, Guid postId, CancellationToken cancellationToken)
     {
         var userStringId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
@@ -34,13 +34,13 @@ public class CommentsController : ControllerBase
             return Unauthorized("User not found");
         
         Guid.TryParse(userStringId, out var userGuidId);
-        var result = await _commentService.CreateComment(dto.Text, postId, userGuidId, cancellationToken);
+        var result = await _commentService.CreateCommentAsync(dto.Text, postId, userGuidId, cancellationToken);
 
         return result.ToActionResult();
     }
     
     [HttpPut("{commentId}")]
-    public async Task<IActionResult> UpdateComment([FromBody] CreateCommentDto dto, [FromRoute] Guid commentId, CancellationToken cancellationToken)
+    public async Task<IActionResult> UpdateCommentAsync([FromBody] CreateCommentDto dto, [FromRoute] Guid commentId, CancellationToken cancellationToken)
     {
         var userStringId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
@@ -48,13 +48,13 @@ public class CommentsController : ControllerBase
             return Unauthorized("User not found");
         
         Guid.TryParse(userStringId, out Guid userIntId);
-        var result = await _commentService.UpdateComment(commentId, dto.Text, userIntId, cancellationToken);
+        var result = await _commentService.UpdateCommentAsync(commentId, dto.Text, userIntId, cancellationToken);
 
         return result.ToActionResult();
     }
     
     [HttpDelete]
-    public async Task<IActionResult> DeleteComment(Guid commentId, CancellationToken cancellationToken)
+    public async Task<IActionResult> DeleteCommentAsync(Guid commentId, CancellationToken cancellationToken)
     {
         var userStringId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
@@ -62,15 +62,15 @@ public class CommentsController : ControllerBase
             return Unauthorized("User not found");
         
         Guid.TryParse(userStringId, out Guid userGuidId);
-        var result = await _commentService.DeleteComment(commentId, userGuidId, cancellationToken);
+        var result = await _commentService.DeleteCommentAsync(commentId, userGuidId, cancellationToken);
         
         return result.ToActionResult();
     }
     
     [HttpGet]
-    public async Task<IActionResult> GetCommentsForPost(Guid postId, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetCommentsForPostAsync(Guid postId, CancellationToken cancellationToken)
     {
-        var result = await _commentService.GetCommentsForPost(postId, cancellationToken);
+        var result = await _commentService.GetCommentsForPostAsync(postId, cancellationToken);
         
         return result.ToActionResult();
     }

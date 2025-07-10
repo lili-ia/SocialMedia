@@ -24,7 +24,7 @@ public class SendMessageUseCase : ISendMessageUseCase
 
         if (chat == null)
         {
-            var result = await _chatService.CreateChat(ct);
+            var result = await _chatService.CreateChatAsync(ct);
             
             if (result.Success)
             {

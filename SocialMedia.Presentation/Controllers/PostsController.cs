@@ -19,24 +19,24 @@ public class PostsController : ControllerBase
     }
     
     [HttpGet("{postId}")]
-    public async Task<IActionResult> GetPost([FromRoute] Guid postId, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetPostAsync([FromRoute] Guid postId, CancellationToken cancellationToken)
     {
-        var result = await _postService.GetPost(postId, cancellationToken);
+        var result = await _postService.GetPostByIdAsync(postId, cancellationToken);
 
         return result.ToActionResult();
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetPostsOfUsername([FromQuery] string username, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetPostsOfUsernameAsync([FromQuery] string username, CancellationToken cancellationToken)
     {
-        var result = await _postService.GetPostsOfUsername(username, cancellationToken);
+        var result = await _postService.GetPostsOfUsernameAsync(username, cancellationToken);
 
         return result.ToActionResult();
     }
 
     [Authorize]
     [HttpPut("{postId}")]
-    public async Task<IActionResult> UpdatePost([FromBody] UpdatePostDto dto, [FromRoute] Guid postId, CancellationToken cancellationToken)
+    public async Task<IActionResult> UpdatePostAsync([FromBody] UpdatePostDto dto, [FromRoute] Guid postId, CancellationToken cancellationToken)
     {
         var userStringId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
@@ -44,14 +44,14 @@ public class PostsController : ControllerBase
             return Unauthorized("User not found");
         
         Guid.TryParse(userStringId, out Guid userGuidId);
-        var result = await _postService.UpdatePost(dto, postId, userGuidId, cancellationToken);
+        var result = await _postService.UpdatePostAsync(dto, postId, userGuidId, cancellationToken);
         
         return result.ToActionResult();
     }
     
     [Authorize]
     [HttpPost]
-    public async Task<IActionResult> CreatePost([FromBody] CreatePostDto dto, CancellationToken cancellationToken)
+    public async Task<IActionResult> CreatePostAsync([FromBody] CreatePostDto dto, CancellationToken cancellationToken)
     {
         var userStringId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
@@ -59,14 +59,14 @@ public class PostsController : ControllerBase
             return Unauthorized("User not found");
 
         Guid.TryParse(userStringId, out Guid userGuidId);
-        var result = await _postService.CreatePost(dto, userGuidId, cancellationToken);
+        var result = await _postService.CreatePostAsync(dto, userGuidId, cancellationToken);
 
         return result.ToActionResult();
     }
     
     [Authorize]
     [HttpDelete("{postId}")]
-    public async Task<IActionResult> DeletePost([FromRoute] Guid postId, CancellationToken cancellationToken)
+    public async Task<IActionResult> DeletePostAsync([FromRoute] Guid postId, CancellationToken cancellationToken)
     {
         var userStringId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
@@ -74,14 +74,14 @@ public class PostsController : ControllerBase
             return Unauthorized("User not found");
         
         Guid.TryParse(userStringId, out Guid userGuidId);
-        var result = await _postService.DeletePost(postId, userGuidId, cancellationToken);
+        var result = await _postService.DeletePostAsync(postId, userGuidId, cancellationToken);
 
         return result.ToActionResult();
     }
 
     [Authorize]
     [HttpGet("hidden")]
-    public async Task<IActionResult> GetHiddenPosts(CancellationToken cancellationToken)
+    public async Task<IActionResult> GetHiddenPostsAsync(CancellationToken cancellationToken)
     {
         var userStringId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
@@ -89,7 +89,7 @@ public class PostsController : ControllerBase
             return Unauthorized("User not found");
         
         Guid.TryParse(userStringId, out Guid userGuidId);
-        var result = await _postService.GetPostsByUserAndActiveStatus(userGuidId, isActive: false, cancellationToken);
+        var result = await _postService.GetPostsByUserAndActiveStatusAsync(userGuidId, isActive: false, cancellationToken);
         
         return result.ToActionResult();
     }

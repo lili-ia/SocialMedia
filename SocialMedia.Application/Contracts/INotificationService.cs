@@ -4,11 +4,11 @@ namespace SocialMedia.Application.Contracts;
 
 public interface INotificationService
 {
-    Task NotifyPostLiked(PostLikedEvent eventData);
+    Task NotifyPostLikedAsync(PostLikedEvent eventData);
     
-    Task NotifyUserFollowed(FollowedEvent eventData);
+    Task NotifyUserFollowedAsync(FollowedEvent eventData);
     
-    Task NotifyMessageReceived(MessageReceivedEvent eventData);
+    Task NotifyMessageReceivedAsync(MessageReceivedEvent eventData);
     
-    Task NotifyPostCommented(PostCommentedEvent eventData);
+    Task NotifyPostCommentedAsync(PostCommentedEvent eventData);
 }

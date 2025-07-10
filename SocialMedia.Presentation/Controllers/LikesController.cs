@@ -19,7 +19,7 @@ public class LikesController : ControllerBase
 
     [Authorize]
     [HttpPost("{postId}/like")]
-    public async Task<IActionResult> LikePost([FromRoute] Guid postId, CancellationToken ct)
+    public async Task<IActionResult> LikePostAsync([FromRoute] Guid postId, CancellationToken ct)
     {
         var userStringId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 

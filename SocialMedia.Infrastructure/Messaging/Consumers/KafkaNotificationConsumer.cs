@@ -43,28 +43,28 @@ public class KafkaNotificationConsumer : BackgroundService
                     {
                         var liked = JsonSerializer
                             .Deserialize<PostLikedEvent>(result.Message.Value);
-                        await _notificationService.NotifyPostLiked(liked);
+                        await _notificationService.NotifyPostLikedAsync(liked);
                         break;
                     }
                     case "UserFollowed":
                     {
                         var followed = JsonSerializer
                             .Deserialize<FollowedEvent>(result.Message.Value);
-                        await _notificationService.NotifyUserFollowed(followed);
+                        await _notificationService.NotifyUserFollowedAsync(followed);
                         break;
                     }
                     case "MessageReceived":
                     {
                         var messageReceived = JsonSerializer
                             .Deserialize<MessageReceivedEvent>(result.Message.Value);
-                        await _notificationService.NotifyMessageReceived(messageReceived);
+                        await _notificationService.NotifyMessageReceivedAsync(messageReceived);
                         break;
                     }
                     case "PostCommented":
                     {
                         var commented = JsonSerializer
                             .Deserialize<PostCommentedEvent>(result.Message.Value);
-                        await _notificationService.NotifyPostCommented(commented);
+                        await _notificationService.NotifyPostCommentedAsync(commented);
                         break;
                     }
                 }

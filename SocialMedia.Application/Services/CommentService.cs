@@ -17,7 +17,7 @@ public class CommentService : ICommentService
         _logger = logger;
     }
     
-    public async Task<Result<Comment>> CreateComment(string text, Guid postId, Guid userId, CancellationToken cancellationToken)
+    public async Task<Result<Comment>> CreateCommentAsync(string text, Guid postId, Guid userId, CancellationToken cancellationToken)
     {
         var user = await _db.Users.FindAsync(new object?[] { userId }, cancellationToken: cancellationToken);
 
@@ -59,7 +59,7 @@ public class CommentService : ICommentService
         return Result<Comment>.SuccessResult(newComment);
     }
 
-    public async Task<Result<Comment>> GetComment(Guid commentId, CancellationToken cancellationToken)
+    public async Task<Result<Comment>> GetCommentAsync(Guid commentId, CancellationToken cancellationToken)
     {
         try
         {
@@ -79,7 +79,7 @@ public class CommentService : ICommentService
         }
     }
 
-    public async Task<Result<Comment>> UpdateComment(Guid commentId, string text, Guid userId, CancellationToken cancellationToken)
+    public async Task<Result<Comment>> UpdateCommentAsync(Guid commentId, string text, Guid userId, CancellationToken cancellationToken)
     {
         try
         {
@@ -110,7 +110,7 @@ public class CommentService : ICommentService
         }
     }
 
-    public async Task<Result<bool>> DeleteComment(Guid commentId, Guid userId, CancellationToken cancellationToken)
+    public async Task<Result<bool>> DeleteCommentAsync(Guid commentId, Guid userId, CancellationToken cancellationToken)
     {
         try
         {
@@ -139,7 +139,7 @@ public class CommentService : ICommentService
         }
     }
 
-    public async Task<Result<List<Comment>>> GetCommentsForPost(Guid postId, CancellationToken cancellationToken)
+    public async Task<Result<List<Comment>>> GetCommentsForPostAsync(Guid postId, CancellationToken cancellationToken)
     {
         try
         {

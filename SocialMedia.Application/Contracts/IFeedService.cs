@@ -10,7 +10,7 @@ public interface IFeedService
         int page = 1, 
         int pageSize = 20);
     
-    Task<List<PostFeedDto>> GetRecentPostsFromUsers(
+    Task<List<PostFeedDto>> GetRecentPostsFromUsersAsync(
         List<Guid> followsIds, 
         CancellationToken ct, 
         int page = 1, 

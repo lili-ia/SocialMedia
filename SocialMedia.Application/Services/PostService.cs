@@ -21,7 +21,7 @@ public class PostService : IPostService
         _mapper = mapper;
     }
     
-    public async Task<Result<Post>> CreatePost(CreatePostDto postDto, Guid userId, CancellationToken cancellationToken)
+    public async Task<Result<Post>> CreatePostAsync(CreatePostDto postDto, Guid userId, CancellationToken cancellationToken)
     {
         var user = await _db.Users.FindAsync(new object?[] { userId }, cancellationToken: cancellationToken);
         
@@ -51,7 +51,7 @@ public class PostService : IPostService
         return Result<Post>.SuccessResult(newPost);
     }
     
-    public async Task<Result<Post>> GetPost(Guid postId, CancellationToken cancellationToken)
+    public async Task<Result<Post>> GetPostByIdAsync(Guid postId, CancellationToken cancellationToken)
     {
         try
         {
@@ -71,7 +71,7 @@ public class PostService : IPostService
         }
     }
 
-    public async Task<Result<List<Post>>> GetPostsByUserAndActiveStatus(Guid userId, bool isActive, CancellationToken cancellationToken)
+    public async Task<Result<List<Post>>> GetPostsByUserAndActiveStatusAsync(Guid userId, bool isActive, CancellationToken cancellationToken)
     {
         try
         {
@@ -92,7 +92,7 @@ public class PostService : IPostService
         }
     }
 
-    public async Task<Result<Post>> UpdatePost(UpdatePostDto postDto, Guid postId, Guid userId, CancellationToken cancellationToken)
+    public async Task<Result<Post>> UpdatePostAsync(UpdatePostDto postDto, Guid postId, Guid userId, CancellationToken cancellationToken)
     {
         try
         {
@@ -123,7 +123,7 @@ public class PostService : IPostService
         }
     }
 
-    public async Task<Result<bool>> DeletePost(Guid postId, Guid userId, CancellationToken cancellationToken)
+    public async Task<Result<bool>> DeletePostAsync(Guid postId, Guid userId, CancellationToken cancellationToken)
     {
         try
         {
@@ -152,7 +152,7 @@ public class PostService : IPostService
         }
     }
     
-    public async Task<Result<Post>> ChangePostActiveStatus(Guid postId, bool activeStatus, CancellationToken cancellationToken)
+    public async Task<Result<Post>> ChangePostActiveStatusAsync(Guid postId, bool activeStatus, CancellationToken cancellationToken)
     {
         try
         {
@@ -177,7 +177,7 @@ public class PostService : IPostService
         }
     }
 
-    public async Task<Result<List<Post>>> GetPostsOfUsername(string username, CancellationToken cancellationToken)
+    public async Task<Result<List<Post>>> GetPostsOfUsernameAsync(string username, CancellationToken cancellationToken)
     {
         try
         {

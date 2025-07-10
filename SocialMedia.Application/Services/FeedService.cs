@@ -37,7 +37,7 @@ public class FeedService : IFeedService
         var fromFollowsCount = (int)(pageSize * FollowRatio);
         var fromPopularCount = pageSize - fromFollowsCount;
 
-        var fromFollows = await GetRecentPostsFromUsers(followsIds, ct, page, fromFollowsCount);
+        var fromFollows = await GetRecentPostsFromUsersAsync(followsIds, ct, page, fromFollowsCount);
         var fromPopular = await GetMostPopularPostsAsync(followsIds, DateTime.Today.AddDays(-7), page, fromPopularCount, ct);
 
         var combined = fromFollows.Concat(fromPopular)
@@ -47,7 +47,7 @@ public class FeedService : IFeedService
         return combined;
     }
 
-    public async Task<List<PostFeedDto>> GetRecentPostsFromUsers(
+    public async Task<List<PostFeedDto>> GetRecentPostsFromUsersAsync(
         List<Guid> followsIds, 
         CancellationToken ct, 
         int page = 1, 

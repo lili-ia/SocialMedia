@@ -21,7 +21,7 @@ public class ChatService : IChatService
         _mapper = mapper;
     }
     
-    public async Task<Result<Chat>> CreateChat(CancellationToken cancellationToken)
+    public async Task<Result<Chat>> CreateChatAsync(CancellationToken cancellationToken)
     {
         var chat = new Chat
         {
@@ -44,7 +44,7 @@ public class ChatService : IChatService
         return Result<Chat>.SuccessResult(chat);
     }
 
-    public async Task<Result<List<Message>>> GetMessagesByChatId(
+    public async Task<Result<List<Message>>> GetMessagesByChatIdAsync(
         CancellationToken cancellationToken,
         Guid chatId,  
         int skipCount = 0,
@@ -71,7 +71,7 @@ public class ChatService : IChatService
         }
     }
 
-    public async Task<Result<List<ChatDto>>> GetAllChats(Guid userId, CancellationToken cancellationToken)
+    public async Task<Result<List<ChatDto>>> GetAllChatsAsync(Guid userId, CancellationToken cancellationToken)
     {
         
         var user = await _db.Users.FindAsync(userId, cancellationToken);
