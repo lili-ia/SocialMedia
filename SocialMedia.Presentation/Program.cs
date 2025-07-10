@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using SocialMedia;
+using SocialMedia.ActionFilters;
 using SocialMedia.Application.Contracts;
 using SocialMedia.Application.Mappings;
 using SocialMedia.Application.Services;
@@ -77,6 +78,7 @@ builder.Services.AddSingleton(serviceProvider =>
     return containerClient;
 });
 
+builder.Services.AddScoped<RequireUserIdNotNullFilter>();
 builder.Services.AddScoped<ISendMessageUseCase, SendMessageUseCase>();
 builder.Services.AddScoped<IEventProducer, KafkaProducerService>();
 builder.Services.AddScoped<IAuthService, AuthService>();

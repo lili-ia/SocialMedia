@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SocialMedia.ActionFilters;
 using SocialMedia.Application.Contracts;
 using SocialMedia.Application.DTOs;
 using SocialMedia.Extensions;
@@ -7,6 +8,7 @@ using SocialMedia.Extensions;
 namespace SocialMedia.Controllers;
 
 [Authorize]
+[ServiceFilter(typeof(RequireUserIdNotNullFilter))]
 [Route("api/[controller]")]
 [ApiController]
 public class UsersController : ControllerBase
@@ -24,12 +26,6 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> GetOwnProfileAsync(CancellationToken ct)
     {
         var userId = _userContext.UserId;
-
-        if (userId is null)
-        {
-            return Unauthorized("User is not authorized or token is invalid.");
-        }
-
         var result = await _userService.GetOwnProfileInfoAsync(userId.Value, ct);
 
         return result.ToActionResult();
@@ -38,13 +34,12 @@ public class UsersController : ControllerBase
     [HttpPut("me")]
     public async Task<IActionResult> UpdateOwnProfileAsync([FromBody] UpdateUserDto dto, CancellationToken ct)
     {
-        var userId = _userContext.UserId;
-
-        if (userId is null)
+        if (!ModelState.IsValid)
         {
-            return Unauthorized("User is not authorized or token is invalid.");
+            return BadRequest(ModelState);
         }
         
+        var userId = _userContext.UserId;
         var result = await _userService.UpdateProfileAsync(dto, userId.Value, ct);
         
         return result.ToActionResult();
@@ -59,12 +54,6 @@ public class UsersController : ControllerBase
         }
         
         var userId = _userContext.UserId;
-
-        if (userId is null)
-        {
-            return Unauthorized("User is not authorized or token is invalid.");
-        }
-
         var fileName = Guid.NewGuid() + Path.GetExtension(file.FileName);
 
         await using var stream = file.OpenReadStream();
@@ -78,12 +67,6 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> DeleteOwnAccountAsync(CancellationToken ct)
     {
         var userId = _userContext.UserId;
-
-        if (userId is null)
-        {
-            return Unauthorized("User is not authorized or token is invalid.");
-        }
-
         var result = await _userService.DeleteUserAsync(userId.Value, ct);
 
         return result.ToActionResult();
@@ -116,5 +99,4 @@ public class UsersController : ControllerBase
 
         return result.ToActionResult();
     }
-
 }
