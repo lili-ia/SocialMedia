@@ -99,8 +99,23 @@ public class UsersController : ControllerBase
     }
 
     [HttpGet("search")]
-    public async Task<IActionResult> SearchUsersAsync([FromQuery] string query, CancellationToken ct)
+    public async Task<IActionResult> SearchUsersAsync(
+        [FromQuery] string query, 
+        [FromQuery] int pageNumber = 1, 
+        [FromQuery] int pageSize = 10, 
+        CancellationToken ct = default)
     {
-        throw new NotImplementedException();
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return BadRequest("Search query cannot be empty.");
+        }
+
+        if (pageNumber < 1) pageNumber = 1;
+        if (pageSize < 1) pageSize = 10;
+
+        var result = await _userService.SearchUsersAsync(query, pageNumber, pageSize, ct);
+
+        return result.ToActionResult();
     }
+
 }

@@ -178,4 +178,29 @@ public class UserService : IUserService
             return Result<bool>.FailureResult("An error occurred while deleting the user.", ErrorType.ServerError);
         }
     }
+
+    public async Task<Result<PagedResult<PublicUserProfileDto>>> SearchUsersAsync(string query, int pageNumber, int pageSize, CancellationToken ct)
+    {
+        pageNumber = pageNumber < 1 ? 1 : pageNumber;
+        pageSize = pageSize < 1 ? 10 : pageSize; 
+
+        var skip = (pageNumber - 1) * pageSize;
+        
+        var queryable = _db.Users.Where(u => u.Username.Contains(query));
+        var totalCount = await queryable.CountAsync(ct);
+
+        var users = await queryable.Skip(skip)
+            .Take(pageSize)
+            .ToListAsync(ct);
+
+        var dtos = _mapper.Map<List<PublicUserProfileDto>>(users);
+
+        var pagedResult = new PagedResult<PublicUserProfileDto>
+        {
+            TotalCount = totalCount,
+            Items = dtos
+        };
+        
+        return Result<PagedResult<PublicUserProfileDto>>.SuccessResult(pagedResult);
+    }
 }

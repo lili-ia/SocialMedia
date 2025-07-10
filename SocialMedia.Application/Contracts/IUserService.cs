@@ -8,9 +8,19 @@ public interface IUserService
 
     Task<Result<PrivateUserProfileDto>> GetOwnProfileInfoAsync(Guid userId, CancellationToken ct);
 
-    Task<Result<PrivateUserProfileDto>> UpdateProfilePicAsync(Guid userId, Stream fileStream, string fileName, CancellationToken ct);
+    Task<Result<PrivateUserProfileDto>> UpdateProfilePicAsync(
+        Guid userId, 
+        Stream fileStream, 
+        string fileName, 
+        CancellationToken ct);
     
     Task<Result<PublicUserProfileDto>> GetPublicUserInfoAsync(Guid userId, CancellationToken ct);
 
     Task<Result<bool>> DeleteUserAsync(Guid userId, CancellationToken ct);
+
+    Task<Result<PagedResult<PublicUserProfileDto>>> SearchUsersAsync(
+        string query, 
+        int pageNumber,
+        int pageSize,
+        CancellationToken ct);
 }

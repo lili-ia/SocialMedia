@@ -2,8 +2,6 @@
 
 public class PrivateUserProfileDto
 {
-    public int UserId { get; set; }
-    
     public string? Username { get; set; }
 
     public DateTime? BirthDate { get; set; }
