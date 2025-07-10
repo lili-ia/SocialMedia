@@ -17,7 +17,8 @@ public class UserService : IUserService
     public UserService(
         SocialMediaContext db, 
         ILogger<UserService> logger, 
-        IMapper mapper, IFileStorageService fileStorageService)
+        IMapper mapper, 
+        IFileStorageService fileStorageService)
     {
         _db = db;
         _logger = logger;
@@ -179,11 +180,15 @@ public class UserService : IUserService
         }
     }
 
-    public async Task<Result<PagedResult<PublicUserProfileDto>>> SearchUsersAsync(string query, int pageNumber, int pageSize, CancellationToken ct)
+    public async Task<Result<PagedResult<PublicUserProfileDto>>> SearchUsersAsync(
+        string query, 
+        int pageNumber = 1, 
+        int pageSize = 20, 
+        CancellationToken ct = default)
     {
-        pageNumber = pageNumber < 1 ? 1 : pageNumber;
-        pageSize = pageSize < 1 ? 10 : pageSize; 
-
+        if (pageNumber < 1) pageNumber = 1;
+        if (pageSize < 1) pageSize = 20;
+        
         var skip = (pageNumber - 1) * pageSize;
         
         var queryable = _db.Users.Where(u => u.Username.Contains(query));

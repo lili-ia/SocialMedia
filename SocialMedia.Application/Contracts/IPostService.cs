@@ -17,6 +17,6 @@ public interface IPostService
 
     Task<Result<Post>> ChangePostActiveStatusAsync(Guid postId, bool activeStatus, CancellationToken ct);
 
-    Task<Result<List<Post>>> GetPostsOfUsernameAsync(string username, CancellationToken ct);
+    Task<Result<List<Post>>> GetPostsOfUsernameAsync(string username, int page = 1, int pageSize = 20, CancellationToken ct = default);
 }
 

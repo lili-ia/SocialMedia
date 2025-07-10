@@ -176,32 +176,34 @@ public class PostService : IPostService
                 ErrorType.ServerError);
         }
     }
-
-    public async Task<Result<List<Post>>> GetPostsOfUsernameAsync(string username, CancellationToken cancellationToken)
+    
+    public async Task<Result<List<Post>>> GetPostsOfUsernameAsync(
+        string username, 
+        int page = 1, 
+        int pageSize = 20, 
+        CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var user = await _db.Users
-                .Include(u => u.Posts)
-                .FirstOrDefaultAsync(u => u.Username == username, cancellationToken: cancellationToken);
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 20;
 
-            if (user == null)
-            {
-                return Result<List<Post>>.FailureResult(
-                    "Couldn't find a user with such username.", ErrorType.NotFound);
-            }
-                
-            var posts = user.Posts.ToList();
-            
-            return Result<List<Post>>.SuccessResult(posts);
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, $"An error occurred while retrieving {username}'s posts.");
+        var skip = (page - 1) * pageSize;
 
+        var userExists = await _db.Users
+            .AnyAsync(u => u.Username == username, cancellationToken);
+
+        if (!userExists)
+        {
             return Result<List<Post>>.FailureResult(
-                $"An error occurred while retrieving {username}'s posts.", ErrorType.ServerError
-            );
+                "Couldn't find a user with such username.", ErrorType.NotFound);
         }
+
+        var posts = await _db.Posts
+            .Where(p => p.User.Username == username) 
+            .OrderByDescending(p => p.CreatedAt)     
+            .Skip(skip)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return Result<List<Post>>.SuccessResult(posts);
     }
 }

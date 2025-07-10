@@ -20,7 +20,7 @@ public interface IUserService
 
     Task<Result<PagedResult<PublicUserProfileDto>>> SearchUsersAsync(
         string query, 
-        int pageNumber,
-        int pageSize,
-        CancellationToken ct);
+        int pageNumber = 1,
+        int pageSize = 20,
+        CancellationToken ct = default);
 }
