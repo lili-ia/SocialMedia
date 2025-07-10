@@ -10,7 +10,5 @@ public record class UpdateUserDto
     [Required]
     public DateTime BirthDate { get; init; }
     
-    public string? ProfilePicUrl { get; init; }
-    
     public string? Bio { get; init; }
 }

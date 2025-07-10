@@ -20,7 +20,7 @@ public class AuthController : ControllerBase
     }
     
     [HttpPost("register")]
-    public async Task<IActionResult> Register([FromBody] RegisterDto registerDto, CancellationToken ct)
+    public async Task<IActionResult> RegisterAsync([FromBody] RegisterDto registerDto, CancellationToken ct)
     {
         var result = await _authService.RegisterAsync(registerDto, ct);
 
@@ -37,7 +37,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
-    public async Task<IActionResult> Login([FromBody] LoginDto loginDto, CancellationToken ct)
+    public async Task<IActionResult> LoginAsync([FromBody] LoginDto loginDto, CancellationToken ct)
     {
         var result = await _authService.LoginAsync(loginDto, ct);
 
@@ -54,7 +54,7 @@ public class AuthController : ControllerBase
     }
     
     [HttpPost("refresh-token")]
-    public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenDto dto, CancellationToken ct)
+    public async Task<IActionResult> RefreshTokenAsync([FromBody] RefreshTokenDto dto, CancellationToken ct)
     {
         var result = await _authService.RefreshTokenAsync(dto.Token, ct);
 
@@ -71,7 +71,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("request-password-reset")]
-    public async Task<IActionResult> RequestPasswordReset([FromBody] RequestPasswordResetRequest request)
+    public async Task<IActionResult> RequestPasswordResetAsync([FromBody] RequestPasswordResetRequest request)
     {
         var result = await _authService.RequestPasswordResetAsync(request.Email);
 
@@ -88,7 +88,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("reset-password")]
-    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+    public async Task<IActionResult> ResetPasswordAsync([FromBody] ResetPasswordRequest request)
     {
         var result = await _authService.ResetPasswordAsync(request);
         
@@ -105,7 +105,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("send-email-confirmation")]
-    public async Task<IActionResult> SendEmailConfirmation([FromBody] EmailConfirmationRequest request)
+    public async Task<IActionResult> SendEmailConfirmationAsync([FromBody] EmailConfirmationRequest request)
     { 
         var result = await _authService.SendEmailConfirmationAsync(request.Email);
         
@@ -122,7 +122,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("confirm-email")]
-    public async Task<IActionResult> ConfirmEmail([FromBody] ConfirmEmailRequest request)
+    public async Task<IActionResult> ConfirmEmailAsync([FromBody] ConfirmEmailRequest request)
     {
         var result = await _authService.ConfirmEmailAsync(request.Email, request.Token);
         

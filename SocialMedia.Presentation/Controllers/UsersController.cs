@@ -7,74 +7,89 @@ using SocialMedia.Extensions;
 
 namespace SocialMedia.Controllers;
 
+[Authorize]
 [Route("api/[controller]")]
 [ApiController]
 public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
-    private readonly IWebHostEnvironment _webHostEnvironment;
+    private readonly IUserContext _userContext;
     
-    public UsersController(IUserService userService, IWebHostEnvironment webHostEnvironment)
+    public UsersController(IUserService userService, IUserContext userContext)
     {
         _userService = userService;
-        _webHostEnvironment = webHostEnvironment;
+        _userContext = userContext;
     }
-
-    [HttpPut("{userId}")]
-    public async Task<IActionResult> UpdateUser([FromBody] UpdateUserDto dto, [FromRoute] Guid userId, CancellationToken cancellationToken)
+    
+    [HttpGet("me")]
+    public async Task<IActionResult> GetOwnProfileAsync(CancellationToken ct)
     {
-        var result = await _userService.UpdateProfileAsync(dto, userId, cancellationToken);
+        var userId = _userContext.UserId;
+
+        if (userId is null)
+        {
+            return Unauthorized("User is not authorized or token is invalid.");
+        }
+
+        var result = await _userService.GetOwnProfileInfoAsync(userId.Value, ct);
 
         return result.ToActionResult();
     }
     
-    [Authorize]
-    [HttpGet]
-    public async Task<IActionResult> GetAuthUserInfo(CancellationToken ct)
+    [HttpPut("me")]
+    public async Task<IActionResult> UpdateOwnProfileAsync([FromBody] UpdateUserDto dto, CancellationToken ct)
     {
-        var userStringId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var userId = _userContext.UserId;
 
-        if (userStringId == null)
-            return Unauthorized("User not found");
-        
-        Guid.TryParse(userStringId, out Guid userGuidId);
-        var result = await _userService.GetOwnProfileInfoAsync(userGuidId, ct);
-
-        return result.ToActionResult();
-    }
-
-    [Authorize]
-    [HttpPost("{userId}/pic")]
-    public async Task<IActionResult> UploadProfilePic(IFormFile file, CancellationToken ct)
-    {
-        var userStringId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-        if (userStringId == null)
+        if (userId is null)
         {
-            return Unauthorized("User not found");
+            return Unauthorized("User is not authorized or token is invalid.");
         }
         
+        var result = await _userService.UpdateProfileAsync(dto, userId.Value, ct);
+        
+        return result.ToActionResult();
+    }
+    
+    [HttpPut("me/profile-pic")]
+    public async Task<IActionResult> UpdateProfilePicAsync(IFormFile file, CancellationToken ct)
+    {
         if (file == null || file.Length == 0)
         {
             return BadRequest("No file uploaded");
         }
+        
+        var userId = _userContext.UserId;
 
-        var uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, "uploads");
-        Directory.CreateDirectory(uploadsFolder);
-
-        var fileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
-        var filePath = Path.Combine(uploadsFolder, fileName);
-
-        await using (var stream = new FileStream(filePath, FileMode.Create))
+        if (userId is null)
         {
-            await file.CopyToAsync(stream, ct);
+            return Unauthorized("User is not authorized or token is invalid.");
         }
 
-        var profilePicUrl = $"/uploads/{fileName}";
-        Guid.TryParse(userStringId, out Guid userGuidId);
-        
-        var result = await _userService.UpdateProfilePic(userGuidId, profilePicUrl, ct);
+        var fileName = Guid.NewGuid() + Path.GetExtension(file.FileName);
 
+        await using var stream = file.OpenReadStream();
+            
+        var result = await _userService.UpdateProfilePicAsync(userId.Value, stream, fileName, ct);
+        
         return result.ToActionResult();
+    }
+
+    [HttpDelete("me")]
+    public async Task<IActionResult> DeleteOwnAccountAsync()
+    {
+        throw new NotImplementedException();
+    }
+
+    [HttpGet("{userId}")]
+    public async Task<IActionResult> GetPublicProfileAsync()
+    {
+        throw new NotImplementedException();
+    }
+
+    [HttpGet("search")]
+    public async Task<IActionResult> SearchUsersAsync([FromQuery] string query)
+    {
+        throw new NotImplementedException();
     }
 }

@@ -1,4 +1,5 @@
 using System.Text;
+using Azure.Storage.Blobs;
 using Infrastructure.Email;
 using Infrastructure.Messaging.Producers;
 using Infrastructure.Services;
@@ -63,6 +64,18 @@ builder.Services.AddTransient<IPasswordHasher<object>, PasswordHasher<object>>()
 builder.Services.Configure<SmtpSettings>(
     builder.Configuration.GetSection("SmtpSettings"));
 builder.Services.AddTransient<IEmailSender, SmtpEmailSender>();
+
+builder.Services.AddSingleton(serviceProvider =>
+{
+    var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+    var connectionString = configuration["AzureBlobStorage:ConnectionString"];
+    var containerName = configuration["AzureBlobStorage:ContainerName"];
+
+    var blobServiceClient = new BlobServiceClient(connectionString);
+    var containerClient = blobServiceClient.GetBlobContainerClient(containerName);
+
+    return containerClient;
+});
 
 builder.Services.AddScoped<ISendMessageUseCase, SendMessageUseCase>();
 builder.Services.AddScoped<IEventProducer, KafkaProducerService>();

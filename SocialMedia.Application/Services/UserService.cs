@@ -12,15 +12,17 @@ public class UserService : IUserService
     private readonly SocialMediaContext _db;
     private readonly ILogger<UserService> _logger;
     private readonly IMapper _mapper;
+    private readonly IFileStorageService _fileStorage;
     
     public UserService(
         SocialMediaContext db, 
         ILogger<UserService> logger, 
-        IMapper mapper)
+        IMapper mapper, IFileStorageService fileStorageService)
     {
         _db = db;
         _logger = logger;
         _mapper = mapper;
+        _fileStorage = fileStorageService;
     }
 
     public async Task<Result<PrivateUserProfileDto>> UpdateProfileAsync(UpdateUserDto dto, Guid userId, CancellationToken ct)
@@ -68,7 +70,11 @@ public class UserService : IUserService
         return Result<PrivateUserProfileDto>.SuccessResult(userDto);
     }
 
-    public async Task<Result<PrivateUserProfileDto>> UpdateProfilePic(Guid userId, string filePath, CancellationToken ct)
+    public async Task<Result<PrivateUserProfileDto>> UpdateProfilePicAsync(
+        Guid userId, 
+        Stream fileStream,
+        string fileName, 
+        CancellationToken ct)
     {
         var user = await _db.Users.FindAsync(userId, ct);
         
@@ -78,10 +84,20 @@ public class UserService : IUserService
             
             return Result<PrivateUserProfileDto>.FailureResult("User not found", ErrorType.NotFound);
         }
-
+        
         try
         {
-            user.ProfilePicUrl = filePath;
+            await _fileStorage.UploadFileAsync(fileName, fileStream, ct);
+
+            if (!string.IsNullOrEmpty(user.ProfilePicUrl))
+            {
+                var oldFileName = Path.GetFileName(user.ProfilePicUrl);
+                await _fileStorage.DeleteFileAsync(oldFileName, ct);
+            }
+
+            var blobUrl = $"{_fileStorage.BaseUrl}/{fileName}";
+            user.ProfilePicUrl = blobUrl;
+            
             await _db.SaveChangesAsync(ct);
             var dto = _mapper.Map<PrivateUserProfileDto>(user);
 
@@ -89,7 +105,7 @@ public class UserService : IUserService
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "An error occurred in {MethodName}.", nameof(UpdateProfilePic));
+            _logger.LogError(e, "An error occurred in {MethodName}.", nameof(UpdateProfilePicAsync));
             
             return Result<PrivateUserProfileDto>.FailureResult(
                 $"An error occured while updating user profile pic.", ErrorType.ServerError);

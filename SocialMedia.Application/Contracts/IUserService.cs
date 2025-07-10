@@ -9,7 +9,7 @@ public interface IUserService
 
     Task<Result<PrivateUserProfileDto>> GetOwnProfileInfoAsync(Guid userId, CancellationToken ct);
 
-    Task<Result<PrivateUserProfileDto>> UpdateProfilePic(Guid userId, string filePath, CancellationToken ct);
+    Task<Result<PrivateUserProfileDto>> UpdateProfilePicAsync(Guid userId, Stream fileStream, string fileName, CancellationToken ct);
     
     Task<Result<PublicUserProfileDto>> GetPublicUserInfoAsync(Guid userId, CancellationToken ct);
 }

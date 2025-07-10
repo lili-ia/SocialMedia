@@ -21,4 +21,10 @@
       <ProjectReference Include="..\SocialMedia.Domain\SocialMedia.Domain.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Reference Include="Azure.Storage.Blobs">
+        <HintPath>..\..\..\.nuget\packages\azure.storage.blobs\12.26.0-beta.1\lib\net8.0\Azure.Storage.Blobs.dll</HintPath>
+      </Reference>
+    </ItemGroup>
+
 </Project>
