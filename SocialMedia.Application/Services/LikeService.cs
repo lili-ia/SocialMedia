@@ -16,7 +16,11 @@ public class LikeService : ILikeService
     private readonly IMapper _mapper;
     private readonly IEventProducer _eventProducer;
     
-    public LikeService(SocialMediaContext db, ILogger<LikeService> logger, IMapper mapper, IEventProducer eventProducer)
+    public LikeService(
+        SocialMediaContext db, 
+        ILogger<LikeService> logger, 
+        IMapper mapper, 
+        IEventProducer eventProducer)
     {
         _db = db;
         _logger = logger;
@@ -26,25 +30,25 @@ public class LikeService : ILikeService
     
     public async Task<Result<PostLikeDto>> LikePostAsync(Guid postId, Guid userId, CancellationToken ct)
     {
-        var post = await _db.Posts.FindAsync(postId);
+        var post = await _db.Posts.FindAsync(postId, ct);
 
         if (post == null)
         {
-            return Result<PostLikeDto>.FailureResult("Couldn`t find a post with such id", ErrorType.NotFound);
+            return Result<PostLikeDto>.FailureResult("Post not found.", ErrorType.NotFound);
         }
         
-        var user = await _db.Users.FindAsync(userId);
+        var user = await _db.Users.FindAsync(userId, ct);
         
         if (user == null)
         {
-            return Result<PostLikeDto>.FailureResult("Couldn`t find a user with such id", ErrorType.NotFound);
+            return Result<PostLikeDto>.FailureResult("User not found.", ErrorType.NotFound);
         }
         
-        var existingLike = _db.PostLikes.Any(pl => pl.UserId == userId && pl.PostId == postId);
+        var existingLike = await _db.PostLikes.AnyAsync(pl => pl.UserId == userId && pl.PostId == postId, cancellationToken: ct);
 
         if (existingLike)
         {
-            return Result<PostLikeDto>.FailureResult("You have already liked this post", ErrorType.Forbidden);
+            return Result<PostLikeDto>.FailureResult("You have already liked this post.", ErrorType.Forbidden);
         }
 
         var newLike = new PostLike
@@ -74,26 +78,26 @@ public class LikeService : ILikeService
         }
         catch (Exception e)
         {
-            _logger.LogError(e.Message);
+            _logger.LogError(e, "Error while liking post with id {PostId}", postId);
             
-            return Result<PostLikeDto>.FailureResult($"An error occured while liking post with id ${postId}");
+            return Result<PostLikeDto>.FailureResult($"An error occured while liking post with id {postId}");
         }
     }
 
     public async Task<Result<bool>> UnlikePostAsync(Guid postId, Guid userId, CancellationToken ct)
     {
-        var post = await _db.Posts.FindAsync(postId);
+        var post = await _db.Posts.FindAsync(postId, ct);
 
         if (post == null)
         {
-            return Result<bool>.FailureResult("Couldn`t find a post with such id", ErrorType.NotFound);
+            return Result<bool>.FailureResult("Post not found.", ErrorType.NotFound);
         }
         
-        var user = await _db.Users.FindAsync(userId);
+        var user = await _db.Users.FindAsync(userId, ct);
         
         if (user == null)
         {
-            return Result<bool>.FailureResult("Couldn`t find a user with such id", ErrorType.NotFound);
+            return Result<bool>.FailureResult("User not found.", ErrorType.NotFound);
         }
         
         var existingLike = await _db.PostLikes
@@ -102,7 +106,7 @@ public class LikeService : ILikeService
 
         if (existingLike == null)
         {
-            return Result<bool>.FailureResult("Like doesn`t exist", ErrorType.Forbidden);
+            return Result<bool>.FailureResult("Like doesn't exist.", ErrorType.Forbidden);
         }
 
         try
@@ -114,41 +118,55 @@ public class LikeService : ILikeService
         }
         catch (Exception e)
         {
-            _logger.LogError(e.Message);
+            _logger.LogError(e, "Error while unliking post with id {PostId}", postId);
             
-            return Result<bool>.FailureResult($"An error occured while unliking post with id ${postId}");
+            return Result<bool>.FailureResult($"An error occured while unliking post with id {postId}");
         }
     }
 
     public async Task<Result<bool>> IsPostLikedAsync(Guid postId, Guid userId, CancellationToken ct)
     {
-        var post = await _db.Posts.FindAsync(postId);
+        var post = await _db.Posts.FindAsync(postId, ct);
 
         if (post == null)
         {
-            return Result<bool>.FailureResult("Couldn`t find a post with such id", ErrorType.NotFound);
+            return Result<bool>.FailureResult("Post not found.", ErrorType.NotFound);
         }
         
-        var user = await _db.Users.FindAsync(userId);
+        var user = await _db.Users.FindAsync(userId, ct);
         
         if (user == null)
         {
-            return Result<bool>.FailureResult("Couldn`t find a user with such id", ErrorType.NotFound);
+            return Result<bool>.FailureResult("User not found.", ErrorType.NotFound);
         }
         
-        var existingLike = _db.PostLikes.Any(pl => pl.UserId == userId && pl.PostId == postId);
+        var existingLike = await _db.PostLikes.AnyAsync(pl => pl.UserId == userId && pl.PostId == postId, cancellationToken: ct);
         
         return Result<bool>.SuccessResult(existingLike);
     }
 
-    public async Task<Dictionary<Guid, int>> GetPostsLikeCountsAsync(List<Guid> postsIds, CancellationToken ct)
+    public async Task<Result<Dictionary<Guid, int>>> GetPostsLikeCountsAsync(List<Guid> postsIds, CancellationToken ct)
     {
-        var result = await _db.PostLikes
+        var likeCounts = await _db.PostLikes
             .Where(pl => postsIds.Contains(pl.PostId))
             .GroupBy(pl => pl.PostId)
-            .ToDictionaryAsync(pl => pl.Key, pl => pl.Count(), ct);
+            .ToDictionaryAsync(g => g.Key, g => g.Count(), ct);
 
-        return result;
+        var result = new Dictionary<Guid, int>();
+
+        foreach (var postId in postsIds)
+        {
+            if (likeCounts.TryGetValue(postId, out var count))
+            {
+                result[postId] = count;
+            }
+            else
+            {
+                result[postId] = 0;
+            }
+        }
+
+        return Result<Dictionary<Guid, int>>.SuccessResult(result);
     }
 
     public async Task<Result<int>> GetPostLikeCountAsync(Guid postId, CancellationToken ct)
@@ -160,17 +178,12 @@ public class LikeService : ILikeService
         
         if (post == null)
         {
-            return Result<int>.FailureResult("Couldn`t find a post with such id", ErrorType.NotFound);
+            return Result<int>.FailureResult("Post not found.", ErrorType.NotFound);
         }
         
         var count = post.PostLikes.Count;
         
         return Result<int>.SuccessResult(count); 
-    }
-    
-    public Task<Result<int>> GetTotalLikesGivenByUserAsync(Guid userId, CancellationToken ct)
-    {
-        throw new NotImplementedException();
     }
 
     public async Task<Result<List<UsernameDto>>> GetUsersWhoLikedPostAsync(Guid postId, CancellationToken ct)
@@ -180,7 +193,8 @@ public class LikeService : ILikeService
             .Where(pl => pl.PostId == postId)
             .ToListAsync(cancellationToken: ct);
 
-        var usernames = _mapper.Map<List<UsernameDto>>(postLikes.Select(pl => pl.User));
+        var users = postLikes.Select(pl => pl.User).ToList();
+        var usernames = _mapper.Map<List<UsernameDto>>(users);
         
         return Result<List<UsernameDto>>.SuccessResult(usernames);
     }
