@@ -76,19 +76,30 @@ public class UsersController : ControllerBase
     }
 
     [HttpDelete("me")]
-    public async Task<IActionResult> DeleteOwnAccountAsync()
+    public async Task<IActionResult> DeleteOwnAccountAsync(CancellationToken ct)
     {
-        throw new NotImplementedException();
+        var userId = _userContext.UserId;
+
+        if (userId is null)
+        {
+            return Unauthorized("User is not authorized or token is invalid.");
+        }
+
+        var result = await _userService.DeleteUserAsync(userId.Value, ct);
+
+        return result.ToActionResult();
     }
 
     [HttpGet("{userId}")]
-    public async Task<IActionResult> GetPublicProfileAsync()
+    public async Task<IActionResult> GetPublicProfileAsync([FromRoute] Guid userId, CancellationToken ct)
     {
-        throw new NotImplementedException();
+        var result = await _userService.GetPublicUserInfoAsync(userId, ct);
+
+        return result.ToActionResult();
     }
 
     [HttpGet("search")]
-    public async Task<IActionResult> SearchUsersAsync([FromQuery] string query)
+    public async Task<IActionResult> SearchUsersAsync([FromQuery] string query, CancellationToken ct)
     {
         throw new NotImplementedException();
     }
