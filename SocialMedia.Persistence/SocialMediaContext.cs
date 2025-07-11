@@ -33,6 +33,8 @@ public partial class SocialMediaContext : DbContext
     
     public virtual DbSet<PostLike> PostLikes { get; set; }
     
+    public virtual DbSet<PostView> PostViews { get; set; }
+    
     public virtual DbSet<Follow> Follows { get; set; }
     
     public virtual DbSet<Notification> Notifications { get; set; }
@@ -140,6 +142,24 @@ public partial class SocialMediaContext : DbContext
             entity.HasOne(pl => pl.Post)
                 .WithMany(p => p.PostLikes)
                 .HasForeignKey(pl => pl.PostId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+        
+        modelBuilder.Entity<PostView>(entity =>
+        {
+            entity.Property(pl => pl.ViewedAt)
+                .HasDefaultValueSql("GETDATE()");
+
+            // Relationship to User
+            entity.HasOne(pv => pv.User)
+                .WithMany(u => u.PostViews)
+                .HasForeignKey(pv => pv.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Relationship to Post
+            entity.HasOne(pv => pv.Post)
+                .WithMany()
+                .HasForeignKey(pv => pv.PostId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
         

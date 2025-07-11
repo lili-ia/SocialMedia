@@ -52,4 +52,6 @@ public class User : BaseEntity
     public virtual ICollection<PostLike> PostLikes { get; set; } = new List<PostLike>();
     
     public virtual ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+    
+    public virtual ICollection<PostView> PostViews { get; set; } = new List<PostView>();
 }
