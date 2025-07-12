@@ -145,30 +145,6 @@ public class LikeService : ILikeService
         return Result<bool>.SuccessResult(existingLike);
     }
 
-    public async Task<Result<Dictionary<Guid, int>>> GetPostsLikeCountsAsync(List<Guid> postsIds, CancellationToken ct)
-    {
-        var likeCounts = await _db.PostLikes
-            .Where(pl => postsIds.Contains(pl.PostId))
-            .GroupBy(pl => pl.PostId)
-            .ToDictionaryAsync(g => g.Key, g => g.Count(), ct);
-
-        var result = new Dictionary<Guid, int>();
-
-        foreach (var postId in postsIds)
-        {
-            if (likeCounts.TryGetValue(postId, out var count))
-            {
-                result[postId] = count;
-            }
-            else
-            {
-                result[postId] = 0;
-            }
-        }
-
-        return Result<Dictionary<Guid, int>>.SuccessResult(result);
-    }
-
     public async Task<Result<int>> GetPostLikeCountAsync(Guid postId, CancellationToken ct)
     {
         var post = await _db.Posts
@@ -178,14 +154,14 @@ public class LikeService : ILikeService
         
         if (post == null)
         {
-            return Result<int>.FailureResult("Post not found.", ErrorType.NotFound);
+            return Result<int>.FailureResult("Post not found", ErrorType.NotFound);
         }
         
         var count = post.PostLikes.Count;
         
         return Result<int>.SuccessResult(count); 
     }
-
+    
     public async Task<Result<List<UsernameDto>>> GetUsersWhoLikedPostAsync(Guid postId, CancellationToken ct)
     {
         var postLikes = await _db.PostLikes

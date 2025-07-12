@@ -166,31 +166,4 @@ public class CommentService : ICommentService
             );
         }
     }
-
-    public async Task<Result<int>> GetPostCommentsCountAsync(Guid postId, CancellationToken cancellationToken)
-    {
-        var post = await _db.Posts
-            .Include(p => p.Comments)
-            .Where(p => p.Id == postId)
-            .FirstOrDefaultAsync(cancellationToken);
-        
-        if (post == null)
-        {
-            return Result<int>.FailureResult("Couldn`t find a post with such id", ErrorType.NotFound);
-        }
-        
-        var count = post.Comments.Count;
-        
-        return Result<int>.SuccessResult(count); 
-    }
-
-    public async Task<Dictionary<Guid, int>> GetPostsCommentsCountsAsync(List<Guid> postsIds, CancellationToken cancellationToken)
-    {
-        var result = await _db.Comments
-            .Where(c => postsIds.Contains(c.PostId))
-            .GroupBy(c => c.PostId)
-            .ToDictionaryAsync(c => c.Key, c => c.Count(), cancellationToken);
-
-        return result;
-    }
 }

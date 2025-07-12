@@ -13,8 +13,4 @@ public interface ICommentService
     Task<Result<bool>> DeleteCommentAsync(Guid commentId, Guid userId, CancellationToken ct);
     
     Task<Result<List<Comment>>> GetCommentsForPostAsync(Guid postId, CancellationToken ct);
-    
-    Task<Result<int>> GetPostCommentsCountAsync(Guid postId, CancellationToken ct);
-    
-    Task<Dictionary<Guid,int>> GetPostsCommentsCountsAsync(List<Guid> postsIds, CancellationToken ct);
 }

@@ -10,8 +10,6 @@ public interface ILikeService
     
     Task<Result<bool>> IsPostLikedAsync(Guid postId, Guid userId, CancellationToken ct);
     
-    Task<Result<Dictionary<Guid,int>>> GetPostsLikeCountsAsync(List<Guid> postsIds, CancellationToken ct);
-    
     Task<Result<int>> GetPostLikeCountAsync(Guid postId, CancellationToken ct);
     
     Task<Result<List<UsernameDto>>> GetUsersWhoLikedPostAsync(Guid postId, CancellationToken ct);
