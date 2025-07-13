@@ -120,17 +120,11 @@ public partial class SocialMediaContext : DbContext
             entity.Property(m => m.Content)
                 .IsRequired()
                 .HasMaxLength(2000);
-
-            entity.Property(m => m.Timestamp)
-                .HasDefaultValueSql("GETDATE()");
         });
         
         modelBuilder.Entity<PostLike>(entity =>
         {
             entity.HasKey(pl => new { pl.UserId, pl.PostId });
-            
-            entity.Property(pl => pl.LikedAt)
-                .HasDefaultValueSql("GETDATE()");
 
             // Relationship to User
             entity.HasOne(pl => pl.User)
@@ -147,9 +141,6 @@ public partial class SocialMediaContext : DbContext
         
         modelBuilder.Entity<PostView>(entity =>
         {
-            entity.Property(pl => pl.ViewedAt)
-                .HasDefaultValueSql("GETDATE()");
-
             // Relationship to User
             entity.HasOne(pv => pv.User)
                 .WithMany(u => u.PostViews)
@@ -168,9 +159,6 @@ public partial class SocialMediaContext : DbContext
             entity.Property(c => c.Text)
                 .IsRequired()
                 .HasMaxLength(1000);
-
-            entity.Property(c => c.CreatedAt)
-                .HasDefaultValueSql("GETDATE()");
         });
 
         
@@ -187,9 +175,6 @@ public partial class SocialMediaContext : DbContext
                 .WithMany(u => u.Followers)
                 .HasForeignKey(f => f.FolloweeId)
                 .OnDelete(DeleteBehavior.Restrict);
-
-            entity.Property(f => f.FollowedAt)
-                .HasDefaultValueSql("GETDATE()");
         });
         
         modelBuilder.Entity<Post>(entity =>
@@ -202,9 +187,6 @@ public partial class SocialMediaContext : DbContext
             
             entity.Property(p => p.Text)
                 .HasMaxLength(2000);
-
-            entity.Property(p => p.CreatedAt)
-                .HasDefaultValueSql("GETDATE()");
         });
         
         modelBuilder.Entity<Notification>(entity =>
@@ -227,9 +209,6 @@ public partial class SocialMediaContext : DbContext
 
             entity.Property(rt => rt.DeviceInfo)
                 .HasMaxLength(500);
-
-            entity.Property(rt => rt.CreatedAt)
-                .HasDefaultValueSql("GETDATE()");
         });
 
         modelBuilder.Entity<PasswordResetToken>(entity =>
