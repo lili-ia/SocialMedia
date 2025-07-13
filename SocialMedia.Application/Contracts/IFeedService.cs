@@ -17,7 +17,7 @@ public interface IFeedService
         CancellationToken ct = default);
     
     Task<List<PostFeedDto>> GetMostPopularPostsSinceDateAsync(
-        List<Guid> excludeUserIds,
+        List<Guid> excludeAuthors,
         DateTime since,
         int fetchCount,
         Guid forUserId,

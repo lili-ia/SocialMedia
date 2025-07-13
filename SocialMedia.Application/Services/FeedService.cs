@@ -74,7 +74,7 @@ public class FeedService : IFeedService
     }
 
     public async Task<List<PostFeedDto>> GetMostPopularPostsSinceDateAsync(
-        List<Guid> excludeUserIds, 
+        List<Guid> excludeAuthors, 
         DateTime since, 
         int fetchCount, 
         Guid forUserId,
@@ -86,7 +86,9 @@ public class FeedService : IFeedService
             .ToListAsync(ct);
 
         var posts = await _db.Posts
-            .Where(p => !excludeUserIds.Contains(p.UserId) && !viewedPostsIds.Contains(p.Id))
+            .Include(p => p.PostLikes)
+            .Include(p => p.Comments)
+            .Where(p => !excludeAuthors.Contains(p.UserId) && !viewedPostsIds.Contains(p.Id))
             .OrderByDescending(p => p.PostLikes.Count)
             .ThenByDescending(p => p.CreatedAt)
             .Take(fetchCount)
