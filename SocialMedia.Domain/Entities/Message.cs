@@ -12,7 +12,7 @@ public class Message : BaseEntity
     public string Content { get; set; } = "";
 
     [Required]
-    public DateTime Timestamp { get; set; } = DateTime.Now;
+    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 
     [Required]
     public MessageType MessageType { get; set; } = MessageType.System;

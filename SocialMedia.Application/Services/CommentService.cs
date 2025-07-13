@@ -40,7 +40,7 @@ public class CommentService : ICommentService
             Text = text,
             UserId = userId,
             PostId = postId,
-            CreatedAt = DateTime.Now,
+            CreatedAt = DateTime.UtcNow,
         };
 
         try
@@ -95,7 +95,7 @@ public class CommentService : ICommentService
                     $"Not enough permissions.", ErrorType.Forbidden);
 
             comment.Text = text;
-            comment.UpdatedAt = DateTime.Now;
+            comment.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync(cancellationToken);
             
             return Result<Comment>.SuccessResult(comment);

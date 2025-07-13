@@ -33,7 +33,7 @@ public class PostService : IPostService
 
         var newPost = _mapper.Map<Post>(postDto);
         newPost.UserId = userId;
-        newPost.CreatedAt = DateTime.Now;
+        newPost.CreatedAt = DateTime.UtcNow;
         
         try
         {
@@ -108,7 +108,7 @@ public class PostService : IPostService
                     $"Not enough permissions.", ErrorType.Forbidden);
             
             _mapper.Map(postDto, post); 
-            post.UpdatedAt = DateTime.Now;
+            post.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync(cancellationToken);
             
             return Result<Post>.SuccessResult(post);

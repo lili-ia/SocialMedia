@@ -11,7 +11,7 @@ public class PostLike
     public Guid PostId { get; set; }
 
     [Required]
-    public DateTime LikedAt { get; set; } = DateTime.Now;
+    public DateTime LikedAt { get; set; } = DateTime.UtcNow;
 
     public virtual User User { get; set; } = null!;
 

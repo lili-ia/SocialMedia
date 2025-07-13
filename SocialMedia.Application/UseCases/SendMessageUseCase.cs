@@ -36,7 +36,7 @@ public class SendMessageUseCase : ISendMessageUseCase
             ChatId = chatId, 
             SenderId = senderId,
             Content = content,
-            Timestamp = DateTime.Now,
+            Timestamp = DateTime.UtcNow,
             IsRead = false,
             IsEdited = false,
         };

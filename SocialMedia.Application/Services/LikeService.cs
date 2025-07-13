@@ -34,20 +34,18 @@ public class LikeService : ILikeService
 
         if (post == null)
         {
+            _logger.LogWarning("Post with ID {PostId} not found.", postId);
+            
             return Result<PostLikeDto>.FailureResult("Post not found.", ErrorType.NotFound);
         }
         
-        var user = await _db.Users.FindAsync(userId, ct);
-        
-        if (user == null)
-        {
-            return Result<PostLikeDto>.FailureResult("User not found.", ErrorType.NotFound);
-        }
-        
-        var existingLike = await _db.PostLikes.AnyAsync(pl => pl.UserId == userId && pl.PostId == postId, cancellationToken: ct);
+        var existingLike = await _db.PostLikes
+            .AnyAsync(pl => pl.UserId == userId && pl.PostId == postId, cancellationToken: ct);
 
         if (existingLike)
         {
+            _logger.LogWarning("Post with ID {PostId} already liked by user with ID {UserId}.", postId, userId);
+
             return Result<PostLikeDto>.FailureResult("You have already liked this post.", ErrorType.Forbidden);
         }
 
@@ -62,8 +60,14 @@ public class LikeService : ILikeService
         {
             await _db.PostLikes.AddAsync(newLike, ct);
             await _db.SaveChangesAsync(ct);
-            var newLikeDto = _mapper.Map<PostLikeDto>(newLike);
 
+            var newLikeDto = new PostLikeDto
+            {
+                UserId = userId,
+                PostId = postId,
+                LikedAt = DateTime.UtcNow
+            };
+            
             var evt = new PostLikedEvent
             {
                 FromUserId = userId,
@@ -90,6 +94,8 @@ public class LikeService : ILikeService
 
         if (post == null)
         {
+            _logger.LogWarning("Post with ID {PostId} not found.", postId);
+            
             return Result<bool>.FailureResult("Post not found.", ErrorType.NotFound);
         }
         
@@ -97,6 +103,8 @@ public class LikeService : ILikeService
         
         if (user == null)
         {
+            _logger.LogWarning("User with ID {UserId} not found.", userId);
+            
             return Result<bool>.FailureResult("User not found.", ErrorType.NotFound);
         }
         
@@ -106,6 +114,8 @@ public class LikeService : ILikeService
 
         if (existingLike == null)
         {
+            _logger.LogWarning("Post with ID {PostId} isn't liked yet by user with ID {UserId}.", postId, userId);
+            
             return Result<bool>.FailureResult("Like doesn't exist.", ErrorType.Forbidden);
         }
 
@@ -126,20 +136,6 @@ public class LikeService : ILikeService
 
     public async Task<Result<bool>> IsPostLikedAsync(Guid postId, Guid userId, CancellationToken ct)
     {
-        var post = await _db.Posts.FindAsync(postId, ct);
-
-        if (post == null)
-        {
-            return Result<bool>.FailureResult("Post not found.", ErrorType.NotFound);
-        }
-        
-        var user = await _db.Users.FindAsync(userId, ct);
-        
-        if (user == null)
-        {
-            return Result<bool>.FailureResult("User not found.", ErrorType.NotFound);
-        }
-        
         var existingLike = await _db.PostLikes.AnyAsync(pl => pl.UserId == userId && pl.PostId == postId, cancellationToken: ct);
         
         return Result<bool>.SuccessResult(existingLike);

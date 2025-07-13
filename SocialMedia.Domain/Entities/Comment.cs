@@ -14,7 +14,7 @@ public class Comment : BaseEntity
     public Guid PostId { get; set; }
 
     [Required]
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public DateTime? UpdatedAt { get; set; }
 

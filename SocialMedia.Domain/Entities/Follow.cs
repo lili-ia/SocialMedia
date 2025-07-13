@@ -11,7 +11,7 @@ public class Follow
     public Guid FolloweeId { get; set; }
 
     [Required]
-    public DateTime FollowedAt { get; set; } = DateTime.Now;
+    public DateTime FollowedAt { get; set; } = DateTime.UtcNow;
 
     public virtual User Follower { get; set; } = null!;
 

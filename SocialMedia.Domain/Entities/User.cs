@@ -11,7 +11,7 @@ public class User : BaseEntity
     public string Username { get; set; } = "";
 
     [Required]
-    public DateTime BirthDate { get; set; } = DateTime.Now;
+    public DateTime BirthDate { get; set; } = DateTime.UtcNow;
 
     [Required]
     [EmailAddress]

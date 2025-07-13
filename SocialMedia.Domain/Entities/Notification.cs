@@ -14,7 +14,7 @@ public class Notification : BaseEntity
     public bool IsRead { get; set; } = false;
 
     [Required]
-    public DateTime Timestamp { get; set; } = DateTime.Now;
+    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 
     [Required]
     public Dictionary<string, string> Data { get; set; } = new();
