@@ -1,4 +1,3 @@
-using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using SocialMedia.Application.Contracts;
 using SocialMedia.Application.DTOs;
@@ -9,25 +8,19 @@ namespace SocialMedia.Application.Services;
 public class FeedService : IFeedService
 {
     private readonly SocialMediaContext _db;
-    private readonly ILikeService _likeService;
-    private readonly ICommentService _commentService;
-    private readonly IMapper _mapper;
 
     private const double FollowRatio = 0.7;
 
-    public FeedService(
-        SocialMediaContext db,
-        ILikeService likeService,
-        ICommentService commentService,
-        IMapper mapper)
+    public FeedService(SocialMediaContext db)
     {
         _db = db;
-        _likeService = likeService;
-        _commentService = commentService;
-        _mapper = mapper;
     }
 
-    public async Task<List<PostFeedDto>> GetFeedAsync(Guid userId, CancellationToken ct, int page = 1, int pageSize = 20)
+    public async Task<List<PostFeedDto>> GetFeedAsync(
+        Guid userId, 
+        int page = 1, 
+        int pageSize = 20,
+        CancellationToken ct = default)
     {
         var followsIds = await _db.Follows
             .Where(f => f.FollowerId == userId)
@@ -35,10 +28,10 @@ public class FeedService : IFeedService
             .ToListAsync(cancellationToken: ct);
 
         var fromFollowsCount = (int)(pageSize * FollowRatio);
-        var fromPopularCount = pageSize - fromFollowsCount;
-
-        var fromFollows = await GetRecentPostsFromUsersAsync(followsIds, ct, page, fromFollowsCount);
-        var fromPopular = await GetMostPopularPostsAsync(followsIds, DateTime.Today.AddDays(-7), page, fromPopularCount, ct);
+        var fromFollows = await GetRecentPostsFromUsersAsync(followsIds, fromFollowsCount, userId, ct);
+        
+        var fromPopularCount = pageSize - fromFollows.Count;
+        var fromPopular = await GetMostPopularPostsSinceDateAsync(followsIds, DateTime.Today.AddDays(-7), fromPopularCount, userId, ct);
 
         var combined = fromFollows.Concat(fromPopular)
             .OrderByDescending(p => p.CreatedAt)
@@ -49,70 +42,66 @@ public class FeedService : IFeedService
 
     public async Task<List<PostFeedDto>> GetRecentPostsFromUsersAsync(
         List<Guid> followsIds, 
-        CancellationToken ct, 
-        int page = 1, 
-        int pageSize = 20)
+        int fetchCount, 
+        Guid forUserId,
+        CancellationToken ct = default)
     {
-        var posts = await _db.Posts
-            .Include(p => p.User)
-            .Where(p => followsIds.Contains(p.UserId))
-            .OrderByDescending(p => p.CreatedAt)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
+        var viewedPostsIds = await _db.PostViews
+            .Where(pv => pv.UserId == forUserId)
+            .Select(pv => pv.PostId)
             .ToListAsync(ct);
 
-        if (!posts.Any())
-            return new List<PostFeedDto>();
-
-        var postIds = posts.Select(p => p.Id).ToList();
-
-        var likeCounts = await _likeService.GetPostsLikeCountsAsync(postIds, ct);
-        var commentCounts = await _commentService.GetPostsCommentsCountsAsync(postIds, ct);
-        
-        var result = posts.Select(post =>
-        {
-            var dto = _mapper.Map<PostFeedDto>(post);
-            dto.LikesCount = likeCounts.GetValueOrDefault(post.Id, 0);
-            dto.CommentsCount = commentCounts.GetValueOrDefault(post.Id, 0);
-            
-            return dto;
-        }).ToList();
-
-        return result;
-    }
-    
-    public async Task<List<PostFeedDto>> GetMostPopularPostsAsync(
-        List<Guid> excludeUserIds,
-        DateTime since,
-        int page,
-        int pageSize,
-        CancellationToken ct)
-    {
         var posts = await _db.Posts
             .Include(p => p.User)
-            .Where(p => !excludeUserIds.Contains(p.UserId) && p.CreatedAt >= since)
+            .Include(p => p.Comments)
+            .Include(p => p.PostLikes)
+            .Where(p => followsIds.Contains(p.UserId) && !viewedPostsIds.Contains(p.Id))
+            .OrderByDescending(p => p.CreatedAt)
+            .Take(fetchCount)
+            .Select(post => new PostFeedDto
+            {
+                PostId = post.Id,
+                Text = post.Text,
+                UserId = post.User.Id,
+                Username = post.User.Username,
+                CreatedAt = post.CreatedAt,
+                LikesCount = post.PostLikes.Count,
+                CommentsCount = post.Comments.Count
+            })
+            .ToListAsync(ct);
+        
+        return posts;
+    }
+
+    public async Task<List<PostFeedDto>> GetMostPopularPostsSinceDateAsync(
+        List<Guid> excludeUserIds, 
+        DateTime since, 
+        int fetchCount, 
+        Guid forUserId,
+        CancellationToken ct = default)
+    {
+        var viewedPostsIds = await _db.PostViews
+            .Where(pv => pv.UserId == forUserId)
+            .Select(pv => pv.PostId)
+            .ToListAsync(ct);
+
+        var posts = await _db.Posts
+            .Where(p => !excludeUserIds.Contains(p.UserId) && !viewedPostsIds.Contains(p.Id))
             .OrderByDescending(p => p.PostLikes.Count)
             .ThenByDescending(p => p.CreatedAt)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
+            .Take(fetchCount)
+            .Select(post => new PostFeedDto
+            {
+                PostId = post.Id,
+                Text = post.Text,
+                UserId = post.User.Id,
+                Username = post.User.Username,
+                CreatedAt = post.CreatedAt,
+                LikesCount = post.PostLikes.Count,
+                CommentsCount = post.Comments.Count
+            })
             .ToListAsync(ct);
-
-        if (!posts.Any())
-            return new List<PostFeedDto>();
-
-        var postIds = posts.Select(p => p.Id).ToList();
-
-        var likeCounts = await _likeService.GetPostsLikeCountsAsync(postIds, ct);
-        var commentCounts = await _commentService.GetPostsCommentsCountsAsync(postIds, ct);
-
-        var result = posts.Select(post =>
-        {
-            var dto = _mapper.Map<PostFeedDto>(post);
-            dto.LikesCount = likeCounts.GetValueOrDefault(post.Id, 0);
-            dto.CommentsCount = commentCounts.GetValueOrDefault(post.Id, 0);
-            return dto;
-        }).ToList();
-
-        return result;
+        
+        return posts;
     }
 }
