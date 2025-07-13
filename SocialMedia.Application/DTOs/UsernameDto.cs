@@ -1,3 +1,8 @@
 namespace SocialMedia.Application.DTOs;
 
-public record UsernameDto(int Id, string Username);
+public record class UsernameDto
+{
+    public Guid UserId { get; init; }
+    
+    public string Username { get; init; } = null!;
+};

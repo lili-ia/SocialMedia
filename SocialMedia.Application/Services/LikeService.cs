@@ -1,7 +1,8 @@
-﻿using AutoMapper;
-using Domain.Entities;
+﻿using Domain.Entities;
 using Domain.Events;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Contracts;
 using SocialMedia.Application.DTOs;
@@ -13,19 +14,19 @@ public class LikeService : ILikeService
 {
     private readonly SocialMediaContext _db;
     private readonly ILogger<LikeService> _logger;
-    private readonly IMapper _mapper;
     private readonly IEventProducer _eventProducer;
+    private readonly IConfiguration _configuration;
     
     public LikeService(
         SocialMediaContext db, 
         ILogger<LikeService> logger, 
-        IMapper mapper, 
-        IEventProducer eventProducer)
+        IEventProducer eventProducer, 
+        IConfiguration configuration)
     {
         _db = db;
         _logger = logger;
-        _mapper = mapper;
         _eventProducer = eventProducer;
+        _configuration = configuration;
     }
     
     public async Task<Result<PostLikeDto>> LikePostAsync(Guid postId, Guid userId, CancellationToken ct)
@@ -39,6 +40,15 @@ public class LikeService : ILikeService
             return Result<PostLikeDto>.FailureResult("Post not found.", ErrorType.NotFound);
         }
         
+        var user = await _db.Users.FindAsync(userId, ct);
+        
+        if (user == null)
+        {
+            _logger.LogWarning("User with ID {UserId} not found.", userId);
+            
+            return Result<PostLikeDto>.FailureResult("User not found.", ErrorType.NotFound);
+        }
+        
         var existingLike = await _db.PostLikes
             .AnyAsync(pl => pl.UserId == userId && pl.PostId == postId, cancellationToken: ct);
 
@@ -49,11 +59,13 @@ public class LikeService : ILikeService
             return Result<PostLikeDto>.FailureResult("You have already liked this post.", ErrorType.Forbidden);
         }
 
+        var likedAt = DateTime.UtcNow;
+        
         var newLike = new PostLike
         {
             UserId = userId,
             PostId = postId,
-            LikedAt = DateTime.UtcNow
+            LikedAt = likedAt
         };
 
         try
@@ -65,9 +77,9 @@ public class LikeService : ILikeService
             {
                 UserId = userId,
                 PostId = postId,
-                LikedAt = DateTime.UtcNow
+                LikedAt = likedAt
             };
-            
+
             var evt = new PostLikedEvent
             {
                 FromUserId = userId,
@@ -75,16 +87,23 @@ public class LikeService : ILikeService
                 Timestamp = newLike.LikedAt,
                 PostId = postId
             };
-            
-            await _eventProducer.SendMessageAsync("likes-topic", evt, ct);
+
+            var topicName = _configuration["Kafka:Topics:PostLiked"];
+            await _eventProducer.SendMessageAsync(topicName!, evt, ct);
 
             return Result<PostLikeDto>.SuccessResult(newLikeDto);
+        }
+        catch (DbUpdateException e) when (e.InnerException is SqlException { Number: 2601 or 2627 })
+        {
+            _logger.LogWarning("Duplicate like detected for user {UserId} and post {PostId}", userId, postId);
+            
+            return Result<PostLikeDto>.FailureResult("You have already liked this post.", ErrorType.Forbidden);
         }
         catch (Exception e)
         {
             _logger.LogError(e, "Error while liking post with id {PostId}", postId);
             
-            return Result<PostLikeDto>.FailureResult($"An error occured while liking post with id {postId}");
+            return Result<PostLikeDto>.FailureResult($"An error occured while liking post with id {postId}", ErrorType.ServerError);
         }
     }
 
@@ -136,6 +155,15 @@ public class LikeService : ILikeService
 
     public async Task<Result<bool>> IsPostLikedAsync(Guid postId, Guid userId, CancellationToken ct)
     {
+        var postExists = await _db.Posts.AnyAsync(p => p.Id == postId, ct);
+        
+        if (!postExists)
+        {
+            _logger.LogWarning("Post with ID {PostId} not found.", postId);
+            
+            return Result<bool>.FailureResult("Post not found", ErrorType.NotFound);
+        }
+
         var existingLike = await _db.PostLikes.AnyAsync(pl => pl.UserId == userId && pl.PostId == postId, cancellationToken: ct);
         
         return Result<bool>.SuccessResult(existingLike);
@@ -143,30 +171,40 @@ public class LikeService : ILikeService
 
     public async Task<Result<int>> GetPostLikeCountAsync(Guid postId, CancellationToken ct)
     {
-        var post = await _db.Posts
-            .Include(p => p.PostLikes)
-            .Where(p => p.Id == postId)
-            .FirstOrDefaultAsync(ct);
+        var postExists = await _db.Posts.AnyAsync(p => p.Id == postId, cancellationToken: ct);
         
-        if (post == null)
+        if (postExists == false)
         {
+            _logger.LogWarning("Post with ID {PostId} not found.", postId);
+            
             return Result<int>.FailureResult("Post not found", ErrorType.NotFound);
         }
-        
-        var count = post.PostLikes.Count;
+
+        var count = await _db.PostLikes.CountAsync(pl => pl.PostId == postId, ct);
         
         return Result<int>.SuccessResult(count); 
     }
     
     public async Task<Result<List<UsernameDto>>> GetUsersWhoLikedPostAsync(Guid postId, CancellationToken ct)
     {
-        var postLikes = await _db.PostLikes
+        var postExists = await _db.Posts.AnyAsync(p => p.Id == postId, cancellationToken: ct);
+        
+        if (postExists == false)
+        {
+            _logger.LogWarning("Post with ID {PostId} not found.", postId);
+            
+            return Result<List<UsernameDto>>.FailureResult("Post not found", ErrorType.NotFound);
+        }
+        
+        var usernames = await _db.PostLikes
             .Include(pl => pl.User)
             .Where(pl => pl.PostId == postId)
+            .Select(pl => new UsernameDto
+            {
+                UserId = pl.User.Id,
+                Username = pl.User.Username
+            })
             .ToListAsync(cancellationToken: ct);
-
-        var users = postLikes.Select(pl => pl.User).ToList();
-        var usernames = _mapper.Map<List<UsernameDto>>(users);
         
         return Result<List<UsernameDto>>.SuccessResult(usernames);
     }
