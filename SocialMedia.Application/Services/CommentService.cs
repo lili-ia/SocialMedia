@@ -1,7 +1,10 @@
+using AutoMapper;
+using AutoMapper.QueryableExtensions;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Contracts;
+using SocialMedia.Application.DTOs;
 using SocialMedia.Persistence;
 
 namespace SocialMedia.Application.Services;
@@ -10,29 +13,35 @@ public class CommentService : ICommentService
 {
     private readonly SocialMediaContext _db;
     private readonly ILogger<CommentService> _logger;
+    private readonly IMapper _mapper;
     
-    public CommentService(SocialMediaContext db, ILogger<CommentService> logger)
+    public CommentService(SocialMediaContext db, ILogger<CommentService> logger, IMapper mapper)
     {
         _db = db;
         _logger = logger;
+        _mapper = mapper;
     }
     
-    public async Task<Result<Comment>> CreateCommentAsync(string text, Guid postId, Guid userId, CancellationToken cancellationToken)
+    public async Task<Result<CommentDto>> CreateCommentAsync(string text, Guid postId, Guid userId, CancellationToken ct)
     {
-        var user = await _db.Users.FindAsync(new object?[] { userId }, cancellationToken: cancellationToken);
+        _logger.LogInformation("Attempting to create a comment with ID by user {UserId}.", userId);
+        
+        var user = await _db.Users.FindAsync( [userId], ct);
 
         if (user == null)
         {
-            return Result<Comment>.FailureResult(
-                "Couldn't find a user with such id.", ErrorType.NotFound);
+            _logger.LogWarning("User with ID {UserId} not found.", userId);
+            
+            return Result<CommentDto>.FailureResult("User not found.", ErrorType.NotFound);
         }
         
-        var post = await _db.Posts.FindAsync(new object?[] { postId }, cancellationToken: cancellationToken);
+        var post = await _db.Posts.FindAsync([postId], ct);
 
         if (post == null)
         {
-            return Result<Comment>.FailureResult(
-                "Couldn't find a post with such id.", ErrorType.NotFound);
+            _logger.LogWarning("Post with ID {PostId} not found.", postId);
+            
+            return Result<CommentDto>.FailureResult("Post not found.", ErrorType.NotFound);
         }
 
         var newComment = new Comment
@@ -46,124 +55,144 @@ public class CommentService : ICommentService
         try
         {
             _db.Comments.Add(newComment);
-            await _db.SaveChangesAsync(cancellationToken);
+            await _db.SaveChangesAsync(ct);
+            _logger.LogInformation("Comment {CommentId} successfully created by user {UserId}.", newComment.Id, userId);
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "An error occurred while creating a post.");
+            _logger.LogError(e, "Error creating comment by user {UserId}.", userId);
             
-            return Result<Comment>.FailureResult(
-                $"An error occurred while creating this comment: {e.Message}", ErrorType.ServerError);
+            return Result<CommentDto>.FailureResult("An internal error occured.", ErrorType.ServerError);
         }
 
-        return Result<Comment>.SuccessResult(newComment);
+        var dto = MapToDto(newComment);
+        
+        return Result<CommentDto>.SuccessResult(dto);
     }
 
-    public async Task<Result<Comment>> GetCommentAsync(Guid commentId, CancellationToken cancellationToken)
+    public async Task<Result<CommentDto>> GetCommentAsync(Guid commentId, CancellationToken ct)
     {
+        _logger.LogInformation("Attempting to get comment with ID {CommentId}.", commentId);
+
+        var comment = await _db.Comments
+            .Where(c => c.Id == commentId)
+            .ProjectTo<CommentDto>(_mapper.ConfigurationProvider)
+            .FirstOrDefaultAsync(ct);
+        
+        if (comment != null)
+        {
+            return Result<CommentDto>.SuccessResult(comment);
+        }
+            
+        _logger.LogWarning("Comment with ID {CommentId} not found.", commentId);
+                
+        return Result<CommentDto>.FailureResult("Comment not found.", ErrorType.NotFound);
+    }
+
+    public async Task<Result<CommentDto>> UpdateCommentAsync(Guid commentId, string text, Guid userId, CancellationToken ct)
+    {
+        _logger.LogInformation("Attempting to update comment with ID {CommentId} by user {UserId}.", commentId, userId);
+        
+        var comment = await _db.Comments.FindAsync([commentId], ct);
+        
+        if (comment == null)
+        {
+            _logger.LogWarning("Comment with ID {CommentId} not found for update by user {UserId}.", commentId, userId);
+                        
+            return Result<CommentDto>.FailureResult("Comment not found.", ErrorType.NotFound);
+        }
+        
+        if (comment.UserId != userId)
+        {
+            _logger.LogWarning("User {UserId} attempted to update comment {CommentId} they do not own.", userId, commentId);
+                        
+            return Result<CommentDto>.FailureResult("Not allowed.", ErrorType.Forbidden);
+        }
+        
+        comment.Text = text;
+        comment.UpdatedAt = DateTime.UtcNow;
+        
         try
         {
-            var comment = await _db.Comments.FindAsync(new object?[] { commentId }, cancellationToken: cancellationToken);
-            
-            return comment != null 
-                ? Result<Comment>.SuccessResult(comment) 
-                : Result<Comment>.FailureResult(
-                    $"Couldn't find a comment with id {commentId}.", ErrorType.NotFound);
+            await _db.SaveChangesAsync(ct);
+            _logger.LogInformation("Comment {CommentId} successfully updated by user {UserId}.", commentId, userId);
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "An error occurred while retrieving a comment.");
+            _logger.LogError(e, "Error updating comment {CommentId} by user {UserId}.", commentId, userId);
             
-            return Result<Comment>.FailureResult(
-                $"An error occurred while retrieving comment with id {commentId}: {e.Message}", ErrorType.ServerError);
+            return Result<CommentDto>.FailureResult("An internal error occured.", ErrorType.ServerError);
         }
+        
+        var dto = MapToDto(comment);
+        
+        return Result<CommentDto>.SuccessResult(dto);
     }
 
-    public async Task<Result<Comment>> UpdateCommentAsync(Guid commentId, string text, Guid userId, CancellationToken cancellationToken)
+    public async Task<Result<bool>> DeleteCommentAsync(Guid commentId, Guid userId, CancellationToken ct)
     {
+        _logger.LogInformation("Attempting to delete comment with ID {CommentId} by user {UserId}.", commentId, userId);
+        
+        var comment = await _db.Comments.FindAsync([commentId], ct);
+
+        if (comment == null)
+        {
+            _logger.LogWarning("Comment with ID {CommentId} not found for delete by user {UserId}.", commentId, userId);
+                
+            return Result<bool>.FailureResult("Comment not found.", ErrorType.NotFound);
+        }
+
+        if (comment.UserId != userId)
+        {
+            _logger.LogWarning("User {UserId} attempted to delete comment {CommentId} they do not own.", userId, commentId);
+                
+            return Result<bool>.FailureResult("Not allowed.", ErrorType.Forbidden);
+        }
+        
         try
         {
-            var comment = await _db.Comments.FindAsync(new object?[] { commentId }, cancellationToken: cancellationToken);
-
-            if (comment == null)
-            {
-                return Result<Comment>.FailureResult("Comment not found.", ErrorType.NotFound);
-            }
-            
-            if (comment.UserId != userId)
-                return Result<Comment>.FailureResult(
-                    $"Not enough permissions.", ErrorType.Forbidden);
-
-            comment.Text = text;
-            comment.UpdatedAt = DateTime.UtcNow;
-            await _db.SaveChangesAsync(cancellationToken);
-            
-            return Result<Comment>.SuccessResult(comment);
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "An error occurred while updating a comment.");
-            
-            return Result<Comment>.FailureResult(
-                $"An error occurred while retrieving comment with id {commentId}: {e.Message}",
-                ErrorType.ServerError);
-        }
-    }
-
-    public async Task<Result<bool>> DeleteCommentAsync(Guid commentId, Guid userId, CancellationToken cancellationToken)
-    {
-        try
-        {
-            var comment = await _db.Comments.FindAsync(new object?[] { commentId }, cancellationToken: cancellationToken);
-            
-            if (comment == null) 
-                return Result<bool>.FailureResult(
-                    $"There is no comments with such id", ErrorType.NotFound);
-            
-            if (comment.UserId != userId)
-                return Result<bool>.FailureResult(
-                    $"Not enough permissions.", ErrorType.Forbidden);
-            
             _db.Comments.Remove(comment);
-            await _db.SaveChangesAsync(cancellationToken);
+            await _db.SaveChangesAsync(ct);
             
-            return Result<bool>.SuccessResult(true);
+            _logger.LogInformation("Comment {CommentId} successfully deleted by user {UserId}.", commentId, userId);
         }
         catch (Exception e)
         {
             _logger.LogError(e, "An error occurred while deleting a comment.");
 
-            return Result<bool>.FailureResult(
-                $"An error occurred while deleting a comment with id {commentId}: {e.Message}",
-                ErrorType.ServerError);
+            return Result<bool>.FailureResult("An internal error occured.", ErrorType.ServerError);
         }
+        
+        return Result<bool>.SuccessResult(true);
     }
 
-    public async Task<Result<List<Comment>>> GetCommentsForPostAsync(Guid postId, CancellationToken cancellationToken)
+    public async Task<Result<List<CommentDto>>> GetCommentsForPostAsync(Guid postId, CancellationToken ct)
     {
-        try
+        _logger.LogInformation("Attempting to get comments for post with ID {PostId}.", postId);
+
+        var postExists = await _db.Posts.AnyAsync(p => p.Id == postId, ct);
+
+        if (postExists == false)
         {
-            var post = await _db.Posts
-                .Include(p => p.Comments)
-                .FirstOrDefaultAsync(p => p.Id == postId, cancellationToken: cancellationToken);
-
-            if (post == null)
-            {
-                return Result<List<Comment>>.FailureResult(
-                    "Couldn't find a post with such id.", ErrorType.NotFound);
-            }
-
-            var comments = post.Comments.ToList();
-
-            return Result<List<Comment>>.SuccessResult(comments);
+            _logger.LogWarning("Post with ID {PostId} not found.", postId);
+            
+            return Result<List<CommentDto>>.FailureResult("Post not found.", ErrorType.NotFound);
         }
-        catch (Exception e)
-        {
-            _logger.LogError(e, $"An error occurred while retrieving comments for post with id {postId}.");
 
-            return Result<List<Comment>>.FailureResult(
-                $"An error occurred while retrieving comments for post with id {postId}.", ErrorType.ServerError
-            );
-        }
+        var comments = await _db.Comments
+            .Where(c => c.PostId == postId)
+            .ProjectTo<CommentDto>(_mapper.ConfigurationProvider)
+            .ToListAsync(ct);
+
+        return Result<List<CommentDto>>.SuccessResult(comments);
     }
+    
+    private CommentDto MapToDto(Comment comment) => new()
+    {
+        Text = comment.Text,
+        UserId = comment.UserId,
+        Username = comment.User!.Username,
+        PostId = comment.PostId,
+        CreatedAt = comment.CreatedAt
+    };
 }
