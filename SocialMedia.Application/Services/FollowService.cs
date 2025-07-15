@@ -36,7 +36,8 @@ public class FollowService : IFollowService
             return Result<FollowDto>.FailureResult("You can not follow yourself.", ErrorType.Forbidden);
         }
         
-        var follower = await _db.Users.AsNoTracking()
+        var follower = await _db.Users
+            .AsNoTracking()
             .FirstOrDefaultAsync(u => u.Id == followerId, ct);
 
         if (follower == null)
@@ -46,7 +47,8 @@ public class FollowService : IFollowService
             return Result<FollowDto>.FailureResult("Follower not found.");
         }
         
-        var followee = await _db.Users.AsNoTracking()
+        var followee = await _db.Users
+            .AsNoTracking()
             .FirstOrDefaultAsync(u => u.Id == followeeId, ct);
 
         if (followee == null)

@@ -26,7 +26,9 @@ public class CommentService : ICommentService
     {
         _logger.LogInformation("Attempting to create a comment with ID by user {UserId}.", userId);
         
-        var user = await _db.Users.FindAsync( [userId], ct);
+        var user = await _db.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == userId, ct);
 
         if (user == null)
         {
@@ -34,8 +36,10 @@ public class CommentService : ICommentService
             
             return Result<CommentDto>.FailureResult("User not found.", ErrorType.NotFound);
         }
-        
-        var post = await _db.Posts.FindAsync([postId], ct);
+
+        var post = await _db.Posts
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == postId, ct);
 
         if (post == null)
         {
@@ -75,6 +79,7 @@ public class CommentService : ICommentService
         _logger.LogInformation("Attempting to get comment with ID {CommentId}.", commentId);
 
         var comment = await _db.Comments
+            .AsNoTracking()
             .Where(c => c.Id == commentId)
             .ProjectTo<CommentDto>(_mapper.ConfigurationProvider)
             .FirstOrDefaultAsync(ct);
@@ -180,6 +185,7 @@ public class CommentService : ICommentService
         }
 
         var comments = await _db.Comments
+            .AsNoTracking()
             .Where(c => c.PostId == postId)
             .ProjectTo<CommentDto>(_mapper.ConfigurationProvider)
             .ToListAsync(ct);

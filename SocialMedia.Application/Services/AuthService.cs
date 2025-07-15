@@ -79,7 +79,9 @@ public class AuthService : IAuthService
     {
         _logger.LogInformation("User with email {Email} attempts to log in.", loginDto.Email);
         
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == loginDto.Email, ct);
+        var user = await _db.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Email == loginDto.Email, ct);
 
         if (user == null)
         {
@@ -146,7 +148,9 @@ public class AuthService : IAuthService
             return Result<AuthResponseDto>.FailureResult("Invalid refresh token", ErrorType.Unauthorized);
         }
 
-        var user = await _db.Users.FindAsync([token.UserId], ct);
+        var user = await _db.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == token.UserId, ct);
         
         if (user == null)
         {
@@ -258,7 +262,9 @@ public class AuthService : IAuthService
     {
         _logger.LogInformation("User with email {Email} attempts to request token for email confirmation.", email);
         
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == email);
+        var user = await _db.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Email == email);
 
         if (user == null)
         {
@@ -312,7 +318,9 @@ public class AuthService : IAuthService
         Func<User, Task<Result<bool>>> onSuccess
     ) where TToken : UserTokenBase
     {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == email);
+        var user = await _db.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Email == email);
 
         if (user == null)
         {

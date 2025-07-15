@@ -23,6 +23,7 @@ public class FeedService : IFeedService
         CancellationToken ct = default)
     {
         var followsIds = await _db.Follows
+            .AsNoTracking()
             .Where(f => f.FollowerId == userId)
             .Select(f => f.FolloweeId)
             .ToListAsync(cancellationToken: ct);
@@ -47,14 +48,13 @@ public class FeedService : IFeedService
         CancellationToken ct = default)
     {
         var viewedPostsIds = await _db.PostViews
+            .AsNoTracking()
             .Where(pv => pv.UserId == forUserId)
             .Select(pv => pv.PostId)
             .ToListAsync(ct);
 
         var posts = await _db.Posts
-            .Include(p => p.User)
-            .Include(p => p.Comments)
-            .Include(p => p.PostLikes)
+            .AsNoTracking()
             .Where(p => followsIds.Contains(p.UserId) && !viewedPostsIds.Contains(p.Id))
             .OrderByDescending(p => p.CreatedAt)
             .Take(fetchCount)
@@ -81,13 +81,13 @@ public class FeedService : IFeedService
         CancellationToken ct = default)
     {
         var viewedPostsIds = await _db.PostViews
+            .AsNoTracking()
             .Where(pv => pv.UserId == forUserId)
             .Select(pv => pv.PostId)
             .ToListAsync(ct);
 
         var posts = await _db.Posts
-            .Include(p => p.PostLikes)
-            .Include(p => p.Comments)
+            .AsNoTracking()
             .Where(p => !excludeAuthors.Contains(p.UserId) && !viewedPostsIds.Contains(p.Id))
             .OrderByDescending(p => p.PostLikes.Count)
             .ThenByDescending(p => p.CreatedAt)
