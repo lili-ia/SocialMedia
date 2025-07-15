@@ -37,19 +37,9 @@ public class JwtService : IJwtService
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    public RefreshToken GenerateRefreshToken(string? ipAddress = null, string? deviceInfo = null)
+    public string GenerateRefreshToken()
     {
-        var refreshToken = new RefreshToken
-        {
-            Token = GenerateRandomToken(),
-            Expires = DateTime.UtcNow.AddDays(7),
-            CreatedAt = DateTime.UtcNow,
-            IsRevoked = false,
-            IpAddress = ipAddress,
-            DeviceInfo = deviceInfo
-        };
-
-        return refreshToken;
+        return GenerateRandomToken();
     }
     
     private string GenerateRandomToken()

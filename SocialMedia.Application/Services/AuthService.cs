@@ -1,5 +1,4 @@
 ﻿using System.Security.Cryptography;
-using AutoMapper;
 using Domain.Entities;
 using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -14,7 +13,6 @@ namespace SocialMedia.Application.Services;
 public class AuthService : IAuthService
 {
     private readonly SocialMediaContext _db;
-    private readonly IMapper _mapper;
     private readonly IPasswordService _passwordService;
     private readonly ILogger<AuthService> _logger;
     private readonly IJwtService _jwtService;
@@ -22,125 +20,170 @@ public class AuthService : IAuthService
     
     public AuthService(
         SocialMediaContext db, 
-        IMapper mapper, 
         IPasswordService passwordService, 
         ILogger<AuthService> logger, 
         IJwtService jwtService, 
         IEmailSender sender)
     {
         _db = db;
-        _mapper = mapper;
         _passwordService = passwordService;
         _logger = logger;
         _jwtService = jwtService;
         _emailSender = sender;
     }
     
-    public async Task<Result<User>> RegisterAsync(RegisterDto dto, CancellationToken cancellationToken)
+    public async Task<Result<UserDto>> RegisterAsync(RegisterDto registerDto, CancellationToken ct)
     {
-        var userExists = await _db.Users.AnyAsync(u => u.Email == dto.Email, cancellationToken);
+        _logger.LogInformation("Attempting to register a user with email {Email}.", registerDto.Email);
+        
+        var userExists = await _db.Users.AnyAsync(u => u.Email == registerDto.Email, ct);
         
         if (userExists)
         {
-            return Result<User>.FailureResult(
-                $"User with email {dto.Email} already exists", ErrorType.Validation);
+            _logger.LogWarning("User with email {Email} already exists.", registerDto.Email);
+            
+            return Result<UserDto>.FailureResult($"User with email {registerDto.Email} already exists", ErrorType.Validation);
         }
 
-        var newUser = _mapper.Map<User>(dto);
-        newUser.PasswordHash = _passwordService.HashPassword(dto.RawPassword);
+        var newUser = new User
+        {
+            Username = registerDto.Username,
+            Email = registerDto.Email, 
+            PasswordHash = _passwordService.HashPassword(registerDto.RawPassword)
+        };
 
         try
         {
-            await _db.Users.AddAsync(newUser, cancellationToken);
-            await _db.SaveChangesAsync(cancellationToken);
+            await _db.Users.AddAsync(newUser, ct);
+            await _db.SaveChangesAsync(ct);
+            _logger.LogInformation("User with email {Email} successfully registered.", registerDto.Email);
         }
         catch (Exception e)
         {
-            _logger.LogError(e.Message);
-            return Result<User>.FailureResult(
-                $"An error occured while registering the user", ErrorType.ServerError);
+            _logger.LogError(e, "Error registering user with email {Email}.", registerDto.Email);
+            
+            return Result<UserDto>.FailureResult("An internal error occured.", ErrorType.ServerError);
         }
-    
-        return Result<User>.SuccessResult(newUser);
+
+        var newUserDto = new UserDto
+        {
+            Id = newUser.Id,
+            Username = newUser.Username,
+            Email = registerDto.Email, 
+        };
+        
+        return Result<UserDto>.SuccessResult(newUserDto);
     }
 
-    public async Task<Result<AuthResponseDto>> LoginAsync(LoginDto dto, CancellationToken cancellationToken)
+    public async Task<Result<AuthResponseDto>> LoginAsync(LoginDto loginDto, string ipAddress, string deviceInfo, CancellationToken ct)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == dto.Email, cancellationToken);
+        _logger.LogInformation("User with email {Email} attempts to log in.", loginDto.Email);
+        
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == loginDto.Email, ct);
 
         if (user == null)
         {
+            _logger.LogWarning("User with email {Email} not found.", loginDto.Email);
+            
             return Result<AuthResponseDto>.FailureResult("Invalid login attempt.", ErrorType.Validation);
         }
 
-        var isPasswordValid = _passwordService.VerifyPassword(user.PasswordHash, dto.RawPassword);
+        var isPasswordValid = _passwordService.VerifyPassword(user.PasswordHash, loginDto.RawPassword);
 
         if (!isPasswordValid)
         {
+            _logger.LogWarning("Password not valid.");
+            
             return Result<AuthResponseDto>.FailureResult("Invalid login attempt.", ErrorType.Validation);
         }
 
         var accessToken = _jwtService.GenerateToken(user.Id.ToString(), user.Email);
-        var refreshToken = _jwtService.GenerateRefreshToken();
-        // TODO: include IP and Device Info 
-        refreshToken.UserId = user.Id;
+        
+        var refreshTokenString = _jwtService.GenerateRefreshToken();
+        var refreshToken = new RefreshToken
+        {
+            Id = Guid.NewGuid(),
+            Token = refreshTokenString,
+            UserId = user.Id,
+            Expires = DateTime.UtcNow.AddDays(7),
+            CreatedAt = DateTime.UtcNow,
+            IsRevoked = false,
+            IpAddress = ipAddress,
+            DeviceInfo = deviceInfo
+        };
 
         try
         {
-            await _db.RefreshTokens.AddAsync(refreshToken, cancellationToken);
-            await _db.SaveChangesAsync(cancellationToken);
-
-            var authResponse = new AuthResponseDto
-            {
-                AccessToken = accessToken,
-                RefreshToken = refreshToken.Token
-            };
-
-            return Result<AuthResponseDto>.SuccessResult(authResponse);
+            await _db.RefreshTokens.AddAsync(refreshToken, ct);
+            await _db.SaveChangesAsync(ct);
+            _logger.LogInformation("User with email {Email} successfully logged in.", user.Email);
         }
         catch (Exception e)
         {
-            _logger.LogError(e.Message);
-            return Result<AuthResponseDto>.FailureResult(
-                $"Internal server error. Try later.", ErrorType.ServerError);
+            _logger.LogError(e, "Error logging in user with email {Email}.", user.Email);
+            
+            return Result<AuthResponseDto>.FailureResult("An internal error occured.", ErrorType.ServerError);
         }
+        
+        var authResponse = new AuthResponseDto
+        {
+            AccessToken = accessToken,
+            RefreshToken = refreshToken.Token
+        };
+        
+        return Result<AuthResponseDto>.SuccessResult(authResponse);
     }
 
-    public async Task<Result<AuthResponseDto>> RefreshTokenAsync(string refreshToken, CancellationToken cancellationToken)
+    public async Task<Result<AuthResponseDto>> RefreshTokenAsync(string refreshToken, string ipAddress, string deviceInfo, CancellationToken ct)
     {
         var token = await _db.RefreshTokens
-            .FirstOrDefaultAsync(t => t.Token == refreshToken, cancellationToken: cancellationToken);
+            .FirstOrDefaultAsync(t => t.Token == refreshToken, ct);
 
         if (token == null || token.Expires < DateTime.UtcNow)
         {
-            return Result<AuthResponseDto>.FailureResult(
-                "Invalid refresh token", ErrorType.Unauthorized);
+            _logger.LogWarning("Refresh token doesn't exist or expired.");
+            
+            return Result<AuthResponseDto>.FailureResult("Invalid refresh token", ErrorType.Unauthorized);
         }
 
-        var user = await _db.Users.FindAsync(token.UserId);
+        var user = await _db.Users.FindAsync([token.UserId], ct);
         
         if (user == null)
         {
-            return Result<AuthResponseDto>.FailureResult(
-                $"Couldnt find a user.", ErrorType.NotFound);
+            _logger.LogWarning("User with id {UserId} not found.", token.UserId);
+            
+            return Result<AuthResponseDto>.FailureResult("User not found.", ErrorType.NotFound);
         }
 
         var newAccessToken = _jwtService.GenerateToken(token.UserId.ToString(), user.Email);
-        var newRefreshToken = _jwtService.GenerateRefreshToken();
+        var newRefreshTokenString = _jwtService.GenerateRefreshToken();
+        
+        var newRefreshToken = new RefreshToken
+        {
+            Id = Guid.NewGuid(),
+            Token = newRefreshTokenString,
+            UserId = user.Id,
+            Expires = DateTime.UtcNow.AddDays(7),
+            CreatedAt = DateTime.UtcNow,
+            IsRevoked = false,
+            IpAddress = ipAddress,
+            DeviceInfo = deviceInfo
+        };
 
         token.IsRevoked = true;
 
         try
         {
             _db.RefreshTokens.Update(token);
-            await _db.RefreshTokens.AddAsync(newRefreshToken, cancellationToken);
-            await _db.SaveChangesAsync(cancellationToken);
+            await _db.RefreshTokens.AddAsync(newRefreshToken, ct);
+            await _db.SaveChangesAsync(ct);
+            _logger.LogInformation("Refresh token for user with id {UserId} was successfully created.", user.Id);
         }
         catch (Exception e)
         {
-            _logger.LogError(e.Message);
-            return Result<AuthResponseDto>.FailureResult(
-                $"Internal server error. Try later.", ErrorType.ServerError);
+            _logger.LogError(e, "Error creating token for user with id {USerId}.", user.Id);
+            
+            return Result<AuthResponseDto>.FailureResult("An internal error occured.", ErrorType.ServerError);
         }
 
         var authResponse = new AuthResponseDto
@@ -213,13 +256,16 @@ public class AuthService : IAuthService
         Func<User, bool>? additionalUserCheck = null
     ) where TToken : UserTokenBase, new()
     {
+        _logger.LogInformation("User with email {Email} attempts to request token for email confirmation.", email);
+        
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == email);
 
         if (user == null)
         {
+            _logger.LogWarning("User with email {Email} not found.", email);
+            
             return Result<bool>.SuccessResult(true);
         }
-
 
         if (additionalUserCheck != null && !additionalUserCheck(user))
         {
@@ -243,15 +289,18 @@ public class AuthService : IAuthService
         {
             await tokenDbSet.AddAsync(token);
             await _db.SaveChangesAsync();
-
+            _logger.LogInformation("Email confirmation token for user with email {Email} was successfully added to database.", email);
+            
             var body = createBody(rawToken, email);
             await _emailSender.SendEmailAsync(email, subject, body);
+            
+            _logger.LogInformation("Email confirmation token was successfully sent to user with email {Email}.", email);
         }
         catch (Exception e)
         {
-            _logger.LogError(e.Message);
+            _logger.LogError(e, "Error sending email confirmation token to user with email {Email}.", email);
             
-            return Result<bool>.FailureResult("Internal server error. Try later.", ErrorType.ServerError);
+            return Result<bool>.FailureResult("An internal error occured.", ErrorType.ServerError);
         }
 
         return Result<bool>.SuccessResult(true);
@@ -267,6 +316,8 @@ public class AuthService : IAuthService
 
         if (user == null)
         {
+            _logger.LogWarning("User with email {Email} not found.", email);
+            
             return Result<bool>.FailureResult("Invalid email or token", ErrorType.BadRequest);
         }
         
@@ -277,6 +328,8 @@ public class AuthService : IAuthService
 
         if (token == null || token.ExpiresAt < DateTime.UtcNow)
         {
+            _logger.LogWarning("Invalid or expired token for user with email {Email}.", email);
+            
             return Result<bool>.FailureResult("Invalid or expired token", ErrorType.Forbidden);
         }
         
@@ -295,9 +348,9 @@ public class AuthService : IAuthService
         }
         catch (Exception e)
         {
-            _logger.LogError(e.Message);
+            _logger.LogError(e, "Error validating token for user with email {Email}.", email);
             
-            return Result<bool>.FailureResult("An internal error occured", ErrorType.ServerError);
+            return Result<bool>.FailureResult("An internal error occured.", ErrorType.ServerError);
         }
 
         return Result<bool>.SuccessResult(true);

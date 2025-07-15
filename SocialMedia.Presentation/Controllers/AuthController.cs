@@ -12,11 +12,13 @@ public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
     private readonly ILogger<AuthController> _logger;
+    private readonly IUserContext _userContext;
     
-    public AuthController(ILogger<AuthController> logger, IAuthService authService)
+    public AuthController(ILogger<AuthController> logger, IAuthService authService, IUserContext userContext)
     {
         _logger = logger;
         _authService = authService;
+        _userContext = userContext;
     }
     
     [HttpPost("register")]
@@ -39,7 +41,10 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<IActionResult> LoginAsync([FromBody] LoginDto loginDto, CancellationToken ct)
     {
-        var result = await _authService.LoginAsync(loginDto, ct);
+        var ip = _userContext.IpAddress;
+        var userAgent = _userContext.UserAgent;
+        
+        var result = await _authService.LoginAsync(loginDto, ip, userAgent, ct);
 
         if (result.Success)
         {
@@ -56,7 +61,10 @@ public class AuthController : ControllerBase
     [HttpPost("refresh-token")]
     public async Task<IActionResult> RefreshTokenAsync([FromBody] RefreshTokenDto dto, CancellationToken ct)
     {
-        var result = await _authService.RefreshTokenAsync(dto.Token, ct);
+        var ip = _userContext.IpAddress;
+        var userAgent = _userContext.UserAgent;
+        
+        var result = await _authService.RefreshTokenAsync(dto.Token, ip, userAgent, ct);
 
         if (result.Success)
         {

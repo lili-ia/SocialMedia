@@ -6,11 +6,11 @@ namespace SocialMedia.Application.Contracts;
 
 public interface IAuthService
 {
-    Task<Result<User>> RegisterAsync(RegisterDto dto, CancellationToken ct);
+    Task<Result<UserDto>> RegisterAsync(RegisterDto dto, CancellationToken ct);
     
-    Task<Result<AuthResponseDto>> LoginAsync(LoginDto dto, CancellationToken ct);
+    Task<Result<AuthResponseDto>> LoginAsync(LoginDto dto, string ipAddress, string deviceInfo, CancellationToken ct);
 
-    Task<Result<AuthResponseDto>> RefreshTokenAsync(string refreshToken, CancellationToken ct);
+    Task<Result<AuthResponseDto>> RefreshTokenAsync(string refreshToken, string ipAddress, string deviceInfo, CancellationToken ct);
 
     Task<Result<bool>> RequestPasswordResetAsync(string email);
 
