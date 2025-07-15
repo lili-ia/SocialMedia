@@ -2,9 +2,9 @@
 
 public class FollowDto
 {
-    public int FollowerId { get; set; }
+    public Guid FollowerId { get; set; }
     
-    public int FolloweeId { get; set; }
+    public Guid FolloweeId { get; set; }
     
     public DateTime FollowedAt { get; set; }
 }
