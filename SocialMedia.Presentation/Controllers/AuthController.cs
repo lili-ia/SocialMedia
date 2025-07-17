@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using SocialMedia.Application.Contracts;
-using SocialMedia.Application.DTOs;
-using SocialMedia.Application.Requests;
+using SocialMedia.Application.DTOs.Auth;
 using SocialMedia.Extensions;
 
 namespace SocialMedia.Controllers;

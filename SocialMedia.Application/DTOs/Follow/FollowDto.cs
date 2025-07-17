@@ -1,4 +1,4 @@
-﻿namespace SocialMedia.Application.DTOs;
+﻿namespace SocialMedia.Application.DTOs.Follow;
 
 public class FollowDto
 {

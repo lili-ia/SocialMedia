@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SocialMedia.ActionFilters;
 using SocialMedia.Application.Contracts;
-using SocialMedia.Application.DTOs;
+using SocialMedia.Application.DTOs.User;
 using SocialMedia.Extensions;
 
 namespace SocialMedia.Controllers;

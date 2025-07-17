@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using SocialMedia.Application.Contracts;
-using SocialMedia.Application.DTOs;
+using SocialMedia.Application.DTOs.Comment;
 using SocialMedia.Extensions;
 
 namespace SocialMedia.Controllers;
@@ -26,7 +26,7 @@ public class CommentsController : ControllerBase
     }
     
     [HttpPost]
-    public async Task<IActionResult> CreateCommentAsync([FromBody] CreateCommentDto dto, Guid postId, CancellationToken cancellationToken)
+    public async Task<IActionResult> CreateCommentAsync([FromBody] CreateCommentRequest request, Guid postId, CancellationToken cancellationToken)
     {
         var userStringId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
@@ -34,13 +34,13 @@ public class CommentsController : ControllerBase
             return Unauthorized("User not found");
         
         Guid.TryParse(userStringId, out var userGuidId);
-        var result = await _commentService.CreateCommentAsync(dto.Text, postId, userGuidId, cancellationToken);
+        var result = await _commentService.CreateCommentAsync(request.Text, postId, userGuidId, cancellationToken);
 
         return result.ToActionResult();
     }
     
     [HttpPut("{commentId}")]
-    public async Task<IActionResult> UpdateCommentAsync([FromBody] CreateCommentDto dto, [FromRoute] Guid commentId, CancellationToken cancellationToken)
+    public async Task<IActionResult> UpdateCommentAsync([FromBody] CreateCommentRequest request, [FromRoute] Guid commentId, CancellationToken cancellationToken)
     {
         var userStringId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
@@ -48,7 +48,7 @@ public class CommentsController : ControllerBase
             return Unauthorized("User not found");
         
         Guid.TryParse(userStringId, out Guid userIntId);
-        var result = await _commentService.UpdateCommentAsync(commentId, dto.Text, userIntId, cancellationToken);
+        var result = await _commentService.UpdateCommentAsync(commentId, request.Text, userIntId, cancellationToken);
 
         return result.ToActionResult();
     }

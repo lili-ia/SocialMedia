@@ -1,4 +1,4 @@
-﻿namespace SocialMedia.Application.DTOs;
+﻿namespace SocialMedia.Application.DTOs.Like;
 
 public class PostLikeDto
 {

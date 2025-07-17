@@ -1,10 +1,10 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace SocialMedia.Application.Requests;
+namespace SocialMedia.Application.DTOs.Auth;
 
 public record class RequestPasswordResetRequest
 {
-    [Required]
+    [Required(ErrorMessage = "Email is required.")]
     [EmailAddress]
     public string Email { get; init; } = null!;
 }

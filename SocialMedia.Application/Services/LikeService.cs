@@ -5,7 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Contracts;
-using SocialMedia.Application.DTOs;
+using SocialMedia.Application.DTOs.Like;
+using SocialMedia.Application.DTOs.User;
 using SocialMedia.Persistence;
 
 namespace SocialMedia.Application.Services;
@@ -202,7 +203,7 @@ public class LikeService : ILikeService
         return Result<int>.SuccessResult(count); 
     }
     
-    public async Task<Result<List<UsernameDto>>> GetUsersWhoLikedPostAsync(Guid postId, CancellationToken ct)
+    public async Task<Result<List<UserPreviewDto>>> GetUsersWhoLikedPostAsync(Guid postId, CancellationToken ct)
     {
         var postExists = await _db.Posts
             .AnyAsync(p => p.Id == postId, ct);
@@ -211,19 +212,19 @@ public class LikeService : ILikeService
         {
             _logger.LogWarning("Post with ID {PostId} not found.", postId);
             
-            return Result<List<UsernameDto>>.FailureResult("Post not found.", ErrorType.NotFound);
+            return Result<List<UserPreviewDto>>.FailureResult("Post not found.", ErrorType.NotFound);
         }
         
         var usernames = await _db.PostLikes
             .AsNoTracking()
             .Where(pl => pl.PostId == postId)
-            .Select(pl => new UsernameDto
+            .Select(pl => new UserPreviewDto
             {
                 UserId = pl.User.Id,
                 Username = pl.User.Username
             })
             .ToListAsync(cancellationToken: ct);
         
-        return Result<List<UsernameDto>>.SuccessResult(usernames);
+        return Result<List<UserPreviewDto>>.SuccessResult(usernames);
     }
 }

@@ -1,4 +1,5 @@
-﻿using SocialMedia.Application.DTOs;
+﻿using SocialMedia.Application.DTOs.Like;
+using SocialMedia.Application.DTOs.User;
 
 namespace SocialMedia.Application.Contracts;
 
@@ -12,5 +13,5 @@ public interface ILikeService
     
     Task<Result<int>> GetPostLikeCountAsync(Guid postId, CancellationToken ct);
     
-    Task<Result<List<UsernameDto>>> GetUsersWhoLikedPostAsync(Guid postId, CancellationToken ct);
+    Task<Result<List<UserPreviewDto>>> GetUsersWhoLikedPostAsync(Guid postId, CancellationToken ct);
 }

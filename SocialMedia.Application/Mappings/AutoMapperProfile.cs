@@ -1,6 +1,13 @@
-﻿using AutoMapper;
+﻿
+
+using AutoMapper;
 using Domain.Entities;
-using SocialMedia.Application.DTOs;
+using SocialMedia.Application.DTOs.Auth;
+using SocialMedia.Application.DTOs.Comment;
+using SocialMedia.Application.DTOs.Follow;
+using SocialMedia.Application.DTOs.Like;
+using SocialMedia.Application.DTOs.Post;
+using SocialMedia.Application.DTOs.User;
 
 namespace SocialMedia.Application.Mappings;
 
@@ -8,11 +15,11 @@ public class AutoMapperProfile : Profile
 {
     public AutoMapperProfile()
     {
-        CreateMap<Post, CreatePostDto>();
+        CreateMap<Post, CreatePostRequest>();
         CreateMap<Post, UpdatePostDto>();
-        CreateMap<CreatePostDto, Post>();
+        CreateMap<CreatePostRequest, Post>();
         CreateMap<UpdatePostDto, Post>();
-        CreateMap<Post, PostFeedDto>();
+        CreateMap<Post, PostDto>();
         
         CreateMap<UpdateUserDto, User>();
         CreateMap<User, PrivateUserProfileDto>();
@@ -21,7 +28,7 @@ public class AutoMapperProfile : Profile
         
         CreateMap<PostLike, PostLikeDto>();
         CreateMap<Follow, FollowDto>();
-        CreateMap<User, UsernameDto>();
+        CreateMap<User, UserPreviewDto>();
         
         CreateMap<Comment, CommentDto>();
     }

@@ -4,7 +4,8 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Contracts;
-using SocialMedia.Application.DTOs;
+using SocialMedia.Application.DTOs.Follow;
+using SocialMedia.Application.DTOs.User;
 using SocialMedia.Persistence;
 
 namespace SocialMedia.Application.Services;
@@ -127,12 +128,12 @@ public class FollowService : IFollowService
         throw new NotImplementedException();
     }
 
-    public Task<IEnumerable<UserDto>> GetFollowersAsync(Guid userId, CancellationToken ct)
+    public Task<IEnumerable<UserPreviewDto>> GetFollowersAsync(Guid userId, CancellationToken ct)
     {
         throw new NotImplementedException();
     }
 
-    public Task<IEnumerable<UserDto>> GetFollowingAsync(Guid userId, CancellationToken ct)
+    public Task<IEnumerable<UserPreviewDto>> GetFollowingAsync(Guid userId, CancellationToken ct)
     {
         throw new NotImplementedException();
     }

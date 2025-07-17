@@ -1,12 +1,10 @@
-﻿using Domain.Entities;
-using SocialMedia.Application.DTOs;
-using SocialMedia.Application.Requests;
+﻿using SocialMedia.Application.DTOs.Auth;
 
 namespace SocialMedia.Application.Contracts;
 
 public interface IAuthService
 {
-    Task<Result<UserDto>> RegisterAsync(RegisterDto dto, CancellationToken ct);
+    Task<Result<RegisterResponse>> RegisterAsync(RegisterDto dto, CancellationToken ct);
     
     Task<Result<AuthResponseDto>> LoginAsync(LoginDto dto, string ipAddress, string deviceInfo, CancellationToken ct);
 

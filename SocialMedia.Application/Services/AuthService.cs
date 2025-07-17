@@ -4,8 +4,7 @@ using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Contracts;
-using SocialMedia.Application.DTOs;
-using SocialMedia.Application.Requests;
+using SocialMedia.Application.DTOs.Auth;
 using SocialMedia.Persistence;
 
 namespace SocialMedia.Application.Services;
@@ -32,7 +31,7 @@ public class AuthService : IAuthService
         _emailSender = sender;
     }
     
-    public async Task<Result<UserDto>> RegisterAsync(RegisterDto registerDto, CancellationToken ct)
+    public async Task<Result<RegisterResponse>> RegisterAsync(RegisterDto registerDto, CancellationToken ct)
     {
         _logger.LogInformation("Attempting to register a user with email {Email}.", registerDto.Email);
         
@@ -42,7 +41,7 @@ public class AuthService : IAuthService
         {
             _logger.LogWarning("User with email {Email} already exists.", registerDto.Email);
             
-            return Result<UserDto>.FailureResult($"User with email {registerDto.Email} already exists", ErrorType.Validation);
+            return Result<RegisterResponse>.FailureResult($"User with email {registerDto.Email} already exists", ErrorType.Validation);
         }
 
         var newUser = new User
@@ -62,17 +61,17 @@ public class AuthService : IAuthService
         {
             _logger.LogError(e, "Error registering user with email {Email}.", registerDto.Email);
             
-            return Result<UserDto>.FailureResult("An internal error occured.", ErrorType.ServerError);
+            return Result<RegisterResponse>.FailureResult("An internal error occured.", ErrorType.ServerError);
         }
 
-        var newUserDto = new UserDto
+        var newUserDto = new RegisterResponse
         {
             Id = newUser.Id,
             Username = newUser.Username,
             Email = registerDto.Email, 
         };
         
-        return Result<UserDto>.SuccessResult(newUserDto);
+        return Result<RegisterResponse>.SuccessResult(newUserDto);
     }
 
     public async Task<Result<AuthResponseDto>> LoginAsync(LoginDto loginDto, string ipAddress, string deviceInfo, CancellationToken ct)

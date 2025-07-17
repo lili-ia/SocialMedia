@@ -1,4 +1,5 @@
-﻿using SocialMedia.Application.DTOs;
+﻿using SocialMedia.Application.DTOs.Follow;
+using SocialMedia.Application.DTOs.User;
 
 namespace SocialMedia.Application.Contracts;
 
@@ -10,9 +11,9 @@ public interface IFollowService
     
     Task<Result<bool>> IsFollowingAsync(Guid followerId, Guid followeeId, CancellationToken ct);
     
-    Task<IEnumerable<UserDto>> GetFollowersAsync(Guid userId, CancellationToken ct);
+    Task<IEnumerable<UserPreviewDto>> GetFollowersAsync(Guid userId, CancellationToken ct);
     
-    Task<IEnumerable<UserDto>> GetFollowingAsync(Guid userId, CancellationToken ct);
+    Task<IEnumerable<UserPreviewDto>> GetFollowingAsync(Guid userId, CancellationToken ct);
     
     Task<Result<int>> GetFollowersCountAsync(Guid userId, CancellationToken ct);
     

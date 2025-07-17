@@ -1,5 +1,4 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 using Domain.Enums;
 
 namespace Domain.Entities;
@@ -26,13 +25,16 @@ public class User : BaseEntity
     [StringLength(255)]
     public string? ProfilePicUrl { get; set; }
 
-    [StringLength(500)]
+    [StringLength(300)]
     public string? Bio { get; set; }
 
     [Required]
     public UserStatus Status { get; set; } = UserStatus.Pending;
 
     public DateTime? LastSeen { get; set; }
+    
+    [Required]
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     [Required]
     public UserRole UserRole { get; set; } = UserRole.User;

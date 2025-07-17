@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SocialMedia.Application.Contracts;
-using SocialMedia.Application.DTOs;
+using SocialMedia.Application.DTOs.Post;
 using SocialMedia.Persistence;
 
 namespace SocialMedia.Application.Services;
@@ -16,7 +16,7 @@ public class FeedService : IFeedService
         _db = db;
     }
 
-    public async Task<List<PostFeedDto>> GetFeedAsync(
+    public async Task<List<PostDto>> GetFeedAsync(
         Guid userId, 
         int page = 1, 
         int pageSize = 20,
@@ -41,7 +41,7 @@ public class FeedService : IFeedService
         return combined;
     }
 
-    public async Task<List<PostFeedDto>> GetRecentPostsFromUsersAsync(
+    public async Task<List<PostDto>> GetRecentPostsFromUsersAsync(
         List<Guid> followsIds, 
         int fetchCount, 
         Guid forUserId,
@@ -55,16 +55,17 @@ public class FeedService : IFeedService
 
         var posts = await _db.Posts
             .AsNoTracking()
-            .Where(p => followsIds.Contains(p.UserId) && !viewedPostsIds.Contains(p.Id))
+            .Where(p => followsIds.Contains(p.UserId) && !viewedPostsIds.Contains(p.Id) && p.IsActive)
             .OrderByDescending(p => p.CreatedAt)
             .Take(fetchCount)
-            .Select(post => new PostFeedDto
+            .Select(post => new PostDto
             {
                 PostId = post.Id,
                 Text = post.Text,
                 UserId = post.User.Id,
                 Username = post.User.Username,
                 CreatedAt = post.CreatedAt,
+                UpdatedAt = post.UpdatedAt,
                 LikesCount = post.PostLikes.Count,
                 CommentsCount = post.Comments.Count
             })
@@ -73,7 +74,7 @@ public class FeedService : IFeedService
         return posts;
     }
 
-    public async Task<List<PostFeedDto>> GetMostPopularPostsSinceDateAsync(
+    public async Task<List<PostDto>> GetMostPopularPostsSinceDateAsync(
         List<Guid> excludeAuthors, 
         DateTime since, 
         int fetchCount, 
@@ -88,17 +89,18 @@ public class FeedService : IFeedService
 
         var posts = await _db.Posts
             .AsNoTracking()
-            .Where(p => !excludeAuthors.Contains(p.UserId) && !viewedPostsIds.Contains(p.Id))
+            .Where(p => !excludeAuthors.Contains(p.UserId) && !viewedPostsIds.Contains(p.Id) && p.IsActive)
             .OrderByDescending(p => p.PostLikes.Count)
             .ThenByDescending(p => p.CreatedAt)
             .Take(fetchCount)
-            .Select(post => new PostFeedDto
+            .Select(post => new PostDto
             {
                 PostId = post.Id,
                 Text = post.Text,
                 UserId = post.User.Id,
                 Username = post.User.Username,
                 CreatedAt = post.CreatedAt,
+                UpdatedAt = post.UpdatedAt,
                 LikesCount = post.PostLikes.Count,
                 CommentsCount = post.Comments.Count
             })
