@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using AutoMapper.QueryableExtensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Contracts;
@@ -29,7 +30,8 @@ public class UserService : IUserService
 
     public async Task<Result<PrivateUserProfileDto>> UpdateProfileAsync(UpdateUserDto dto, Guid userId, CancellationToken ct)
     {
-        var user = await _db.Users.FindAsync(userId, ct);
+        var user = await _db.Users
+            .FindAsync([userId], ct);
 
         if (user == null)
         {
@@ -40,51 +42,54 @@ public class UserService : IUserService
 
         try
         {
-            _mapper.Map(dto, user);
+            user.Username = dto.Username;
+            user.BirthDate = dto.BirthDate;
+            user.Bio = dto.Bio;
+            
             await _db.SaveChangesAsync(ct);
+            
+            _logger.LogInformation("User profile with id {UserId} was successfully updated.", userId);
+            
+            var updatedDto = _mapper.Map<PrivateUserProfileDto>(user);
+        
+            return Result<PrivateUserProfileDto>.SuccessResult(updatedDto);
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "An error occurred in {MethodName}.", nameof(UpdateProfileAsync));
+            _logger.LogError(e, "An error occurred while user with id {UserId} trying to update own profile.", userId);
             
-            return Result<PrivateUserProfileDto>.FailureResult(
-                "An error occured while updating user info.", ErrorType.ServerError);
+            return Result<PrivateUserProfileDto>.FailureResult("An internal error occured.", ErrorType.ServerError);
         }
-
-        var updatedDto = _mapper.Map<PrivateUserProfileDto>(user);
-        
-        return Result<PrivateUserProfileDto>.SuccessResult(updatedDto);
     }
 
-    public async Task<Result<PrivateUserProfileDto>> GetOwnProfileInfoAsync(Guid userId, CancellationToken cancellationToken)
+    public async Task<Result<PrivateUserProfileDto>> GetOwnProfileInfoAsync(Guid userId, CancellationToken ct)
     {
-        var user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+        var user = await _db.Users
+            .AsNoTracking()
+            .Where(u => u.Id == userId)
+            .ProjectTo<PrivateUserProfileDto>(_mapper.ConfigurationProvider)
+            .FirstOrDefaultAsync(ct);
+
+        if (user != null)
+        {
+            return Result<PrivateUserProfileDto>.SuccessResult(user);
+        }
+        
+        _logger.LogWarning("User with ID {UserId} not found.", userId);
+            
+        return Result<PrivateUserProfileDto>.FailureResult("User not found.", ErrorType.NotFound);
+    }
+
+    public async Task<Result<PrivateUserProfileDto>> UpdateProfilePicAsync(Guid userId, Stream fileStream, string fileName, CancellationToken ct)
+    {
+        var user = await _db.Users
+            .FindAsync([userId], ct);
         
         if (user == null)
         {
             _logger.LogWarning("User with ID {UserId} not found.", userId);
             
-            return Result<PrivateUserProfileDto>.FailureResult("User not found", ErrorType.NotFound);
-        }
-
-        var userDto = _mapper.Map<PrivateUserProfileDto>(user);
-        
-        return Result<PrivateUserProfileDto>.SuccessResult(userDto);
-    }
-
-    public async Task<Result<PrivateUserProfileDto>> UpdateProfilePicAsync(
-        Guid userId, 
-        Stream fileStream,
-        string fileName, 
-        CancellationToken ct)
-    {
-        var user = await _db.Users.FindAsync(userId, ct);
-        
-        if (user == null)
-        {
-            _logger.LogWarning("User with ID {UserId} not found.", userId);
-            
-            return Result<PrivateUserProfileDto>.FailureResult("User not found", ErrorType.NotFound);
+            return Result<PrivateUserProfileDto>.FailureResult("User not found.", ErrorType.NotFound);
         }
         
         try
@@ -97,37 +102,41 @@ public class UserService : IUserService
                 await _fileStorage.DeleteFileAsync(oldFileName, ct);
             }
 
-            var blobUrl = $"{_fileStorage.BaseUrl}/{fileName}";
+            var blobUrl = $"{Guid.NewGuid()}{_fileStorage.BaseUrl}/{fileName}";
             user.ProfilePicUrl = blobUrl;
             
             await _db.SaveChangesAsync(ct);
+            
+            _logger.LogInformation("User with id {UserId} successfully updated own profile pic.", userId);
+            
             var dto = _mapper.Map<PrivateUserProfileDto>(user);
 
             return Result<PrivateUserProfileDto>.SuccessResult(dto);
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "An error occurred in {MethodName}.", nameof(UpdateProfilePicAsync));
+            _logger.LogError(e, "An error occurred while user with id {UserId} trying to update own profile pic.", userId);
             
-            return Result<PrivateUserProfileDto>.FailureResult(
-                $"An error occured while updating user profile pic.", ErrorType.ServerError);
+            return Result<PrivateUserProfileDto>.FailureResult("An internal error occured.", ErrorType.ServerError);
         }
     }
 
     public async Task<Result<PublicUserProfileDto>> GetPublicUserInfoAsync(Guid userId, CancellationToken ct)
     {
-        var user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId, ct);
+        var user = await _db.Users
+            .AsNoTracking()
+            .Where(u => u.Id == userId)
+            .ProjectTo<PublicUserProfileDto>(_mapper.ConfigurationProvider)
+            .FirstOrDefaultAsync(ct);
 
-        if (user == null)
+        if (user != null)
         {
-            _logger.LogWarning("User with ID {UserId} not found.", userId);
-            
-            return Result<PublicUserProfileDto>.FailureResult("User not found", ErrorType.NotFound);
+            return Result<PublicUserProfileDto>.SuccessResult(user);
         }
-
-        var dto = _mapper.Map<PublicUserProfileDto>(user);
         
-        return Result<PublicUserProfileDto>.SuccessResult(dto);
+        _logger.LogWarning("User with ID {UserId} not found.", userId);
+            
+        return Result<PublicUserProfileDto>.FailureResult("User not found.", ErrorType.NotFound);
     }
 
     public async Task<Result<bool>> DeleteUserAsync(Guid userId, CancellationToken ct)
@@ -144,7 +153,8 @@ public class UserService : IUserService
         if (user == null)
         {
             _logger.LogWarning("User with ID {UserId} not found.", userId);
-            return Result<bool>.FailureResult("User not found", ErrorType.NotFound);
+            
+            return Result<bool>.FailureResult("User not found.", ErrorType.NotFound);
         }
 
         var profilePicFileName = Path.GetFileName(user.ProfilePicUrl);
@@ -165,46 +175,51 @@ public class UserService : IUserService
 
             await transaction.CommitAsync(ct);
             
-            if (!string.IsNullOrWhiteSpace(profilePicFileName))
+            _logger.LogInformation("User with id {UserId} was successfully deleted.", userId);
+            
+            try
             {
                 await _fileStorage.DeleteFileAsync(profilePicFileName, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to delete profile pic file for user {UserId}", userId);
             }
 
             return Result<bool>.SuccessResult(true);
         }
-        catch (Exception ex)
+        catch (Exception e)
         {
             await transaction.RollbackAsync(ct);
             
-            _logger.LogError(ex, "Error occurred while deleting user {UserId}", userId);
-            return Result<bool>.FailureResult("An error occurred while deleting the user.", ErrorType.ServerError);
+            _logger.LogError(e, "An error occurred while trying to delete user with id {UserId}.", userId);
+            
+            return Result<bool>.FailureResult("An internal error occured.", ErrorType.ServerError);
         }
     }
 
-    public async Task<Result<PagedResult<PublicUserProfileDto>>> SearchUsersAsync(
-        string query, 
-        int pageNumber = 1, 
-        int pageSize = 20, 
-        CancellationToken ct = default)
+    public async Task<Result<PagedResult<PublicUserProfileDto>>> SearchUsersAsync(string query, int pageNumber = 1, int pageSize = 20, CancellationToken ct = default)
     {
         if (pageNumber < 1) pageNumber = 1;
         if (pageSize < 1) pageSize = 20;
         
         var skip = (pageNumber - 1) * pageSize;
         
-        var queryable = _db.Users.Where(u => u.Username.Contains(query));
+        var queryable = _db.Users
+            .Where(u => u.Username.ToLower().Contains(query.ToLower()));
         var totalCount = await queryable.CountAsync(ct);
 
-        var users = await queryable.Skip(skip)
+        var users = await queryable
+            .ProjectTo<PublicUserProfileDto>(_mapper.ConfigurationProvider)
+            .Skip(skip)
             .Take(pageSize)
             .ToListAsync(ct);
 
-        var dtos = _mapper.Map<List<PublicUserProfileDto>>(users);
 
         var pagedResult = new PagedResult<PublicUserProfileDto>
         {
             TotalCount = totalCount,
-            Items = dtos
+            Items = users
         };
         
         return Result<PagedResult<PublicUserProfileDto>>.SuccessResult(pagedResult);
