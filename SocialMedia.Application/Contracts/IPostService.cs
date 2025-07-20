@@ -16,7 +16,7 @@ public interface IPostService
     
     Task<Result<bool>> DeletePostAsync(Guid postId, Guid userId, CancellationToken ct);
 
-    Task<Result<bool>> ChangePostActiveStatusAsync(Guid postId, bool activeStatus, CancellationToken ct);
+    Task<Result<bool>> ChangePostActiveStatusAsync(Guid userId, Guid postId, bool activeStatus, CancellationToken ct);
 
     Task<Result<List<PostDto>>> GetPostsOfUsernameAsync(string username, int page = 1, int pageSize = 20, CancellationToken ct = default);
 }

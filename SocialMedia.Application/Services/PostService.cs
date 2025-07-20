@@ -1,9 +1,10 @@
 ﻿using AutoMapper;
+using AutoMapper.QueryableExtensions;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Contracts;
-using SocialMedia.Application.DTOs;
+using SocialMedia.Application.DTOs.Post;
 using SocialMedia.Persistence;
 
 namespace SocialMedia.Application.Services;
@@ -20,168 +21,235 @@ public class PostService : IPostService
         _logger = logger;
         _mapper = mapper;
     }
-    
-    public async Task<Result<Post>> CreatePostAsync(CreatePostDto postDto, Guid userId, CancellationToken cancellationToken)
+    //todo: allow media in posts
+    public async Task<Result<Guid>> CreatePostAsync(CreatePostRequest request, Guid userId, CancellationToken ct)
     {
-        var user = await _db.Users.FindAsync(new object?[] { userId }, cancellationToken: cancellationToken);
+        _logger.LogInformation("User with id {UserId} attempts to create a new post.", userId);
+        
+        var user = await _db.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == userId, ct);
         
         if (user == null)
         {
-            return Result<Post>.FailureResult(
-                "Couldn't find a user with such id.", ErrorType.NotFound);
+            _logger.LogWarning("User with ID {UserId} not found.", userId);
+            
+            return Result<Guid>.FailureResult("User not found.", ErrorType.NotFound);
         }
 
-        var newPost = _mapper.Map<Post>(postDto);
-        newPost.UserId = userId;
-        newPost.CreatedAt = DateTime.UtcNow;
+        var newPost = new Post
+        {
+            Id = Guid.NewGuid(),
+            Text = request.Text,
+            UserId = userId
+        };
         
         try
         {
             _db.Posts.Add(newPost);
-            await _db.SaveChangesAsync(cancellationToken);
+            await _db.SaveChangesAsync(ct);
+            _logger.LogInformation("User with id {UserId} successfully created new post with id {PostId}.", userId, newPost.Id);
+            
+            return Result<Guid>.SuccessResult(newPost.Id);
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "An error occurred while creating a post.");
+            _logger.LogError(e, "An error occurred while {UserId} trying to create a new post.", userId);
             
-            return Result<Post>.FailureResult(
-                $"An error occurred while creating this post: {e.Message}", ErrorType.ServerError);
+            return Result<Guid>.FailureResult("An internal error occured.", ErrorType.ServerError);
         }
-
-        return Result<Post>.SuccessResult(newPost);
     }
     
-    public async Task<Result<Post>> GetPostByIdAsync(Guid postId, CancellationToken cancellationToken)
+    public async Task<Result<PostDto>> GetPostByIdAsync(Guid postId, Guid forUserId, CancellationToken ct)
     {
-        try
+        var post = await _db.Posts
+            .AsNoTracking()
+            .Where(post => post.Id == postId)  
+            .ProjectTo<PostDto>(_mapper.ConfigurationProvider)
+            .FirstOrDefaultAsync(ct); 
+        
+        if (post == null)
         {
-            var post = await _db.Posts.FindAsync(new object?[] { postId }, cancellationToken: cancellationToken);
+            _logger.LogWarning("Post with ID {PostId} not found.", postId);
             
-            return post != null 
-                ? Result<Post>.SuccessResult(post) 
-                : Result<Post>.FailureResult(
-                    $"Couldn't find a post with id {postId}.", ErrorType.NotFound);
+            return Result<PostDto>.FailureResult("Post not found.", ErrorType.NotFound);
         }
-        catch (Exception e)
+
+        if (post.IsActive || forUserId == post.UserId)
         {
-            _logger.LogError(e, "An error occurred while retrieving a post.");
-            
-            return Result<Post>.FailureResult(
-                $"An error occurred while retrieving post with id {postId}: {e.Message}", ErrorType.ServerError);
+            return Result<PostDto>.SuccessResult(post);
         }
+        
+        _logger.LogWarning("Unauthorized post retrieval attempt by user {UserId} on post {PostId}.", forUserId, postId);
+        
+        return Result<PostDto>.FailureResult("Access forbidden.", ErrorType.Forbidden);
     }
 
-    public async Task<Result<List<Post>>> GetPostsByUserAndActiveStatusAsync(Guid userId, bool isActive, CancellationToken cancellationToken)
+    public async Task<Result<List<PostDto>>> GetPublicPostsByUserId(Guid userId, CancellationToken ct)
     {
-        try
+        var userExists = await _db.Users
+            .AnyAsync(u => u.Id == userId, ct);
+
+        if (!userExists)
         {
-            var posts = await _db.Posts
-                .Where(p => p.UserId == userId && p.IsActive == isActive)
-                .ToListAsync(cancellationToken: cancellationToken);
+            _logger.LogWarning("User with ID {UserId} not found.", userId);
             
-            return Result<List<Post>>.SuccessResult(posts);
+            return Result<List<PostDto>>.FailureResult("User not found.", ErrorType.NotFound);
         }
-        catch (Exception e)
-        {
-            _logger.LogError(
-                $"An error occurred while retrieving {(isActive ? "public" : "archived")} posts : {e.Message}");
-            
-            return Result<List<Post>>.FailureResult(
-                $"An error occurred while retrieving user {userId}'s {(isActive ? "public" : "archived")} posts.",
-                ErrorType.ServerError);
-        }
+        
+        var posts = await _db.Posts
+            .AsNoTracking()
+            .Where(p => p.UserId == userId && p.IsActive)
+            .ProjectTo<PostDto>(_mapper.ConfigurationProvider)
+            .ToListAsync(ct);
+        
+        return Result<List<PostDto>>.SuccessResult(posts);
     }
 
-    public async Task<Result<Post>> UpdatePostAsync(UpdatePostDto postDto, Guid postId, Guid userId, CancellationToken cancellationToken)
+    public async Task<Result<List<PostDto>>> GetMyInactivePosts(Guid userId, CancellationToken ct)
     {
+        var userExists = await _db.Users
+            .AnyAsync(u => u.Id == userId, ct);
+
+        if (!userExists)
+        {
+            _logger.LogWarning("User with ID {UserId} not found.", userId);
+            
+            return Result<List<PostDto>>.FailureResult("User not found.", ErrorType.NotFound);
+        }
+        
+        var posts = await _db.Posts
+            .AsNoTracking()
+            .ProjectTo<PostDto>(_mapper.ConfigurationProvider)
+            .Where(p => p.UserId == userId && !p.IsActive)
+            .ToListAsync(ct);
+        
+        return Result<List<PostDto>>.SuccessResult(posts);
+    }
+    
+    public async Task<Result<PostDto>> UpdatePostAsync(UpdatePostDto updatePostDto, Guid postId, Guid userId, CancellationToken ct)
+    {
+        var post = await _db.Posts
+            .Include(p => p.User)
+            .Include(p => p.Comments)
+            .Include(p => p.PostLikes)
+            .FirstOrDefaultAsync(p => p.Id == postId, ct);
+        
+        if (post == null)
+        {
+            _logger.LogWarning("Post with ID {PostId} not found.", postId);
+            
+            return Result<PostDto>.FailureResult("Post not found.", ErrorType.NotFound);
+        }
+
+        if (post.UserId != userId)
+        {
+            _logger.LogWarning("Unauthorized update attempt by user {UserId} on post {PostId}.", userId, postId);
+            
+            return Result<PostDto>.FailureResult("You are no allowed to update this post.", ErrorType.Forbidden);
+        }
+
+        post.Text = updatePostDto.Text;
+        post.UpdatedAt = DateTime.UtcNow;
+        
         try
         {
-            var post = await _db.Posts.FindAsync(new object?[] { postId }, cancellationToken: cancellationToken);
-
-            if (post == null)
+            await _db.SaveChangesAsync(ct);
+            _logger.LogInformation("User with id {UserId} successfully updated post with id {PostId}.", userId, post.Id);
+            
+            var postDto = new PostDto
             {
-                return Result<Post>.FailureResult("Post not found.", ErrorType.NotFound);
-            }
+                PostId = post.Id,
+                Text = post.Text,
+                UserId = post.UserId,
+                Username = post.User.Username,
+                CreatedAt = post.CreatedAt,
+                UpdatedAt = post.UpdatedAt,
+                IsActive = post.IsActive,
+                CommentsCount = post.Comments.Count,
+                LikesCount = post.PostLikes.Count
+            };
             
-            if (post.UserId != userId)
-                return Result<Post>.FailureResult(
-                    $"Not enough permissions.", ErrorType.Forbidden);
-            
-            _mapper.Map(postDto, post); 
-            post.UpdatedAt = DateTime.UtcNow;
-            await _db.SaveChangesAsync(cancellationToken);
-            
-            return Result<Post>.SuccessResult(post);
+            return Result<PostDto>.SuccessResult(postDto);
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "An error occurred while updating a post.");
+            _logger.LogError(e, "An error occurred while user with id {UserId} trying to update a post with id {PostId}.", userId, post.Id);
             
-            return Result<Post>.FailureResult(
-                $"An error occurred while retrieving post with id {postId}: {e.Message}",
-                ErrorType.ServerError);
+            return Result<PostDto>.FailureResult("An internal error occured.", ErrorType.ServerError);
         }
     }
 
-    public async Task<Result<bool>> DeletePostAsync(Guid postId, Guid userId, CancellationToken cancellationToken)
+    public async Task<Result<bool>> DeletePostAsync(Guid postId, Guid userId, CancellationToken ct)
     {
+        var post = await _db.Posts.FindAsync([postId], ct);
+            
+        if (post == null)
+        {
+            _logger.LogWarning("Post with ID {PostId} not found.", postId);
+            
+            return Result<bool>.FailureResult("Post not found.", ErrorType.NotFound);
+        }
+
+        if (post.UserId != userId)
+        {
+            _logger.LogWarning("Unauthorized update attempt by user {UserId} on post {PostId}.", userId, postId);
+            
+            return Result<bool>.FailureResult("You are no allowed to update this post.", ErrorType.Forbidden);
+        }
+        
         try
         {
-            var post = await _db.Posts.FindAsync(new object?[] { postId }, cancellationToken: cancellationToken);
-            
-            if (post == null) 
-                return Result<bool>.FailureResult(
-                    $"There is no posts with such id", ErrorType.NotFound);
-            
-            if (post.UserId != userId)
-                return Result<bool>.FailureResult(
-                    $"Not enough permissions.", ErrorType.Forbidden);
-            
             _db.Posts.Remove(post);
-            await _db.SaveChangesAsync(cancellationToken);
+            await _db.SaveChangesAsync(ct);
+            _logger.LogInformation("User with id {UserId} successfully deleted post with id {PostId}.", userId, post.Id);
             
             return Result<bool>.SuccessResult(true);
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "An error occurred while deleting a post.");
-
-            return Result<bool>.FailureResult(
-                $"An error occurred while deleting post with id {postId}: {e.Message}",
-                ErrorType.ServerError);
+            _logger.LogError(e, "An error occurred while user with id {UserId} trying to delete a post with id {PostId}.", userId, post.Id);
+            
+            return Result<bool>.FailureResult("An internal error occured.", ErrorType.ServerError);
         }
     }
     
-    public async Task<Result<Post>> ChangePostActiveStatusAsync(Guid postId, bool activeStatus, CancellationToken cancellationToken)
+    public async Task<Result<bool>> ChangePostActiveStatusAsync(Guid userId, Guid postId, bool activeStatus, CancellationToken ct)
     {
+        var post = await _db.Posts.FindAsync([postId], ct);
+            
+        if (post == null)
+        {
+            _logger.LogWarning("Post with ID {PostId} not found.", postId);
+            
+            return Result<bool>.FailureResult("Post not found.", ErrorType.NotFound);
+        }
+
+        if (post.UserId != userId)
+        {
+            _logger.LogWarning("Unauthorized update attempt by user {UserId} on post {PostId}.", userId, postId);
+            
+            return Result<bool>.FailureResult("You are no allowed to update this post.", ErrorType.Forbidden);
+        }
+        
+        post.IsActive = activeStatus;
+        
         try
         {
-            var post = await _db.Posts.FindAsync(new object?[] { postId }, cancellationToken: cancellationToken);
-
-            if (post == null)
-                return Result<Post>.FailureResult(
-                    $"There is no posts with such id", ErrorType.NotFound);
-
-            post.IsActive = activeStatus;
-            await _db.SaveChangesAsync(cancellationToken);
+            await _db.SaveChangesAsync(ct);
+            _logger.LogInformation("User with id {UserId} successfully changed post {PostId} active status to {PostStatus}.", userId, post.Id, post.IsActive);
             
-            return Result<Post>.SuccessResult(post);
+            return Result<bool>.SuccessResult(true);
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "An error occurred while deleting a post.");
-
-            return Result<Post>.FailureResult(
-                $"An error occurred while updating post with id {postId}: {e.Message}",
-                ErrorType.ServerError);
+            _logger.LogError(e, "An error occurred while user with id {UserId} trying to update active status of a post with id {PostId}.", userId, post.Id);
+            
+            return Result<bool>.FailureResult("An internal error occured.", ErrorType.ServerError);
         }
     }
     
-    public async Task<Result<List<Post>>> GetPostsOfUsernameAsync(
-        string username, 
-        int page = 1, 
-        int pageSize = 20, 
-        CancellationToken cancellationToken = default)
+    public async Task<Result<List<PostDto>>> GetPostsOfUsernameAsync(string username, int page = 1, int pageSize = 20, CancellationToken ct = default)
     {
         if (page < 1) page = 1;
         if (pageSize < 1) pageSize = 20;
@@ -189,21 +257,23 @@ public class PostService : IPostService
         var skip = (page - 1) * pageSize;
 
         var userExists = await _db.Users
-            .AnyAsync(u => u.Username == username, cancellationToken);
+            .AnyAsync(u => u.Username == username, ct);
 
         if (!userExists)
         {
-            return Result<List<Post>>.FailureResult(
-                "Couldn't find a user with such username.", ErrorType.NotFound);
+            _logger.LogWarning("User with username {Username} not found.", username);
+            
+            return Result<List<PostDto>>.FailureResult("User not found.", ErrorType.NotFound);
         }
 
         var posts = await _db.Posts
-            .Where(p => p.User.Username == username) 
+            .Where(p => p.User.Username == username)
+            .ProjectTo<PostDto>(_mapper.ConfigurationProvider)
             .OrderByDescending(p => p.CreatedAt)     
             .Skip(skip)
             .Take(pageSize)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
-        return Result<List<Post>>.SuccessResult(posts);
+        return Result<List<PostDto>>.SuccessResult(posts);
     }
 }
