@@ -39,6 +39,8 @@ public partial class SocialMediaContext : DbContext
     
     public virtual DbSet<Notification> Notifications { get; set; }
     
+    public virtual DbSet<Block> Blocks { get; set; }
+    
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<User>(entity =>
