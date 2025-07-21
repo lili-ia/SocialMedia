@@ -56,4 +56,6 @@ public class User : BaseEntity
     public virtual ICollection<Notification> Notifications { get; set; } = new List<Notification>();
     
     public virtual ICollection<PostView> PostViews { get; set; } = new List<PostView>();
+    
+    public virtual ICollection<Block> BlockedUsers { get; set; } = new List<Block>();
 }

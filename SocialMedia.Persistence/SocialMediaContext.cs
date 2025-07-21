@@ -177,6 +177,21 @@ public partial class SocialMediaContext : DbContext
                 .OnDelete(DeleteBehavior.Restrict);
         });
         
+        modelBuilder.Entity<Block>(entity =>
+        {
+            entity.HasKey(b => new { b.BlockerId, b.BlockedId });
+            
+            entity.HasOne(b => b.Blocker)
+                .WithMany(u => u.BlockedUsers)
+                .HasForeignKey(b => b.BlockerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(b => b.Blocked)
+                .WithMany()
+                .HasForeignKey(b => b.BlockedId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        
         modelBuilder.Entity<Post>(entity =>
         {
             // Post - Comments (one-to-many)
