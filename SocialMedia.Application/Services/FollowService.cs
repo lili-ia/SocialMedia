@@ -1,4 +1,6 @@
-﻿using Domain.Entities;
+﻿using AutoMapper;
+using AutoMapper.QueryableExtensions;
+using Domain.Entities;
 using Domain.Events;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -15,15 +17,18 @@ public class FollowService : IFollowService
     private readonly SocialMediaContext _db;
     private readonly ILogger<FollowService> _logger;
     private readonly IEventProducer _eventProducer;
+    private readonly IMapper _mapper;
 
     public FollowService(
         SocialMediaContext db, 
         ILogger<FollowService> logger, 
-        IEventProducer eventProducer)
+        IEventProducer eventProducer, 
+        IMapper mapper)
     {
         _db = db;
         _logger = logger;
         _eventProducer = eventProducer;
+        _mapper = mapper;
     }
 
     public async Task<Result<FollowDto>> FollowAsync(Guid followerId, Guid followeeId, CancellationToken ct)
@@ -118,33 +123,83 @@ public class FollowService : IFollowService
         return Result<FollowDto>.SuccessResult(followDto);
     }
 
-    public Task<Result<bool>> UnfollowUserAsync(Guid followerId, Guid followeeId, CancellationToken ct)
+    public async Task<Result<bool>> UnfollowUserAsync(Guid followerId, Guid followeeId, CancellationToken ct)
     {
-        throw new NotImplementedException();
+        var follow = await _db.Follows
+            .FirstOrDefaultAsync(f => f.FollowerId == followerId && f.FolloweeId == followeeId, ct);
+
+        if (follow == null)
+        {
+            _logger.LogWarning("User with id {FollowerId} doesn't follow user with id {FolloweeId} or one of them doesn't exist.", followerId, followeeId);
+            
+            return Result<bool>.FailureResult("Follow does not exist.", ErrorType.Forbidden);
+        }
+
+        try
+        {
+            _db.Follows.Remove(follow);
+            await _db.SaveChangesAsync(ct);
+            
+            _logger.LogInformation("User with id {FollowerId} successfully unfollowed user with id {FolloweeId}.", followeeId, followeeId);
+            
+            return Result<bool>.SuccessResult(true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An error occurred while {FollowerId} trying to unfollow {FolloweeId}", followerId, followeeId);
+            
+            return Result<bool>.FailureResult("An internal error occured.", ErrorType.ServerError);
+        }
     }
 
-    public Task<Result<bool>> IsFollowingAsync(Guid followerId, Guid followeeId, CancellationToken ct)
+    public async Task<Result<bool>> IsFollowingAsync(Guid followerId, Guid followeeId, CancellationToken ct)
     {
-        throw new NotImplementedException();
+        var isFollowing =  await _db.Follows
+            .AnyAsync(f => f.FollowerId == followerId && f.FolloweeId == followeeId, ct);
+        
+        return Result<bool>.SuccessResult(isFollowing);
     }
 
-    public Task<IEnumerable<UserPreviewDto>> GetFollowersAsync(Guid userId, CancellationToken ct)
+    public async Task<Result<List<UserPreviewDto>>> GetFollowersAsync(Guid userId, CancellationToken ct)
     {
-        throw new NotImplementedException();
+        var userExists = await UserExistsAsync(userId, ct);
+
+        if (!userExists)
+        {
+            _logger.LogWarning("User with ID {UserId} not found.", userId);
+            
+            return Result<List<UserPreviewDto>>.FailureResult("User not found.", ErrorType.NotFound);
+        }
+
+        var followers = await _db.Follows
+            .Where(f => f.FolloweeId == userId)
+            .ProjectTo<UserPreviewDto>(_mapper.ConfigurationProvider)
+            .ToListAsync(ct);
+        
+        return Result<List<UserPreviewDto>>.SuccessResult(followers);
     }
 
-    public Task<IEnumerable<UserPreviewDto>> GetFollowingAsync(Guid userId, CancellationToken ct)
+    public async Task<Result<List<UserPreviewDto>>> GetFolloweesAsync(Guid userId, CancellationToken ct)
     {
-        throw new NotImplementedException();
+        var userExists = await UserExistsAsync(userId, ct);
+
+        if (!userExists)
+        {
+            _logger.LogWarning("User with ID {UserId} not found.", userId);
+            
+            return Result<List<UserPreviewDto>>.FailureResult("User not found.", ErrorType.NotFound);
+        }
+
+        var followees = await _db.Follows
+            .Where(f => f.FollowerId == userId)
+            .ProjectTo<UserPreviewDto>(_mapper.ConfigurationProvider)
+            .ToListAsync(ct);
+        
+        return Result<List<UserPreviewDto>>.SuccessResult(followees);
     }
 
-    public Task<Result<int>> GetFollowersCountAsync(Guid userId, CancellationToken ct)
+    private async Task<bool> UserExistsAsync(Guid userId, CancellationToken ct)
     {
-        throw new NotImplementedException();
-    }
-
-    public Task<Result<int>> GetFollowingCountAsync(Guid userId, CancellationToken ct)
-    {
-        throw new NotImplementedException();
+        return await _db.Users.AnyAsync(u => u.Id == userId, ct);
     }
 }

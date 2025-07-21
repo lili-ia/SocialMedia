@@ -11,11 +11,7 @@ public interface IFollowService
     
     Task<Result<bool>> IsFollowingAsync(Guid followerId, Guid followeeId, CancellationToken ct);
     
-    Task<IEnumerable<UserPreviewDto>> GetFollowersAsync(Guid userId, CancellationToken ct);
+    Task<Result<List<UserPreviewDto>>> GetFollowersAsync(Guid userId, CancellationToken ct);
     
-    Task<IEnumerable<UserPreviewDto>> GetFollowingAsync(Guid userId, CancellationToken ct);
-    
-    Task<Result<int>> GetFollowersCountAsync(Guid userId, CancellationToken ct);
-    
-    Task<Result<int>> GetFollowingCountAsync(Guid userId, CancellationToken ct);
+    Task<Result<List<UserPreviewDto>>> GetFolloweesAsync(Guid userId, CancellationToken ct);
 }
