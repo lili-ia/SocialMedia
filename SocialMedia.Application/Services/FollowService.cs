@@ -42,22 +42,21 @@ public class FollowService : IFollowService
             return Result<FollowDto>.FailureResult("You can not follow yourself.", ErrorType.Forbidden);
         }
         
-        var follower = await _db.Users
-            .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Id == followerId, ct);
+        var followerUsername = await _db.Users
+            .Where(u => u.Id == followerId)
+            .Select(u => u.Username)
+            .FirstOrDefaultAsync(ct);
 
-        if (follower == null)
+        if (followerUsername == null)
         {
             _logger.LogWarning("User with ID {FollowerId} not found.", followerId);
             
-            return Result<FollowDto>.FailureResult("Follower not found.");
+            return Result<FollowDto>.FailureResult("Follower not found.", ErrorType.NotFound);
         }
-        
-        var followee = await _db.Users
-            .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Id == followeeId, ct);
 
-        if (followee == null)
+        var followeeExists = await UserExistsAsync(followeeId, ct);
+
+        if (!followeeExists)
         {
             _logger.LogWarning("User with ID {FolloweeId} not found.", followeeId);
             
@@ -91,7 +90,7 @@ public class FollowService : IFollowService
             var evt = new FollowedEvent
             {
                 FollowerId = followerId,
-                FollowerUsername = follower.Username,
+                FollowerUsername = followerUsername,
                 FolloweeId = followeeId,
                 Timestamp = newFollow.FollowedAt,
                 Type = "UserFollowed"
