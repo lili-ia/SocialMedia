@@ -1,5 +1,5 @@
-﻿using SocialMedia.Application.DTOs.Like;
-using SocialMedia.Application.DTOs.User;
+﻿using SocialMedia.Shared.DTOs.Like;
+using SocialMedia.Shared.DTOs.User;
 
 namespace SocialMedia.Application.Contracts;
 

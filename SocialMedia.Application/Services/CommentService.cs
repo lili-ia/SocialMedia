@@ -4,8 +4,8 @@ using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Contracts;
-using SocialMedia.Application.DTOs.Comment;
 using SocialMedia.Persistence;
+using SocialMedia.Shared.DTOs.Comment;
 
 namespace SocialMedia.Application.Services;
 

@@ -1,4 +1,4 @@
-using SocialMedia.Application.DTOs.User;
+using SocialMedia.Shared.DTOs.User;
 
 namespace SocialMedia.Application.Contracts;
 

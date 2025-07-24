@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SocialMedia.Application.Contracts;
-using SocialMedia.Application.DTOs.Post;
 using SocialMedia.Persistence;
+using SocialMedia.Shared.DTOs.Post;
 
 namespace SocialMedia.Application.Services;
 

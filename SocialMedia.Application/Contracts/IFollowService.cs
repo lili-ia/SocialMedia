@@ -1,5 +1,5 @@
-﻿using SocialMedia.Application.DTOs.Follow;
-using SocialMedia.Application.DTOs.User;
+﻿using SocialMedia.Shared.DTOs.Follow;
+using SocialMedia.Shared.DTOs.User;
 
 namespace SocialMedia.Application.Contracts;
 

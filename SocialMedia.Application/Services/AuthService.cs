@@ -4,8 +4,8 @@ using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Contracts;
-using SocialMedia.Application.DTOs.Auth;
 using SocialMedia.Persistence;
+using SocialMedia.Shared.DTOs.Auth;
 
 namespace SocialMedia.Application.Services;
 

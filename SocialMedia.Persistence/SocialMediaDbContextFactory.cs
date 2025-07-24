@@ -9,7 +9,7 @@ public class SocialMediaDbContextFactory : IDesignTimeDbContextFactory<SocialMed
     public SocialMediaContext CreateDbContext(string[] args)
     {
         var builder = new ConfigurationBuilder()
-            .SetBasePath(Path.Combine(Directory.GetCurrentDirectory(), "..", "SocialMedia.Presentation"))
+            .SetBasePath(Path.Combine(Directory.GetCurrentDirectory(), "..", "SocialMedia.API"))
             .AddJsonFile("appsettings.json");
         
         IConfiguration config = builder.Build();

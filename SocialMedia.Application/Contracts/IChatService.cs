@@ -1,5 +1,5 @@
 using Domain.Entities;
-using SocialMedia.Application.DTOs.Chat;
+using SocialMedia.Shared.DTOs.Chat;
 
 namespace SocialMedia.Application.Contracts;
 

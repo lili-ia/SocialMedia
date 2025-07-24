@@ -1,4 +1,4 @@
-using SocialMedia.Application.DTOs.Comment;
+using SocialMedia.Shared.DTOs.Comment;
 
 namespace SocialMedia.Application.Contracts;
 

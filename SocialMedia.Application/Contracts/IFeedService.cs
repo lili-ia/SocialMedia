@@ -1,4 +1,4 @@
-using SocialMedia.Application.DTOs.Post;
+using SocialMedia.Shared.DTOs.Post;
 
 namespace SocialMedia.Application.Contracts;
 

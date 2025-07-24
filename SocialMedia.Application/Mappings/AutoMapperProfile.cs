@@ -1,11 +1,11 @@
 ﻿using AutoMapper;
 using Domain.Entities;
-using SocialMedia.Application.DTOs.Auth;
-using SocialMedia.Application.DTOs.Comment;
-using SocialMedia.Application.DTOs.Follow;
-using SocialMedia.Application.DTOs.Like;
-using SocialMedia.Application.DTOs.Post;
-using SocialMedia.Application.DTOs.User;
+using SocialMedia.Shared.DTOs.Auth;
+using SocialMedia.Shared.DTOs.Comment;
+using SocialMedia.Shared.DTOs.Follow;
+using SocialMedia.Shared.DTOs.Like;
+using SocialMedia.Shared.DTOs.Post;
+using SocialMedia.Shared.DTOs.User;
 
 namespace SocialMedia.Application.Mappings;
 

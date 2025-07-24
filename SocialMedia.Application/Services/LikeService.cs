@@ -5,9 +5,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Contracts;
-using SocialMedia.Application.DTOs.Like;
-using SocialMedia.Application.DTOs.User;
 using SocialMedia.Persistence;
+using SocialMedia.Shared.DTOs.Like;
+using SocialMedia.Shared.DTOs.User;
 
 namespace SocialMedia.Application.Services;
 

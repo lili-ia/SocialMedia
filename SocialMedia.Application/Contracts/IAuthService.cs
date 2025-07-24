@@ -1,4 +1,4 @@
-﻿using SocialMedia.Application.DTOs.Auth;
+﻿using SocialMedia.Shared.DTOs.Auth;
 
 namespace SocialMedia.Application.Contracts;
 

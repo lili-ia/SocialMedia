@@ -6,9 +6,9 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Contracts;
-using SocialMedia.Application.DTOs.Follow;
-using SocialMedia.Application.DTOs.User;
 using SocialMedia.Persistence;
+using SocialMedia.Shared.DTOs.Follow;
+using SocialMedia.Shared.DTOs.User;
 
 namespace SocialMedia.Application.Services;
 
