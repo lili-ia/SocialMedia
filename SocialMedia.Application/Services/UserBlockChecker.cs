@@ -18,4 +18,13 @@ public class UserBlockChecker : IUserBlockChecker
         return await _db.Blocks
             .AnyAsync(u => u.BlockerId == blockerId && u.BlockedId == blockedId, ct);
     }
+
+    public async Task<List<Guid>> GetUsersBlockedOrBlockingAsync(Guid userId, CancellationToken ct = default)
+    {
+        return await _db.Blocks
+            .Where(b => b.BlockerId == userId || b.BlockedId == userId)
+            .Select(b => b.BlockerId == userId ? b.BlockedId : b.BlockerId)
+            .Distinct()
+            .ToListAsync(ct);
+    }
 }
