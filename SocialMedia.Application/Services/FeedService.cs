@@ -8,12 +8,14 @@ namespace SocialMedia.Application.Services;
 public class FeedService : IFeedService
 {
     private readonly SocialMediaContext _db;
+    private readonly IUserBlockChecker _blockChecker;
 
     private const double FollowRatio = 0.7;
 
-    public FeedService(SocialMediaContext db)
+    public FeedService(SocialMediaContext db, IUserBlockChecker blockChecker)
     {
         _db = db;
+        _blockChecker = blockChecker;
     }
 
     public async Task<List<PostDto>> GetFeedAsync(
@@ -53,9 +55,15 @@ public class FeedService : IFeedService
             .Select(pv => pv.PostId)
             .ToListAsync(ct);
 
+        var blockedUserIds = await _blockChecker.GetUsersBlockedOrBlockingAsync(forUserId, ct);
+        
         var posts = await _db.Posts
             .AsNoTracking()
-            .Where(p => followsIds.Contains(p.UserId) && !viewedPostsIds.Contains(p.Id) && p.IsActive)
+            .Where(p =>
+                followsIds.Contains(p.UserId) &&
+                !viewedPostsIds.Contains(p.Id) &&
+                !blockedUserIds.Contains(p.UserId) &&
+                p.IsActive)
             .OrderByDescending(p => p.CreatedAt)
             .Take(fetchCount)
             .Select(post => new PostDto
@@ -87,9 +95,15 @@ public class FeedService : IFeedService
             .Select(pv => pv.PostId)
             .ToListAsync(ct);
 
+        var blockedUserIds = await _blockChecker.GetUsersBlockedOrBlockingAsync(forUserId, ct);
+        
         var posts = await _db.Posts
             .AsNoTracking()
-            .Where(p => !excludeAuthors.Contains(p.UserId) && !viewedPostsIds.Contains(p.Id) && p.IsActive)
+            .Where(p =>
+                !excludeAuthors.Contains(p.UserId) &&
+                !viewedPostsIds.Contains(p.Id) &&
+                !blockedUserIds.Contains(p.UserId) &&
+                p.IsActive)
             .OrderByDescending(p => p.PostLikes.Count)
             .ThenByDescending(p => p.CreatedAt)
             .Take(fetchCount)
