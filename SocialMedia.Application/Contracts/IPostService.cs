@@ -8,7 +8,7 @@ public interface IPostService
     
     Task<Result<PostDto>> GetPostByIdAsync(Guid postId, Guid forUserId, CancellationToken ct);
 
-    Task<Result<List<PostDto>>> GetPublicPostsByUserId(Guid userId, CancellationToken ct);
+    Task<Result<List<PostDto>>> GetPublicPostsByUserId(Guid authorId, Guid forUserId, CancellationToken ct);
     
     Task<Result<List<PostDto>>> GetMyInactivePosts(Guid userId, CancellationToken ct);
 
@@ -18,6 +18,6 @@ public interface IPostService
 
     Task<Result<bool>> ChangePostActiveStatusAsync(Guid userId, Guid postId, bool activeStatus, CancellationToken ct);
 
-    Task<Result<List<PostDto>>> GetPostsOfUsernameAsync(string username, int page = 1, int pageSize = 20, CancellationToken ct = default);
+    Task<Result<List<PostDto>>> GetPostsOfUsernameAsync(Guid forUserId, string username, int page = 1, int pageSize = 20, CancellationToken ct = default);
 }
 

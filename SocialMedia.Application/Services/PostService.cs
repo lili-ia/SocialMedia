@@ -14,23 +14,27 @@ public class PostService : IPostService
     private readonly SocialMediaContext _db;
     private readonly ILogger<PostService> _logger;
     private readonly IMapper _mapper;
+    private readonly IUserBlockChecker _blockChecker;
     
-    public PostService(SocialMediaContext db, ILogger<PostService> logger, IMapper mapper)
+    public PostService(
+        SocialMediaContext db, 
+        ILogger<PostService> logger, 
+        IMapper mapper, 
+        IUserBlockChecker blockChecker)
     {
         _db = db;
         _logger = logger;
         _mapper = mapper;
+        _blockChecker = blockChecker;
     }
-    //todo: allow media in posts
+    
     public async Task<Result<Guid>> CreatePostAsync(CreatePostRequest request, Guid userId, CancellationToken ct)
     {
         _logger.LogInformation("User with id {UserId} attempts to create a new post.", userId);
+
+        var userExists = await UserExistsAsync(userId, ct);
         
-        var user = await _db.Users
-            .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Id == userId, ct);
-        
-        if (user == null)
+        if (!userExists)
         {
             _logger.LogWarning("User with ID {UserId} not found.", userId);
             
@@ -75,7 +79,20 @@ public class PostService : IPostService
             return Result<PostDto>.FailureResult("Post not found.", ErrorType.NotFound);
         }
 
-        if (post.IsActive || forUserId == post.UserId)
+        var authorId = post.UserId;
+
+        var isForUserBlocked = await _blockChecker.IsBlockedAsync(authorId, forUserId, ct);
+
+        if (isForUserBlocked)
+        {
+            _logger.LogWarning("User {UserId} was blocked by post author {AuthorId}, post {PostId} access denied.", forUserId, authorId, postId);
+            
+            return Result<PostDto>.FailureResult("Post not found.", ErrorType.NotFound);
+        }
+
+        var canViewPost = post.IsActive || forUserId == authorId;
+        
+        if (canViewPost)
         {
             return Result<PostDto>.SuccessResult(post);
         }
@@ -85,21 +102,29 @@ public class PostService : IPostService
         return Result<PostDto>.FailureResult("Access forbidden.", ErrorType.Forbidden);
     }
 
-    public async Task<Result<List<PostDto>>> GetPublicPostsByUserId(Guid userId, CancellationToken ct)
+    public async Task<Result<List<PostDto>>> GetPublicPostsByUserId(Guid authorId, Guid forUserId, CancellationToken ct)
     {
-        var userExists = await _db.Users
-            .AnyAsync(u => u.Id == userId, ct);
+        var authorExists = await UserExistsAsync(authorId, ct);
 
-        if (!userExists)
+        if (!authorExists)
         {
-            _logger.LogWarning("User with ID {UserId} not found.", userId);
+            _logger.LogWarning("User with ID {UserId} not found.", authorId);
+            
+            return Result<List<PostDto>>.FailureResult("User not found.", ErrorType.NotFound);
+        }
+        
+        var isForUserBlocked = await _blockChecker.IsBlockedAsync(authorId, forUserId, ct);
+        
+        if (isForUserBlocked)
+        {
+            _logger.LogWarning("User {UserId} was blocked by posts author {AuthorId}, public posts access denied.", forUserId, authorId);
             
             return Result<List<PostDto>>.FailureResult("User not found.", ErrorType.NotFound);
         }
         
         var posts = await _db.Posts
             .AsNoTracking()
-            .Where(p => p.UserId == userId && p.IsActive)
+            .Where(p => p.UserId == authorId && p.IsActive)
             .ProjectTo<PostDto>(_mapper.ConfigurationProvider)
             .ToListAsync(ct);
         
@@ -108,8 +133,7 @@ public class PostService : IPostService
 
     public async Task<Result<List<PostDto>>> GetMyInactivePosts(Guid userId, CancellationToken ct)
     {
-        var userExists = await _db.Users
-            .AnyAsync(u => u.Id == userId, ct);
+        var userExists = await UserExistsAsync(userId, ct);
 
         if (!userExists)
         {
@@ -249,19 +273,36 @@ public class PostService : IPostService
         }
     }
     
-    public async Task<Result<List<PostDto>>> GetPostsOfUsernameAsync(string username, int page = 1, int pageSize = 20, CancellationToken ct = default)
+    public async Task<Result<List<PostDto>>> GetPostsOfUsernameAsync(
+        Guid forUserId, 
+        string username, 
+        int page = 1, 
+        int pageSize = 20, 
+        CancellationToken ct = default)
     {
         if (page < 1) page = 1;
         if (pageSize < 1) pageSize = 20;
 
         var skip = (page - 1) * pageSize;
 
-        var userExists = await _db.Users
-            .AnyAsync(u => u.Username == username, ct);
-
-        if (!userExists)
+        var author = await _db.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Username == username, ct);
+        
+        if (author == null)
         {
             _logger.LogWarning("User with username {Username} not found.", username);
+            
+            return Result<List<PostDto>>.FailureResult("User not found.", ErrorType.NotFound);
+        }
+
+        var authorId = author.Id;
+        
+        var isForUserBlocked = await _blockChecker.IsBlockedAsync(authorId, forUserId, ct);
+        
+        if (isForUserBlocked)
+        {
+            _logger.LogWarning("User {UserId} was blocked by posts author {AuthorId}, public posts access denied.", forUserId, authorId);
             
             return Result<List<PostDto>>.FailureResult("User not found.", ErrorType.NotFound);
         }
@@ -275,5 +316,10 @@ public class PostService : IPostService
             .ToListAsync(ct);
 
         return Result<List<PostDto>>.SuccessResult(posts);
+    }
+    
+    private async Task<bool> UserExistsAsync(Guid userId, CancellationToken ct)
+    {
+        return await _db.Users.AnyAsync(u => u.Id == userId, ct);
     }
 }
