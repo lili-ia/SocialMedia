@@ -187,10 +187,7 @@ public class FollowService : IFollowService
             return Result<List<UserPreviewDto>>.FailureResult("User not found.", ErrorType.NotFound);
         }
 
-        var blockedUserIds = await _db.Blocks
-            .Where(b => b.BlockerId == userId || b.BlockedId == userId)
-            .Select(b => b.BlockerId == userId ? b.BlockedId : b.BlockerId)
-            .ToListAsync(ct);
+        var blockedUserIds = await _blockChecker.GetUsersBlockedOrBlockingAsync(userId, ct);
         
         var followers = await _db.Follows
             .Where(f => f.FolloweeId == userId && !blockedUserIds.Contains(f.FollowerId))
@@ -211,10 +208,7 @@ public class FollowService : IFollowService
             return Result<List<UserPreviewDto>>.FailureResult("User not found.", ErrorType.NotFound);
         }
 
-        var blockedUserIds = await _db.Blocks
-            .Where(b => b.BlockerId == userId || b.BlockedId == userId)
-            .Select(b => b.BlockerId == userId ? b.BlockedId : b.BlockerId)
-            .ToListAsync(ct);
+        var blockedUserIds = await _blockChecker.GetUsersBlockedOrBlockingAsync(userId, ct);
         
         var followees = await _db.Follows
             .Where(f => f.FollowerId == userId && !blockedUserIds.Contains(f.FolloweeId))
