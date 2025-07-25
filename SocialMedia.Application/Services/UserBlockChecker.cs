@@ -1,0 +1,21 @@
+using Microsoft.EntityFrameworkCore;
+using SocialMedia.Application.Contracts;
+using SocialMedia.Persistence;
+
+namespace SocialMedia.Application.Services;
+
+public class UserBlockChecker : IUserBlockChecker
+{
+    private readonly SocialMediaContext _db;
+    
+    public UserBlockChecker(SocialMediaContext db)
+    {
+        _db = db;
+    }
+    
+    public async Task<bool> IsBlockedAsync(Guid blockerId, Guid blockedId, CancellationToken ct)
+    {
+        return await _db.Blocks
+            .AnyAsync(u => u.BlockerId == blockerId && u.BlockedId == blockedId, ct);
+    }
+}

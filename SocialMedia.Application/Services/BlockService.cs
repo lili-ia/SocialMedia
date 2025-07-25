@@ -13,16 +13,20 @@ namespace SocialMedia.Application.Services;
 public class BlockService : IBlockService
 {
     private readonly SocialMediaContext _db;
-    private readonly ILogger<BlockService> _logger;
     private readonly IFollowService _followService;
+    private readonly ILogger<BlockService> _logger;
     private readonly IMapper _mapper;
     
-    public BlockService(SocialMediaContext db, ILogger<BlockService> logger, IFollowService followService, IMapper mapper)
+    public BlockService(
+        SocialMediaContext db, 
+        ILogger<BlockService> logger,  
+        IMapper mapper, 
+        IFollowService followService)
     {
         _db = db;
         _logger = logger;
-        _followService = followService;
         _mapper = mapper;
+        _followService = followService;
     }
     
     public async Task<Result<bool>> BlockUserAsync(Guid blockerId, Guid blockedId, CancellationToken ct)
@@ -136,14 +140,6 @@ public class BlockService : IBlockService
             
             return Result<bool>.FailureResult("An internal error occured.", ErrorType.ServerError);
         }
-    }
-
-    public async Task<Result<bool>> IsBlockedAsync(Guid blockerId, Guid blockedId, CancellationToken ct)
-    {
-        var blockExists = await _db.Blocks
-            .AnyAsync(u => u.BlockerId == blockerId && u.BlockedId == blockedId, ct);
-
-        return Result<bool>.SuccessResult(blockExists);
     }
 
     public async Task<Result<List<UserPreviewDto>>> GetBlockedUsersAsync(Guid blockerId, CancellationToken ct)
