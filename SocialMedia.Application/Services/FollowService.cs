@@ -18,17 +18,20 @@ public class FollowService : IFollowService
     private readonly ILogger<FollowService> _logger;
     private readonly IEventProducer _eventProducer;
     private readonly IMapper _mapper;
+    private readonly IUserBlockChecker _blockChecker;
 
     public FollowService(
         SocialMediaContext db, 
         ILogger<FollowService> logger, 
         IEventProducer eventProducer, 
-        IMapper mapper)
+        IMapper mapper, 
+        IUserBlockChecker blockChecker)
     {
         _db = db;
         _logger = logger;
         _eventProducer = eventProducer;
         _mapper = mapper;
+        _blockChecker = blockChecker;
     }
 
     public async Task<Result<FollowDto>> FollowAsync(Guid followerId, Guid followeeId, CancellationToken ct)
@@ -63,6 +66,20 @@ public class FollowService : IFollowService
             return Result<FollowDto>.FailureResult("Followee not found.", ErrorType.NotFound);
         }
 
+        var isBlockedByFollowee = await _blockChecker.IsBlockedAsync(followeeId, followerId, ct);
+        
+        if (isBlockedByFollowee)
+        {
+            return Result<FollowDto>.FailureResult("You can not follow this user because they blocked you.", ErrorType.Forbidden);
+        }
+
+        var hasBlockedFollowee = await _blockChecker.IsBlockedAsync(followerId, followeeId, ct);
+        
+        if (hasBlockedFollowee)
+        {
+            return Result<FollowDto>.FailureResult("You can not follow this user because you blocked them.", ErrorType.Forbidden);
+        }
+        
         var followExists = await _db.Follows
             .AnyAsync(f => f.FolloweeId == followeeId && f.FollowerId == followerId, ct);
 
@@ -72,7 +89,7 @@ public class FollowService : IFollowService
             
             return Result<FollowDto>.FailureResult("You are already following this user", ErrorType.Forbidden);
         }
-
+        
         var followTime = DateTime.UtcNow;
         var newFollow = new Follow
         {
@@ -158,7 +175,7 @@ public class FollowService : IFollowService
         
         return Result<bool>.SuccessResult(isFollowing);
     }
-
+    
     public async Task<Result<List<UserPreviewDto>>> GetFollowersAsync(Guid userId, CancellationToken ct)
     {
         var userExists = await UserExistsAsync(userId, ct);
@@ -170,8 +187,13 @@ public class FollowService : IFollowService
             return Result<List<UserPreviewDto>>.FailureResult("User not found.", ErrorType.NotFound);
         }
 
+        var blockedUserIds = await _db.Blocks
+            .Where(b => b.BlockerId == userId || b.BlockedId == userId)
+            .Select(b => b.BlockerId == userId ? b.BlockedId : b.BlockerId)
+            .ToListAsync(ct);
+        
         var followers = await _db.Follows
-            .Where(f => f.FolloweeId == userId)
+            .Where(f => f.FolloweeId == userId && !blockedUserIds.Contains(f.FollowerId))
             .ProjectTo<UserPreviewDto>(_mapper.ConfigurationProvider)
             .ToListAsync(ct);
         
@@ -189,8 +211,13 @@ public class FollowService : IFollowService
             return Result<List<UserPreviewDto>>.FailureResult("User not found.", ErrorType.NotFound);
         }
 
+        var blockedUserIds = await _db.Blocks
+            .Where(b => b.BlockerId == userId || b.BlockedId == userId)
+            .Select(b => b.BlockerId == userId ? b.BlockedId : b.BlockerId)
+            .ToListAsync(ct);
+        
         var followees = await _db.Follows
-            .Where(f => f.FollowerId == userId)
+            .Where(f => f.FollowerId == userId && !blockedUserIds.Contains(f.FolloweeId))
             .ProjectTo<UserPreviewDto>(_mapper.ConfigurationProvider)
             .ToListAsync(ct);
         
