@@ -1,6 +1,6 @@
-﻿namespace SocialMedia.Shared.DTOs.Auth;
+﻿namespace SocialMedia.Application.DTOs;
 
-public class AuthResponseDto
+public class AuthResponse
 {
     public string AccessToken { get; init; } = null!;
     

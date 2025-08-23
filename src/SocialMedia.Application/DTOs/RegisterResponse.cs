@@ -1,8 +1,8 @@
 ﻿using Domain.Enums;
 
-namespace SocialMedia.Shared.DTOs.Auth;
+namespace SocialMedia.Application.DTOs;
 
-public record class RegisterResponse
+public class RegisterResponse
 {
     public Guid Id { get; set; }
 
