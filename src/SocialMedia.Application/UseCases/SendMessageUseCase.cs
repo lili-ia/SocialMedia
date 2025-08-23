@@ -7,11 +7,11 @@ namespace SocialMedia.Application.UseCases;
 
 public class SendMessageUseCase : ISendMessageUseCase
 {
-    private readonly SocialMediaContext _db;
+    private readonly SocialMediaDbContext _db;
     private readonly ILogger<SendMessageUseCase> _logger;
     private readonly IChatService _chatService;
     
-    public SendMessageUseCase(SocialMediaContext db, ILogger<SendMessageUseCase> logger, IChatService chatService)
+    public SendMessageUseCase(SocialMediaDbContext db, ILogger<SendMessageUseCase> logger, IChatService chatService)
     {
         _db = db;
         _logger = logger;
