@@ -1,0 +1,23 @@
+﻿using SocialMedia.Shared.DTOs.Post;
+
+namespace SocialMedia.Application.Contracts;
+
+public interface IPostService
+{
+    Task<Result<Guid>> CreatePostAsync(CreatePostRequest request, Guid userId, CancellationToken ct);
+    
+    Task<Result<PostDto>> GetPostByIdAsync(Guid postId, Guid forUserId, CancellationToken ct);
+
+    Task<Result<List<PostDto>>> GetPublicPostsByUserId(Guid authorId, Guid forUserId, CancellationToken ct);
+    
+    Task<Result<List<PostDto>>> GetMyInactivePosts(Guid userId, CancellationToken ct);
+
+    Task<Result<PostDto>> UpdatePostAsync(UpdatePostDto updatePostDto, Guid postId, Guid userId, CancellationToken ct);
+    
+    Task<Result<bool>> DeletePostAsync(Guid postId, Guid userId, CancellationToken ct);
+
+    Task<Result<bool>> ChangePostActiveStatusAsync(Guid userId, Guid postId, bool activeStatus, CancellationToken ct);
+
+    Task<Result<List<PostDto>>> GetPostsOfUsernameAsync(Guid forUserId, string username, int page = 1, int pageSize = 20, CancellationToken ct = default);
+}
+
