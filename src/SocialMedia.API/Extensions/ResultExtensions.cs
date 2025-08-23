@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using SocialMedia.Application;
+using SocialMedia.Shared;
+using SocialMedia.Shared.ResultPattern;
 
 namespace SocialMedia.Extensions;
 
@@ -7,30 +9,41 @@ public static class ResultExtensions
 {
     public static ActionResult ToActionResult<T>(this Result<T> result)
     {
-        if (result.Success)
+        if (result.IsSuccess)
         {
-            return new OkObjectResult(new ApiResponse<T>
-            {
-                Success = true,
-                Data = result.Value
-            });
+            return result.Value is not null
+                ? new OkObjectResult(result.Value)
+                : new NoContentResult();
         }
 
-        var errorResponse = new ApiResponse<T>
+        return result switch
         {
-            Success = false,
-            Error = result.ErrorMessage ?? "Unknown error"
+            { IsSuccess: true, Value: not null } => new OkObjectResult(result.Value),
+            { IsSuccess: true, Value: null } => new NoContentResult(),
+            { IsSuccess: false, ErrorType: ErrorType.NotFound } => new NotFoundObjectResult(result.ErrorMessage),
+            { IsSuccess: false, ErrorType: ErrorType.Validation } => new BadRequestObjectResult(result.ErrorMessage),
+            { IsSuccess: false, ErrorType: ErrorType.Forbidden } => new ObjectResult(result.ErrorMessage) { StatusCode = 403 },
+            { IsSuccess: false, ErrorType: ErrorType.Unauthorized } => new ObjectResult(result.ErrorMessage) { StatusCode = 401 },
+            { IsSuccess: false, ErrorType: ErrorType.ServerError or null } => new ObjectResult(result.ErrorMessage ?? "Server error") { StatusCode = 500 },
+            _ => new ObjectResult("Unexpected error") { StatusCode = 500 }
         };
+    }
+    
+    public static ActionResult ToActionResult(this Result result)
+    {
+        if (result.IsSuccess)
+        { 
+            return new NoContentResult();
+        }
 
-        return result.ErrorType switch
+        return result switch
         {
-            ErrorType.NotFound => new NotFoundObjectResult(errorResponse),
-            ErrorType.Unauthorized => new UnauthorizedObjectResult(errorResponse),
-            ErrorType.Validation => new BadRequestObjectResult(errorResponse),
-            ErrorType.Forbidden => new ObjectResult(errorResponse) { StatusCode = 403 },
-            ErrorType.ServerError => new ObjectResult(errorResponse) { StatusCode = 500 },
-            ErrorType.BadRequest => new BadRequestObjectResult(errorResponse),
-            _ => new ObjectResult(new ApiResponse<T> { Success = false, Error = "Unexpected error" }) { StatusCode = 500 }
+            { IsSuccess: false, ErrorType: ErrorType.NotFound } => new NotFoundObjectResult(result.ErrorMessage),
+            { IsSuccess: false, ErrorType: ErrorType.Validation } => new BadRequestObjectResult(result.ErrorMessage),
+            { IsSuccess: false, ErrorType: ErrorType.Forbidden } => new ObjectResult(result.ErrorMessage) { StatusCode = 403 },
+            { IsSuccess: false, ErrorType: ErrorType.Unauthorized } => new ObjectResult(result.ErrorMessage) { StatusCode = 401 },
+            { IsSuccess: false, ErrorType: ErrorType.ServerError or null } => new ObjectResult(result.ErrorMessage ?? "Server error") { StatusCode = 500 },
+            _ => new ObjectResult("Unexpected error") { StatusCode = 500 }
         };
     }
 }
