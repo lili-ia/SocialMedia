@@ -1,4 +1,6 @@
 using System.Text;
+using Azure.Storage.Blobs;
+using Infrastructure.AzureBlobStorage;
 using Infrastructure.Email;
 using Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
@@ -14,15 +16,18 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration config)
     {
         services.AddTransient<IJwtService, JwtService>();
-        
         services.AddTransient<IPasswordHasher<object>, PasswordHasher<object>>();
-
         services.Configure<SmtpSettings>(config.GetSection("SmtpSettings"));
-        
         services.AddTransient<IEmailSender, SmtpEmailSender>();
-        
         services.AddTransient<IPasswordService, PasswordService>();
+        AddAuthentication(services, config);
         
+        
+        return services;
+    }
+
+    private static void AddAuthentication(IServiceCollection services, IConfiguration config)
+    {
         services.AddAuthentication("Bearer")
             .AddJwtBearer(options =>
             {
@@ -38,6 +43,17 @@ public static class DependencyInjection
                 
                 };
             });
-        return services;
+        
+        services.AddAuthorization();
+        services.AddHttpContextAccessor();
+        services.AddTransient<IUserContext, UserContext>();
+    }
+
+    private static void AddAzureStorage(IServiceCollection services, IConfiguration config)
+    {
+        services.Configure<AzureStorageOptions>(config.GetSection("AzureStorage"));
+        services.AddSingleton(x => new BlobServiceClient(config
+            .GetConnectionString("AzureStorage:ConnectionString")));
+        services.AddSingleton<IFileStorageService, AzureBlobStorageService>();
     }
 }
