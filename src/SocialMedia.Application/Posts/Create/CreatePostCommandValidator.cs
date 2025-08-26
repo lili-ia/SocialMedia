@@ -20,7 +20,7 @@ public class CreatePostCommandValidator : AbstractValidator<CreatePostCommand>
         When(x => !string.IsNullOrWhiteSpace(x.Text), () =>
         {
             RuleFor(x => x.Text)
-                .MaximumLength(2000).WithMessage("Text max length must not exceed 2000 symbols.");
+                .MaximumLength(2000).WithMessage("Text max length must not exceed 2000 characters.");
         });
         
         When(x => x.Files is { Count: > 0 }, () =>
