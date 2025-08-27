@@ -13,7 +13,19 @@ public class UserContext : IUserContext
         _httpContextAccessor = httpContextAccessor;
     }
 
-    public Guid? UserId
+    public Guid UserId
+    {
+        get
+        {
+            var userIdClaim = _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.NameIdentifier);
+            
+            return Guid.TryParse(userIdClaim?.Value, out var id) 
+                ? id 
+                : throw new UnauthorizedAccessException("UserId claim is missing or invalid.");
+        }
+    }
+
+    public Guid? UserIdOrNull
     {
         get
         {
