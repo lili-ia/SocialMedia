@@ -9,7 +9,7 @@ using SocialMedia.Application.Posts.Create;
 using SocialMedia.Application.Posts.Delete;
 using SocialMedia.Application.Posts.GetById;
 using SocialMedia.Application.Posts.GetMyInactive;
-using SocialMedia.Application.Posts.GetPublicOfUsername;
+using SocialMedia.Application.Posts.GetPublicOfUser;
 using SocialMedia.Application.Posts.Update;
 using SocialMedia.DTOs.Post;
 using SocialMedia.Extensions;
@@ -30,7 +30,7 @@ public class PostsController : ControllerBase
     }
     
     [AllowAnonymous]
-    [HttpGet("by-id/{id:guid}")]
+    [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(PostDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetPostById([FromRoute] Guid id, CancellationToken cancellationToken = default)
@@ -45,23 +45,25 @@ public class PostsController : ControllerBase
 
         return result.ToActionResult();
     }
-
+    
     [AllowAnonymous]
-    [HttpGet("by-username/{username}")]
+    [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<PostDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetPublicPostsOfUsername(
-        [FromRoute] string username, 
+    public async Task<IActionResult> GetPublicPostsOfUser(
+        [FromQuery] Guid? userId,
+        [FromQuery] string? username, 
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         CancellationToken cancellationToken = default)
     {
-        var userId = _userContext.UserIdOrNull;
+        var targetUserId = _userContext.UserIdOrNull;
 
-        var command = new GetPublicPostsOfUsernameCommand(
+        var command = new GetPublicPostsOfUserCommand(
+            AuthorUserId: userId,
             AuthorUsername: username,
-            TargetUserId: userId,
+            TargetUserId: targetUserId,
             Page: page, 
             PageSize: pageSize);
 
