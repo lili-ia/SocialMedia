@@ -51,7 +51,7 @@ public class UpdatePostCommandHandler : IRequestHandler<UpdatePostCommand, Resul
 
         if (post.UserId != request.UserId)
         {
-            _logger.LogWarning("User {UserId} doesn't own post {PostId}, access denoed.", request.UserId, request.PostId);
+            _logger.LogWarning("User {UserId} doesn't own post {PostId}, access denied.", request.UserId, request.PostId);
 
             return Result<PostDto>.Failure("Access denied.", ErrorType.Forbidden);
         }

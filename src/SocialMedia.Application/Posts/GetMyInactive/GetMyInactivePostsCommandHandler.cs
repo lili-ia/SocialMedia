@@ -41,14 +41,6 @@ public class GetMyInactivePostsCommandHandler : IRequestHandler<GetMyInactivePos
             return validationResult.ToFailureResult<IReadOnlyList<PostDto>>();
         }
 
-        var userExists = await _userRepository.Exists(request.UserId, UserRole.User, cancellationToken);
-        
-        if (!userExists)
-        {
-            return Result<IReadOnlyList<PostDto>>.Failure("You must be authorized to view own hidden posts.",
-                ErrorType.Unauthorized);
-        }
-
         var skip = (request.Page - 1) * request.PageSize;
         
         var posts = await _postRepository.GetListAsync(

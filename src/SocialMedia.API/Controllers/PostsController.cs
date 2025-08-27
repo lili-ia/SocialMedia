@@ -1,96 +1,203 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SocialMedia.ActionFilters;
 using SocialMedia.Application.Contracts;
+using SocialMedia.Application.DTOs.Post;
+using SocialMedia.Application.Posts;
+using SocialMedia.Application.Posts.ChangeActiveStatus;
+using SocialMedia.Application.Posts.Create;
+using SocialMedia.Application.Posts.Delete;
+using SocialMedia.Application.Posts.GetById;
+using SocialMedia.Application.Posts.GetMyInactive;
+using SocialMedia.Application.Posts.GetPublicOfUsername;
+using SocialMedia.Application.Posts.Update;
+using SocialMedia.DTOs.Post;
 using SocialMedia.Extensions;
-using SocialMedia.Shared.DTOs.Post;
 
 namespace SocialMedia.Controllers;
 
-[Authorize]
-[ServiceFilter(typeof(RequireUserIdNotNullFilter))]
-[Route("api/posts")]
+[Produces("application/json")]
 [ApiController]
+[Route("api/posts")]
 public class PostsController : ControllerBase
 {
-    private readonly IPostService _postService;
     private readonly IUserContext _userContext;
-    
-    public PostsController(IPostService postService, IUserContext userContext)
+    private readonly ISender _sender;
+    public PostsController(IUserContext userContext, ISender sender)
     {
-        _postService = postService;
         _userContext = userContext;
+        _sender = sender;
     }
     
     [AllowAnonymous]
-    [HttpGet("{postId}")]
-    public async Task<IActionResult> GetPostByIdAsync([FromRoute] Guid postId, CancellationToken ct)
+    [HttpGet("by-id/{id:guid}")]
+    [ProducesResponseType(typeof(PostDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPostById([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
-        var userId = _userContext.UserId;
-        var result = await _postService.GetPostByIdAsync(postId, userId.Value, ct);
+        var userId = _userContext.UserIdOrNull;
+        
+        var command = new GetPostByIdCommand(
+            PostId: id,
+            TargetUserId: userId);
+
+        var result = await _sender.Send(command, cancellationToken);
 
         return result.ToActionResult();
     }
 
     [AllowAnonymous]
     [HttpGet("by-username/{username}")]
-    public async Task<IActionResult> GetPublicPostsOfUsernameAsync(
+    [ProducesResponseType(typeof(IReadOnlyList<PostDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPublicPostsOfUsername(
         [FromRoute] string username, 
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
-        CancellationToken ct = default
-        )
+        CancellationToken cancellationToken = default)
     {
-        var result = await _postService.GetPostsOfUsernameAsync(username, page, pageSize, ct);
+        var userId = _userContext.UserIdOrNull;
+
+        var command = new GetPublicPostsOfUsernameCommand(
+            AuthorUsername: username,
+            TargetUserId: userId,
+            Page: page, 
+            PageSize: pageSize);
+
+        var result = await _sender.Send(command, cancellationToken);
 
         return result.ToActionResult();
     }
     
-    [HttpPut("{postId}")]
-    public async Task<IActionResult> UpdatePostAsync([FromBody] UpdatePostDto dto, [FromRoute] Guid postId, CancellationToken ct)
+    [Authorize(Roles = "User")]
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType(typeof(PostDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> UpdatePost(
+        [FromRoute] Guid id, 
+        [FromBody] UpdatePostRequest request, 
+        CancellationToken cancellationToken)
     {
         var userId = _userContext.UserId;
 
-        if (!ModelState.IsValid)
-        {
-            return BadRequest(ModelState);
-        }
+        var command = new UpdatePostCommand(
+            PostId: id, 
+            UserId: userId, 
+            Text: request.Text);
         
-        var result = await _postService.UpdatePostAsync(dto, postId, userId.Value, ct);
-        
+        var result = await _sender.Send(command, cancellationToken);
+
         return result.ToActionResult();
     }
     
+    [Authorize(Roles = "User")]
     [HttpPost]
-    public async Task<IActionResult> CreatePostAsync([FromBody] CreatePostRequest request, CancellationToken ct)
+    [ProducesResponseType(typeof(Guid), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> CreatePost([FromBody] CreatePostRequest request, CancellationToken cancellationToken)
     {
         var userId = _userContext.UserId;
 
-        if (!ModelState.IsValid)
+        List<FileData>? files = null;
+
+        if (request.Files is not null)
         {
-            return BadRequest(ModelState);
+            files = [];
+
+            foreach (var f in request.Files)
+            {
+                await using var ms = new MemoryStream();
+                await f.CopyToAsync(ms, cancellationToken);
+                files.Add(new FileData(FileName: f.FileName, Content: f.OpenReadStream()));
+            }
         }
+
+        var command = new CreatePostCommand(
+            UserId: userId, 
+            Text: request.Text, 
+            Files: files);
         
-        var result = await _postService.CreatePostAsync(request, userId.Value, ct);
+        var result = await _sender.Send(command, cancellationToken);
+
+        if (!result.IsSuccess)
+        {
+            return result.ToActionResult();
+        }
+
+        return CreatedAtAction(nameof(GetPostById), new { Id = result.Value }, result.Value);
+    }
+
+    [Authorize(Roles = "User")]
+    [HttpPatch("{id:guid}/status")]
+    [ProducesResponseType(typeof(Guid), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> ChangePostActiveStatus(
+        [FromRoute] Guid id, 
+        [FromBody] ChangePostActiveStatusRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var userId = _userContext.UserId;
+
+        var command = new ChangePostActiveStatusCommand(
+            PostId: id, 
+            UserId: userId, 
+            ActiveStatus: request.ActiveStatus);
+        
+        var result = await _sender.Send(command, cancellationToken);
 
         return result.ToActionResult();
     }
     
-    [HttpDelete("{postId}")]
-    public async Task<IActionResult> DeletePostAsync([FromRoute] Guid postId, CancellationToken ct)
+    [Authorize(Roles = "User")]
+    [HttpDelete("{id:guid}")]
+    [ProducesResponseType(typeof(void), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> DeletePost([FromRoute] Guid id, CancellationToken cancellationToken)
     {
         var userId = _userContext.UserId;
-        var result = await _postService.DeletePostAsync(postId, userId.Value, ct);
+
+        var command = new DeletePostCommand(
+            PostId: id, 
+            UserId: userId);
+        
+        var result = await _sender.Send(command, cancellationToken);
 
         return result.ToActionResult();
     }
     
-    [HttpGet("me/hidden")]
-    public async Task<IActionResult> GetHiddenPostsAsync(CancellationToken ct)
+    [Authorize(Roles = "User")]
+    [HttpGet("me/inactive")]
+    [ProducesResponseType(typeof(IReadOnlyList<PostDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetMyInactive(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken cancellationToken = default)
     {
         var userId = _userContext.UserId;
-        var result = await _postService.GetMyInactivePosts(userId.Value, ct);
+
+        var command = new GetMyInactivePostsCommand(
+            UserId: userId, 
+            Page: page, 
+            PageSize: pageSize);
         
+        var result = await _sender.Send(command, cancellationToken);
+
         return result.ToActionResult();
     }
 }

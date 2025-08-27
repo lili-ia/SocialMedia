@@ -1,4 +1,4 @@
-namespace SocialMedia.Shared.DTOs.Post;
+namespace SocialMedia.Application.DTOs.Post;
 
 public record class PostDto
 {

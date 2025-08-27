@@ -14,6 +14,6 @@ public class UpdatePostCommandValidator : AbstractValidator<UpdatePostCommand>
         
         RuleFor(x => x.Text)
             .NotEmpty().WithMessage("Text must be provided.")
-            .MaximumLength(2000).WithMessage("Text max length must not exceed 2000 symbols.");
+            .MaximumLength(2000).WithMessage("Text max length must not exceed 2000 characters.");
     }
 }

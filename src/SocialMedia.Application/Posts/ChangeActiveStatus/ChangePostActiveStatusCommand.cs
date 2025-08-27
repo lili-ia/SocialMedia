@@ -6,4 +6,4 @@ namespace SocialMedia.Application.Posts.ChangeActiveStatus;
 public sealed record ChangePostActiveStatusCommand(
     Guid PostId, 
     Guid UserId, 
-    bool ActiveStatus) : IRequest<Result>;
+    bool ActiveStatus) : IRequest<Result<Guid>>;
