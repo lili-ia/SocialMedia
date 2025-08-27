@@ -1,6 +1,6 @@
 using MediatR;
-using SocialMedia.Application.DTOs;
-using SocialMedia.Shared.ResultPattern;
+using SocialMedia.Application.Common.ResultPattern;
+using SocialMedia.Application.DTOs.Auth;
 
 namespace SocialMedia.Application.Authentication.Refresh;
 

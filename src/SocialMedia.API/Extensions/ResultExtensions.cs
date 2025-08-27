@@ -1,7 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using SocialMedia.Application;
-using SocialMedia.Shared;
-using SocialMedia.Shared.ResultPattern;
+using SocialMedia.Application.Common.ResultPattern;
 
 namespace SocialMedia.Extensions;
 

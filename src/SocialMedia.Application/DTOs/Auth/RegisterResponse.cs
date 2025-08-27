@@ -1,6 +1,6 @@
 ﻿using Domain.Enums;
 
-namespace SocialMedia.Application.DTOs;
+namespace SocialMedia.Application.DTOs.Auth;
 
 public class RegisterResponse
 {

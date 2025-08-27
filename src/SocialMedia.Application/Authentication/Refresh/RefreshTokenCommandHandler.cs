@@ -2,11 +2,10 @@ using Domain.Entities;
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.Logging;
-using SocialMedia.Application.Common;
+using SocialMedia.Application.Common.ResultPattern;
 using SocialMedia.Application.Contracts;
 using SocialMedia.Application.Contracts.Repositories;
-using SocialMedia.Application.DTOs;
-using SocialMedia.Shared.ResultPattern;
+using SocialMedia.Application.DTOs.Auth;
 
 namespace SocialMedia.Application.Authentication.Refresh;
 

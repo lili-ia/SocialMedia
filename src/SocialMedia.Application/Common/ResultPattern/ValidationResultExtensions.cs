@@ -1,7 +1,6 @@
 using FluentValidation.Results;
-using SocialMedia.Shared.ResultPattern;
 
-namespace SocialMedia.Application.Common;
+namespace SocialMedia.Application.Common.ResultPattern;
 
 public static class ValidationResultExtensions
 {

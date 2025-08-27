@@ -9,6 +9,7 @@ using SocialMedia.Application.Authentication.RequestPasswordReset;
 using SocialMedia.Application.Authentication.ResetPassword;
 using SocialMedia.Application.Contracts;
 using SocialMedia.Application.DTOs;
+using SocialMedia.Application.DTOs.Auth;
 using SocialMedia.DTOs.Auth;
 using SocialMedia.Extensions;
 
