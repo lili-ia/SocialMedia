@@ -1,6 +1,6 @@
 namespace Domain.Entities;
 
-public class Block
+public class Block : BaseEntity
 {
     public Guid BlockerId { get; set; }
     
