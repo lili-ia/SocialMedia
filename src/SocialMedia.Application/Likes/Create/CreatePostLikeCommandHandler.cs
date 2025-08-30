@@ -3,10 +3,11 @@ using MediatR;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Common.ResultPattern;
 using SocialMedia.Application.Contracts.Repositories;
+using SocialMedia.Application.DTOs.Like;
 
 namespace SocialMedia.Application.Likes.Create;
 
-public class CreatePostLikeCommandHandler : IRequestHandler<CreatePostLikeCommand, Result<Guid>>
+public class CreatePostLikeCommandHandler : IRequestHandler<CreatePostLikeCommand, Result<PostLikeResponse>>
 {
     private readonly ILogger<CreatePostLikeCommandHandler> _logger;
     private readonly IUnitOfWork _unitOfWork;
@@ -28,7 +29,7 @@ public class CreatePostLikeCommandHandler : IRequestHandler<CreatePostLikeComman
         _blockRepository = blockRepository;
     }
 
-    public async Task<Result<Guid>> Handle(CreatePostLikeCommand request, CancellationToken cancellationToken)
+    public async Task<Result<PostLikeResponse>> Handle(CreatePostLikeCommand request, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Handling CreatePostLikeCommand {@Command}.", request);
         
@@ -38,7 +39,7 @@ public class CreatePostLikeCommandHandler : IRequestHandler<CreatePostLikeComman
         {
             _logger.LogWarning("Post {PostId} not found.", request.PostId);
             
-            return Result<Guid>.Failure("Post not found.", ErrorType.NotFound);
+            return Result<PostLikeResponse>.Failure("Post not found.", ErrorType.NotFound);
         }
 
         var blockExists = await _blockRepository
@@ -49,7 +50,7 @@ public class CreatePostLikeCommandHandler : IRequestHandler<CreatePostLikeComman
             _logger.LogWarning("There is a block between {LikerId} and {PostAuthorId}.", 
                 request.LikerId, postAuthorId.Value);
                 
-            return Result<Guid>.Failure("Post not found.", ErrorType.NotFound);
+            return Result<PostLikeResponse>.Failure("Post not found.", ErrorType.NotFound);
         }
         
         var alreadyLiked = await _postLikeRepository.ExistsAsync(request.LikerId, request.PostId, cancellationToken);
@@ -58,7 +59,7 @@ public class CreatePostLikeCommandHandler : IRequestHandler<CreatePostLikeComman
         {
             _logger.LogInformation("User {LikerId} already liked post {PostId}.", request.LikerId, request.PostId);
             
-            return Result<Guid>.Failure("You already liked this post.", ErrorType.Conflict);
+            return Result<PostLikeResponse>.Failure("You already liked this post.", ErrorType.Conflict);
         }
 
         var like = new PostLike
@@ -77,14 +78,20 @@ public class CreatePostLikeCommandHandler : IRequestHandler<CreatePostLikeComman
             _logger.LogInformation("User {LikerId} successfully liked post {PostId} by user {PostAuthorId}.",
                 request.LikerId, request.PostId, postAuthorId);
 
-            return Result<Guid>.Success(like.Id);
+            var likeCount = await _postLikeRepository.GetLikeCount(request.PostId, cancellationToken);
+            
+            return Result<PostLikeResponse>.Success(new PostLikeResponse
+            {
+                IsLiked = true,
+                LikeCount = likeCount
+            });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "An error occured while user {UserId} liking a post {PostId} by {PostAuthorId}.", 
                 request.LikerId, request.PostId, postAuthorId);
             
-            return Result<Guid>.Failure("An internal error occured.", ErrorType.ServerError);
+            return Result<PostLikeResponse>.Failure("An internal error occured.", ErrorType.ServerError);
         }
     }
 }
