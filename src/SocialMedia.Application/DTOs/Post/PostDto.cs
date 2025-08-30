@@ -19,4 +19,6 @@ public record class PostDto
     public int CommentsCount { get; set; } = 0;
 
     public int LikesCount { get; set; } = 0;
+    
+    public bool IsLiked { get; set; }
 }

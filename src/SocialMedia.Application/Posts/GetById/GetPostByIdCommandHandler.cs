@@ -11,17 +11,20 @@ namespace SocialMedia.Application.Posts.GetById;
 public class GetPostByIdCommandHandler : IRequestHandler<GetPostByIdCommand, Result<PostDto>>
 {
     private readonly ILogger<GetPostByIdCommandHandler> _logger;
-    private readonly IUserBlockChecker _blockChecker;
+    private readonly IBlockRepository _blockRepository;
     private readonly IPostRepository _postRepository;
+    private readonly IPostLikeRepository _postLikeRepository;
 
     public GetPostByIdCommandHandler(
         ILogger<GetPostByIdCommandHandler> logger, 
-        IUserBlockChecker blockChecker, 
-        IPostRepository postRepository)
+        IBlockRepository blockRepository, 
+        IPostRepository postRepository, 
+        IPostLikeRepository postLikeRepository)
     {
         _logger = logger;
-        _blockChecker = blockChecker;
+        _blockRepository = blockRepository;
         _postRepository = postRepository;
+        _postLikeRepository = postLikeRepository;
     }
     
     public async Task<Result<PostDto>> Handle(GetPostByIdCommand request, CancellationToken cancellationToken)
@@ -36,6 +39,16 @@ public class GetPostByIdCommandHandler : IRequestHandler<GetPostByIdCommand, Res
             
             return Result<PostDto>.Failure("Post not found.", ErrorType.NotFound);
         }
+
+        if (request.TargetUserId.HasValue)
+        {
+            post.IsLiked = await _postLikeRepository.IsLikedByUser(
+                request.PostId, request.TargetUserId.Value, cancellationToken);
+        }
+        else
+        {
+            post.IsLiked = false;
+        }
         
         if (request.TargetUserId is null)
         {
@@ -45,8 +58,8 @@ public class GetPostByIdCommandHandler : IRequestHandler<GetPostByIdCommand, Res
             return Result<PostDto>.Success(post);
         }
         
-        var blockExists = await _blockChecker
-            .IsBlockedBetweenAsync(post.UserId, request.TargetUserId.Value, cancellationToken);
+        var blockExists = await _blockRepository
+            .IsBlockedByEitherAsync(post.UserId, request.TargetUserId.Value, cancellationToken);
 
         if (!blockExists)
         {
