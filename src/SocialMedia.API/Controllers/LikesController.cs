@@ -1,34 +1,102 @@
-﻿using System.Security.Claims;
+﻿using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SocialMedia.Application.Contracts;
+using SocialMedia.Application.DTOs.Like;
+using SocialMedia.Application.DTOs.User;
+using SocialMedia.Application.Likes.Create;
+using SocialMedia.Application.Likes.DeleteLike;
+using SocialMedia.Application.Likes.GetPostLikers;
 using SocialMedia.Extensions;
 
 namespace SocialMedia.Controllers;
 
+[Authorize(Roles = "User")]
+[Produces("application/json")]
 [ApiController]
 [Route("api/posts")]
 public class LikesController : ControllerBase
 {
-    private readonly ILikeService _likeService;
+    private readonly IUserContext _userContext;
+    private readonly ISender _sender;
     
-    public LikesController(ILikeService likeService)
+    public LikesController(IUserContext userContext, ISender sender)
     {
-        _likeService = likeService;
+        _userContext = userContext;
+        _sender = sender;
     }
 
-    [Authorize]
-    [HttpPost("{postId}/like")]
-    public async Task<IActionResult> LikePostAsync([FromRoute] Guid postId, CancellationToken ct)
+    /// <summary>
+    /// Likes a post for the current user.
+    /// </summary>
+    /// <param name="postId">The post ID.</param>
+    /// <param name="cancellationToken"></param>
+    [HttpPost("{postId:guid}/likes")]
+    [ProducesResponseType(typeof(PostLikeResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> LikePostAsync([FromRoute] Guid postId, CancellationToken cancellationToken = default)
     {
-        var userStringId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var userId = _userContext.UserId;
 
-        if (userStringId == null)
-            return Unauthorized("User not found");
+        var command = new CreatePostLikeCommand(
+            LikerId: userId, 
+            PostId: postId);
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        return result.ToActionResult();
+    }
+    
+    /// <summary>
+    /// Removes the current user's like from the post.
+    /// </summary>
+    /// <param name="postId">The post ID.</param>
+    /// <param name="cancellationToken"></param>
+    [HttpDelete("{postId:guid}/likes")]
+    [ProducesResponseType(typeof(void), StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> UnlikePost([FromRoute] Guid postId, CancellationToken cancellationToken = default)
+    {
+        var userId = _userContext.UserId;
         
-        Guid.TryParse(userStringId, out Guid userGuidId);
+        var command = new DeletePostLikeCommand(
+            PostId: postId, 
+            LikerId: userId);
 
-        var result = await _likeService.LikePostAsync(postId, userGuidId, ct);
+        var result = await _sender.Send(command, cancellationToken);
+
+        return result.ToActionResult();
+    }
+
+    /// <summary>
+    /// Gets a paginated list of users who liked the post.
+    /// </summary>
+    /// <param name="postId">The post ID.</param>
+    /// <param name="page">Page number (default: 1).</param>
+    /// <param name="pageSize">Page size (default: 20).</param>
+    /// <param name="cancellationToken"></param>
+    [HttpGet("{postId:guid}/likes")]
+    [ProducesResponseType(typeof(IReadOnlyList<UserPreviewDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPostLikers(
+        [FromRoute] Guid postId,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken cancellationToken = default)
+    {
+        var userId = _userContext.UserId;
+        
+        var command = new GetPostLikersCommand(
+            PostId: postId, 
+            TargetUserId: userId, 
+            Page: page, 
+            PageSize: pageSize);
+        
+        var result = await _sender.Send(command, cancellationToken);
 
         return result.ToActionResult();
     }
