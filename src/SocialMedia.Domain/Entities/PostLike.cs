@@ -2,7 +2,7 @@
 
 namespace Domain.Entities;
 
-public class PostLike
+public class PostLike : BaseEntity
 {
     [Required]
     public Guid UserId { get; set; }

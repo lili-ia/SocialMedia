@@ -22,4 +22,8 @@ public interface IPostRepository
         int skip = 0,
         int take = 20,
         CancellationToken cancellationToken = default);
+
+    Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken = default);
+
+    Task<Guid?> GetUserIdByPostId(Guid id, CancellationToken cancellationToken = default);
 }

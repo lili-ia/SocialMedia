@@ -1,0 +1,16 @@
+using System.Linq.Expressions;
+using Domain.Entities;
+using SocialMedia.Application.DTOs.User;
+
+namespace SocialMedia.Application.Mappers;
+
+public static class PostLikeMapper
+{
+    public static Expression<Func<PostLike, UserPreviewDto>> ToUserPreviewDto => 
+        like => new UserPreviewDto
+        {
+            Id = like.User.Id,
+            Username = like.User.Username,
+            ProfilePicUrl = like.User.ProfilePicUrl
+        };
+}
