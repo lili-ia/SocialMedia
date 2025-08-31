@@ -6,7 +6,7 @@ namespace SocialMedia.Application.Mappers;
 
 public static class PostLikeMapper
 {
-    public static Expression<Func<PostLike, UserPreviewDto>> ToUserPreviewDto => 
+    public static Expression<Func<PostLike, UserPreviewDto>> ProjectToUserPreviewDto => 
         like => new UserPreviewDto
         {
             Id = like.User.Id,

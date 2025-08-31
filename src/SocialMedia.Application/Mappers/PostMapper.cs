@@ -6,7 +6,7 @@ namespace SocialMedia.Application.Mappers;
 
 public static class PostMapper
 {
-    public static Expression<Func<Post, PostDto>> ToDto => 
+    public static Expression<Func<Post, PostDto>> ProjectToDto => 
         post => new PostDto
         {
             PostId = post.Id,

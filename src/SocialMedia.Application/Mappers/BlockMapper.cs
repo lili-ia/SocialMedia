@@ -6,7 +6,7 @@ namespace SocialMedia.Application.Mappers;
 
 public static class BlockMapper
 {
-    public static Expression<Func<Block, BlockedUserDto>> ToBlockedUserDto =>
+    public static Expression<Func<Block, BlockedUserDto>> ProjectToBlockedUserDto =>
         block => new BlockedUserDto
         {
             BlockedUserId = block.Blocked.Id,
