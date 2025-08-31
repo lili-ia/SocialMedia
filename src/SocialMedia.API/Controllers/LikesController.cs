@@ -14,7 +14,7 @@ namespace SocialMedia.Controllers;
 [Authorize(Roles = "User")]
 [Produces("application/json")]
 [ApiController]
-[Route("api/posts")]
+[Route("api/posts/{postId:guid}/likes")]
 public class LikesController : ControllerBase
 {
     private readonly IUserContext _userContext;
@@ -31,7 +31,7 @@ public class LikesController : ControllerBase
     /// </summary>
     /// <param name="postId">The post ID.</param>
     /// <param name="cancellationToken"></param>
-    [HttpPost("{postId:guid}/likes")]
+    [HttpPost]
     [ProducesResponseType(typeof(PostLikeResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -54,7 +54,7 @@ public class LikesController : ControllerBase
     /// </summary>
     /// <param name="postId">The post ID.</param>
     /// <param name="cancellationToken"></param>
-    [HttpDelete("{postId:guid}/likes")]
+    [HttpDelete]
     [ProducesResponseType(typeof(void), StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -78,7 +78,7 @@ public class LikesController : ControllerBase
     /// <param name="page">Page number (default: 1).</param>
     /// <param name="pageSize">Page size (default: 20).</param>
     /// <param name="cancellationToken"></param>
-    [HttpGet("{postId:guid}/likes")]
+    [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<UserPreviewDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
