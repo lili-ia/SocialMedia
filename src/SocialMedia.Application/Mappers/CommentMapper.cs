@@ -11,8 +11,7 @@ public static class CommentMapper
         Text = comment.Text,
         UserId = comment.UserId,
         PostId = comment.PostId,
-        CreatedAt = comment.CreatedAt,
-        UpdatedAt = comment.UpdatedAt
+        CreatedAt = comment.CreatedAt
     };
     
     public static CommentDto ToDto(this Comment comment, string username) => new()
@@ -21,8 +20,7 @@ public static class CommentMapper
         UserId = comment.UserId,
         Username = username,
         PostId = comment.PostId,
-        CreatedAt = comment.CreatedAt,
-        UpdatedAt = comment.UpdatedAt
+        CreatedAt = comment.CreatedAt
     };
     
     public static Expression<Func<Comment, CommentDto>> ProjectToDto => 
@@ -32,7 +30,6 @@ public static class CommentMapper
             UserId = comment.UserId,
             Username = comment.User.Username,
             PostId = comment.PostId,
-            CreatedAt = comment.CreatedAt,
-            UpdatedAt = comment.UpdatedAt
+            CreatedAt = comment.CreatedAt
         };
 }
