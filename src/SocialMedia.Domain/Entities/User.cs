@@ -6,23 +6,23 @@ public class User : BaseEntity
 {
     public string Username { get; set; } = null!;
 
-    public DateTime BirthDate { get; set; }
-
     public string Email { get; set; } = null!;
-
+   
     public string PasswordHash { get; set; } = null!;
-
-    public Guid? ProfilePicId { get; set; }
+    
+    public UserStatus Status { get; set; } 
+    
+    public DateTime BirthDate { get; set; }
     
     public string? Bio { get; set; }
 
-    public UserStatus Status { get; set; } 
-
-    public DateTime? LastSeen { get; set; }
-    
     public DateTime CreatedAt { get; set; }
 
+    public DateTime? LastSeen { get; set; }
+
     public UserRole UserRole { get; set; } = UserRole.User;
+    
+    public Guid? ProfilePicId { get; set; }
     
     public ProfilePic? ProfilePic { get; set; }
 
