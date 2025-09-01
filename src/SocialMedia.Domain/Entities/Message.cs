@@ -1,30 +1,24 @@
-﻿using System.ComponentModel.DataAnnotations;
-using Domain.Enums;
+﻿using Domain.Enums;
 
 namespace Domain.Entities;
 
 public class Message : BaseEntity
 {
-    public Guid? SenderId { get; set; }
+    public Guid SenderId { get; set; }
 
-    [Required]
-    [StringLength(2000, MinimumLength = 1)]
-    public string Content { get; set; } = "";
+    public string Content { get; set; } = null!;
 
-    [Required]
-    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+    public DateTime Timestamp { get; set; }
 
-    [Required]
-    public MessageType MessageType { get; set; } = MessageType.System;
+    public MessageType MessageType { get; set; }
 
-    public bool IsEdited { get; set; } = false;
+    public bool IsEdited { get; set; }
 
-    public bool IsRead { get; set; } = false;
+    public bool IsRead { get; set; }
 
-    [Required]
     public Guid ChatId { get; set; }
 
     public virtual Chat? Chat { get; set; }
 
-    public virtual User? Sender { get; set; }
+    public virtual User Sender { get; set; } = null!;
 }
