@@ -1,7 +1,6 @@
 using MediatR;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Common.ResultPattern;
-using SocialMedia.Application.Contracts;
 using SocialMedia.Application.Contracts.Repositories;
 using SocialMedia.Application.DTOs.Post;
 using SocialMedia.Application.Mappers;
@@ -31,7 +30,7 @@ public class GetPostByIdCommandHandler : IRequestHandler<GetPostByIdCommand, Res
     {
         _logger.LogInformation("Handling GetPostByIdCommand {@Command}.", request);
 
-        var post = await _postRepository.GetDetailsAsync(request.PostId, PostMapper.ToDto, cancellationToken);
+        var post = await _postRepository.GetDetailsAsync(request.PostId, PostMapper.ProjectToDto, cancellationToken);
 
         if (post is null || (!post.IsActive && post.UserId != request.TargetUserId))
         {
@@ -42,7 +41,7 @@ public class GetPostByIdCommandHandler : IRequestHandler<GetPostByIdCommand, Res
 
         if (request.TargetUserId.HasValue)
         {
-            post.IsLiked = await _postLikeRepository.IsLikedByUser(
+            post.IsLiked = await _postLikeRepository.IsLikedByUserAsync(
                 request.PostId, request.TargetUserId.Value, cancellationToken);
         }
         else

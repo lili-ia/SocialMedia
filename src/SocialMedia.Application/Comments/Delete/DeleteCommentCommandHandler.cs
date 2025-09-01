@@ -5,16 +5,16 @@ using SocialMedia.Application.Contracts.Repositories;
 
 namespace SocialMedia.Application.Comments.Delete;
 
-public class DeleteCommentByIdCommandHandler : IRequestHandler<DeleteCommentByIdCommand, Result>
+public class DeleteCommentCommandHandler : IRequestHandler<DeleteCommentCommand, Result>
 {
     private readonly IUnitOfWork _unitOfWork;
-    private readonly ILogger<DeleteCommentByIdCommandHandler> _logger;
+    private readonly ILogger<DeleteCommentCommandHandler> _logger;
     private readonly ICommentRepository _commentRepository;
     private readonly IBlockRepository _blockRepository;
 
-    public DeleteCommentByIdCommandHandler(
+    public DeleteCommentCommandHandler(
         IUnitOfWork unitOfWork, 
-        ILogger<DeleteCommentByIdCommandHandler> logger, 
+        ILogger<DeleteCommentCommandHandler> logger, 
         ICommentRepository commentRepository, 
         IBlockRepository blockRepository)
     {
@@ -24,9 +24,9 @@ public class DeleteCommentByIdCommandHandler : IRequestHandler<DeleteCommentById
         _blockRepository = blockRepository;
     }
 
-    public async Task<Result> Handle(DeleteCommentByIdCommand request, CancellationToken cancellationToken)
+    public async Task<Result> Handle(DeleteCommentCommand request, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Handling DeleteCommentByIdCommand {@Command}.", request);
+        _logger.LogInformation("Handling DeleteCommentCommand {@Command}.", request);
 
         var comment = await _commentRepository.GetByIdWithPostAsync(request.CommentId, cancellationToken);
         
@@ -43,18 +43,21 @@ public class DeleteCommentByIdCommandHandler : IRequestHandler<DeleteCommentById
             
             return Result.Failure("Post not found.", ErrorType.NotFound);
         }
-        
-        var blockExists = await _blockRepository
-            .IsBlockedByEitherAsync(comment.UserId, request.UserId, cancellationToken);
 
-        if (blockExists)
+        if (request.UserId != comment.Post.UserId)
         {
-            _logger.LogInformation("There is a block between {PostAuthorId} and {CommentAuthorId}.", 
-                comment.Post.UserId, request.UserId);
-                
-            return Result.Failure("Post not found.", ErrorType.NotFound);
-        }
+            var blockExists = await _blockRepository
+                .IsBlockedByEitherAsync(comment.UserId, request.UserId, cancellationToken);
 
+            if (blockExists)
+            {
+                _logger.LogInformation("There is a block between {PostAuthorId} and {CommentAuthorId}.", 
+                    comment.Post.UserId, request.UserId);
+                
+                return Result.Failure("Post not found.", ErrorType.NotFound);
+            }
+        }
+        
         if (request.UserId != comment.UserId && request.UserId != comment.Post.UserId)
         {
             _logger.LogInformation("User {UserId} can't delete comment {CommentId} they do not own.", 

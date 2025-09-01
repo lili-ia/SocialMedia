@@ -33,7 +33,7 @@ public class CreatePostLikeCommandHandler : IRequestHandler<CreatePostLikeComman
     {
         _logger.LogInformation("Handling CreatePostLikeCommand {@Command}.", request);
         
-        var postAuthorId = await _postRepository.GetUserIdByPostId(request.PostId, cancellationToken);
+        var postAuthorId = await _postRepository.GetUserIdByPostIdAsync(request.PostId, cancellationToken);
 
         if (postAuthorId is null)
         {
@@ -78,7 +78,7 @@ public class CreatePostLikeCommandHandler : IRequestHandler<CreatePostLikeComman
             _logger.LogInformation("User {LikerId} successfully liked post {PostId} by user {PostAuthorId}.",
                 request.LikerId, request.PostId, postAuthorId);
 
-            var likeCount = await _postLikeRepository.GetLikeCount(request.PostId, cancellationToken);
+            var likeCount = await _postLikeRepository.GetLikeCountAsync(request.PostId, cancellationToken);
             
             return Result<PostLikeResponse>.Success(new PostLikeResponse
             {

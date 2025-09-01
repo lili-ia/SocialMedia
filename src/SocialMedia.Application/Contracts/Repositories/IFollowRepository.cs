@@ -16,7 +16,7 @@ public interface IFollowRepository
 
     Task RemoveAsync(Guid followerId, Guid followeeId, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<UserPreviewDto>> GetActiveFolloweesForUserAsync<TResult>(
+    Task<IReadOnlyList<TResult>> GetActiveFolloweesForUserAsync<TResult>(
         Guid userId, 
         Expression<Func<User, TResult>> selector,
         IList<Guid>? excludeIds,

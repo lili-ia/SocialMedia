@@ -1,4 +1,3 @@
-using Domain.Enums;
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -13,18 +12,15 @@ public class GetMyInactivePostsCommandHandler : IRequestHandler<GetMyInactivePos
 {
     private readonly ILogger<GetMyInactivePostsCommandHandler> _logger;
     private readonly IPostRepository _postRepository;
-    private readonly IUserRepository _userRepository;
     private readonly IValidator<GetMyInactivePostsCommand> _validator;
 
     public GetMyInactivePostsCommandHandler(
         ILogger<GetMyInactivePostsCommandHandler> logger, 
         IPostRepository postRepository, 
-        IUserRepository userRepository, 
         IValidator<GetMyInactivePostsCommand> validator)
     {
         _logger = logger;
         _postRepository = postRepository;
-        _userRepository = userRepository;
         _validator = validator;
     }
 
@@ -45,7 +41,9 @@ public class GetMyInactivePostsCommandHandler : IRequestHandler<GetMyInactivePos
         
         var posts = await _postRepository.GetListAsync(
             predicate: p => p.UserId == request.UserId && !p.IsActive, 
-            selector: PostMapper.ToDto, 
+            selector: PostMapper.ProjectToDto, 
+            orderBy: q => q
+                .OrderByDescending(p => p.CreatedAt),
             skip: skip,
             take: request.PageSize,
             cancellationToken);

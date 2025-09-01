@@ -45,7 +45,7 @@ public class GetPostLikersCommandHandler : IRequestHandler<GetPostLikersCommand,
             return validationResult.ToFailureResult<IReadOnlyList<UserPreviewDto>>();
         }
         
-        var postAuthorId = await _postRepository.GetUserIdByPostId(request.PostId, cancellationToken);
+        var postAuthorId = await _postRepository.GetUserIdByPostIdAsync(request.PostId, cancellationToken);
 
         if (postAuthorId is null)
         {
@@ -73,10 +73,10 @@ public class GetPostLikersCommandHandler : IRequestHandler<GetPostLikersCommand,
         var skip = (request.Page - 1) * request.PageSize;
         
         var postLikers = await _postLikeRepository
-            .GetPostLikers(
+            .GetPostLikersAsync(
                 postId: request.PostId, 
                 filter: eitherBlockedFilter, 
-                selector: PostLikeMapper.ToUserPreviewDto, 
+                selector: PostLikeMapper.ProjectToUserPreviewDto, 
                 skip: skip, 
                 take: request.PageSize,
                 cancellationToken);

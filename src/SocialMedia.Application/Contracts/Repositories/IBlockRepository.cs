@@ -15,4 +15,8 @@ public interface IBlockRepository
         Guid blockerId, 
         Expression<Func<Block, TResult>> selector, 
         CancellationToken cancellationToken = default);
+    
+    Task<bool> IsBlockedByEitherAsync(Guid userId, Guid otherUserId, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<Guid>> GetBlockedByEitherGuidsAsync(Guid userId, CancellationToken cancellationToken = default);
 }

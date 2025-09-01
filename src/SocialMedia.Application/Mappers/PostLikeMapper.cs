@@ -10,7 +10,9 @@ public static class PostLikeMapper
         like => new UserPreviewDto
         {
             Id = like.User.Id,
-            Username = like.User.Username,
-            ProfilePicUrl = like.User.ProfilePicUrl
+            Username = like.User.Status != Domain.Enums.UserStatus.Deactivated
+                ? like.User.Username 
+                : "deleted",
+            ProfilePicUrl = like.User.ProfilePic.Url
         };
 }

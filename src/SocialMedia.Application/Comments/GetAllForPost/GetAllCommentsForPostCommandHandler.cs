@@ -52,16 +52,19 @@ public class GetAllCommentsForPostCommandHandler : IRequestHandler<GetAllComment
             
             return Result<IReadOnlyList<CommentDto>>.Failure("Post not found.", ErrorType.NotFound);
         }
-        
-        var blockExists = await _blockRepository
-            .IsBlockedByEitherAsync(postStatus.Value.AuthorId, request.TargetUserId, cancellationToken);
 
-        if (blockExists)
+        if (request.TargetUserId != postStatus.Value.AuthorId)
         {
-            _logger.LogInformation("There is a block between {PostAuthorId} and {TargetUserId}.", 
-                postStatus.Value.AuthorId, request.TargetUserId);
+            var blockExists = await _blockRepository
+                .IsBlockedByEitherAsync(postStatus.Value.AuthorId, request.TargetUserId, cancellationToken);
+
+            if (blockExists)
+            {
+                _logger.LogInformation("There is a block between {PostAuthorId} and {TargetUserId}.", 
+                    postStatus.Value.AuthorId, request.TargetUserId);
                 
-            return Result<IReadOnlyList<CommentDto>>.Failure("Post not found.", ErrorType.NotFound);
+                return Result<IReadOnlyList<CommentDto>>.Failure("Post not found.", ErrorType.NotFound);
+            }
         }
         
         Expression<Func<Comment, bool>> eitherBlockedFilter = comment => !comment.User.BlockedUsers

@@ -14,20 +14,20 @@ public class GetPublicPostsOfUserCommandHandler : IRequestHandler<GetPublicPosts
 {
     private readonly ILogger<GetPublicPostsOfUserCommandHandler> _logger;
     private readonly IPostRepository _postRepository;
-    private readonly IUserBlockChecker _blockChecker;
+    private readonly IBlockRepository _blockRepository;
     private readonly IUserRepository _userRepository;
     private readonly IValidator<GetPublicPostsOfUserCommand> _validator;
     
     public GetPublicPostsOfUserCommandHandler(
         ILogger<GetPublicPostsOfUserCommandHandler> logger, 
         IPostRepository postRepository, 
-        IUserBlockChecker blockChecker, 
+        IBlockRepository blockRepository, 
         IUserRepository userRepository, 
         IValidator<GetPublicPostsOfUserCommand> validator)
     {
         _logger = logger;
         _postRepository = postRepository;
-        _blockChecker = blockChecker;
+        _blockRepository = blockRepository;
         _userRepository = userRepository;
         _validator = validator;
     }
@@ -49,7 +49,7 @@ public class GetPublicPostsOfUserCommandHandler : IRequestHandler<GetPublicPosts
         
         if (request.AuthorUserId is not null)
         {
-            var authorExists = await _userRepository.Exists(request.AuthorUserId.Value, UserRole.User, cancellationToken);
+            var authorExists = await _userRepository.ExistsAsync(request.AuthorUserId.Value, UserRole.User, cancellationToken);
 
             if (!authorExists)
             {
@@ -60,7 +60,7 @@ public class GetPublicPostsOfUserCommandHandler : IRequestHandler<GetPublicPosts
         }
         else
         {
-            authorId = await _userRepository.GetIdByUsername(request.AuthorUsername!, cancellationToken);
+            authorId = await _userRepository.GetIdByUsernameAsync(request.AuthorUsername!, cancellationToken);
         }
         
         if (authorId is null)
@@ -72,8 +72,8 @@ public class GetPublicPostsOfUserCommandHandler : IRequestHandler<GetPublicPosts
         
         if (request.TargetUserId is not null)
         {
-            var blockExists = await _blockChecker
-                .IsBlockedBetweenAsync(authorId.Value, request.TargetUserId.Value, cancellationToken);
+            var blockExists = await _blockRepository
+                .IsBlockedByEitherAsync(authorId.Value, request.TargetUserId.Value, cancellationToken);
 
             if (blockExists)
             {
@@ -88,7 +88,9 @@ public class GetPublicPostsOfUserCommandHandler : IRequestHandler<GetPublicPosts
         
         var posts = await _postRepository.GetListAsync(
             predicate: p => p.UserId == authorId && p.IsActive, 
-            selector: PostMapper.ToDto, 
+            selector: PostMapper.ProjectToDto, 
+            orderBy: q => q
+                .OrderByDescending(p => p.CreatedAt),
             skip: skip,
             take: request.PageSize,
             cancellationToken);

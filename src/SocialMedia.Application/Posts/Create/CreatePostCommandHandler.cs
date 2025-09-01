@@ -47,7 +47,7 @@ public class CreatePostCommandHandler : IRequestHandler<CreatePostCommand, Resul
             return validationResult.ToFailureResult<Guid>();
         }
 
-        var isActive = await _userRepository.IsActive(request.UserId, UserRole.User, cancellationToken);
+        var isActive = await _userRepository.IsActiveAsync(request.UserId, UserRole.User, cancellationToken);
 
         if (!isActive)
         {
@@ -90,7 +90,7 @@ public class CreatePostCommandHandler : IRequestHandler<CreatePostCommand, Resul
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "An error occured while trying to upload a file to the file storage a post.");
+                _logger.LogError(ex, "An error occured while trying to upload a file to the file storage.");
                 
                 return Result<Guid>.Failure("An internal error occured.", ErrorType.ServerError);
             }

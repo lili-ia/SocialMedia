@@ -7,6 +7,8 @@ public interface IPostRepository
 {
     Task<Post?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
     
+    Task<(bool IsActive, Guid AuthorId)?> GetStatusAsync(Guid id, CancellationToken cancellationToken);
+    
     Task AddAsync(Post post, CancellationToken cancellationToken = default);
 
     Task<TResult?> GetDetailsAsync<TResult>(
@@ -17,13 +19,12 @@ public interface IPostRepository
     Task RemoveAsync(Post post, CancellationToken cancellationToken);
     
     Task<IReadOnlyList<TResult>> GetListAsync<TResult>(
-        Expression<Func<Post, bool>>? predicate,
-        Expression<Func<Post, TResult>> selector,
-        int skip = 0,
-        int take = 20,
+        Expression<Func<Post, bool>>? predicate = null,
+        Expression<Func<Post, TResult>>? selector = null,
+        Func<IQueryable<Post>, IOrderedQueryable<Post>>? orderBy = null,
+        int? skip = null,
+        int? take = null,
         CancellationToken cancellationToken = default);
-
-    Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken = default);
-
-    Task<Guid?> GetUserIdByPostId(Guid id, CancellationToken cancellationToken = default);
+    
+    Task<Guid?> GetUserIdByPostIdAsync(Guid id, CancellationToken cancellationToken = default);
 }

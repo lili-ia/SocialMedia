@@ -31,7 +31,7 @@ public class DeletePostLikeCommandHandler : IRequestHandler<DeletePostLikeComman
     {
          _logger.LogInformation("Handling DeletePostLikeCommand {@Command}.", request);
          
-        var postAuthorId = await _postRepository.GetUserIdByPostId(request.PostId, cancellationToken);
+        var postAuthorId = await _postRepository.GetUserIdByPostIdAsync(request.PostId, cancellationToken);
 
         if (postAuthorId is null)
         {

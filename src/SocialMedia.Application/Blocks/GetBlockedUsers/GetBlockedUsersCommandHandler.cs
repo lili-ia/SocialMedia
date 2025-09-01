@@ -25,7 +25,7 @@ public class GetBlockedUsersCommandHandler : IRequestHandler<GetBlockedUsersComm
         _logger.LogInformation("Handling GetBlockedUsersCommand {@Command}.", request);
 
         var blockedUsers = await 
-            _blockRepository.GetUsersBlockedByAsync(request.BlockerId, BlockMapper.ToBlockedUserDto, cancellationToken);
+            _blockRepository.GetUsersBlockedByAsync(request.BlockerId, BlockMapper.ProjectToBlockedUserDto, cancellationToken);
         
         _logger.LogInformation("Retrieved {Count} blocked users by user {BlockerId}.", 
             blockedUsers.Count, request.BlockerId);
