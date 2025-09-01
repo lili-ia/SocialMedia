@@ -1,25 +1,22 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace Domain.Entities;
+﻿namespace Domain.Entities;
 
 public class Post : BaseEntity
 {
-    [StringLength(2000)]
-    public string? Text { get; set; } = "";
+    public string? Text { get; set; }
 
-    [Required]
     public Guid UserId { get; set; }
 
-    public bool IsActive { get; set; } = true;
+    public bool IsActive { get; set; }
 
-    public DateTime? CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? CreatedAt { get; set; }
 
     public DateTime? UpdatedAt { get; set; }
 
-    public virtual ICollection<Comment> Comments { get; set; } = new List<Comment>();
+    public User User { get; set; } = null!;
+    
+    public ICollection<Comment> Comments { get; set; } = [];
 
-    [Required]
-    public virtual User User { get; set; } = null!;
+    public ICollection<PostLike> PostLikes { get; set; } = [];
 
-    public virtual ICollection<PostLike> PostLikes { get; set; } = new List<PostLike>();
+    public ICollection<PostFile> PostFiles { get; set; } = [];
 }

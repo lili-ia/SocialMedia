@@ -1,147 +1,150 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using MediatR;
+using Microsoft.AspNetCore.Mvc;
+using SocialMedia.Application.Authentication.ConfirmEmail;
+using SocialMedia.Application.Authentication.Login;
+using SocialMedia.Application.Authentication.Refresh;
+using SocialMedia.Application.Authentication.Register;
+using SocialMedia.Application.Authentication.RequestEmailConfirmation;
+using SocialMedia.Application.Authentication.RequestPasswordReset;
+using SocialMedia.Application.Authentication.ResetPassword;
 using SocialMedia.Application.Contracts;
+using SocialMedia.Application.DTOs.Auth;
+using SocialMedia.DTOs.Auth;
 using SocialMedia.Extensions;
-using SocialMedia.Shared.DTOs.Auth;
 
 namespace SocialMedia.Controllers;
 
+[Produces("application/json")]
 [Route("api/auth")]
 [ApiController]
 public class AuthController : ControllerBase
 {
-    private readonly IAuthService _authService;
-    private readonly ILogger<AuthController> _logger;
+    private readonly ISender _sender;
     private readonly IUserContext _userContext;
     
-    public AuthController(ILogger<AuthController> logger, IAuthService authService, IUserContext userContext)
+    public AuthController(ISender sender, IUserContext userContext)
     {
-        _logger = logger;
-        _authService = authService;
+        _sender = sender;
         _userContext = userContext;
     }
     
     [HttpPost("register")]
-    public async Task<IActionResult> RegisterAsync([FromBody] RegisterDto registerDto, CancellationToken ct)
+    [ProducesResponseType(typeof(RegisterResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> Register([FromBody] RegisterRequest registerRequest, CancellationToken cancellationToken)
     {
-        var result = await _authService.RegisterAsync(registerDto, ct);
+        var command = new RegisterUserCommand(
+            Username: registerRequest.Username,
+            Email: registerRequest.Email,
+            BirthDate: registerRequest.BirthDate,
+            RawPassword: registerRequest.RawPassword);
 
-        if (result.Success)
-        {
-            _logger.LogInformation("User with email {Email} registered successfully.", registerDto.Email);
-        }
-        else
-        {
-            _logger.LogWarning("Failed register attempt for email {Email}: {ResultErrorMessage}.", registerDto.Email, result.ErrorMessage);
-        }
-        
+        var result = await _sender.Send(command, cancellationToken);
+
         return result.ToActionResult();
     }
 
     [HttpPost("login")]
-    public async Task<IActionResult> LoginAsync([FromBody] LoginDto loginDto, CancellationToken ct)
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> Login([FromBody] LoginRequest loginRequest, CancellationToken cancellationToken)
     {
-        var ip = _userContext.IpAddress;
-        var userAgent = _userContext.UserAgent;
-        
-        var result = await _authService.LoginAsync(loginDto, ip, userAgent, ct);
+        var ipAddress = _userContext.IpAddress;
+        var deviceInfo = _userContext.UserAgent;
 
-        if (result.Success)
-        {
-            _logger.LogInformation("User with email {Email} logged in successfully.", loginDto.Email);
-        }
-        else
-        {
-            _logger.LogWarning("Failed login attempt for user with email {Email}: {ResultErrorMessage}.", loginDto.Email, result.ErrorMessage);
-        }
+        var command = new LoginUserCommand(
+            Email: loginRequest.Email,
+            Password: loginRequest.Password,
+            IpAddress: ipAddress!,
+            DeviceInfo: deviceInfo!);
+        
+        var result = await _sender.Send(command, cancellationToken);
 
         return result.ToActionResult();
     }
     
     [HttpPost("refresh-token")]
-    public async Task<IActionResult> RefreshTokenAsync([FromBody] RefreshTokenDto dto, CancellationToken ct)
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenDto refreshTokenDto, CancellationToken cancellationToken)
     {
-        var ip = _userContext.IpAddress;
-        var userAgent = _userContext.UserAgent;
-        
-        var result = await _authService.RefreshTokenAsync(dto.Token, ip, userAgent, ct);
+        var ipAddress = _userContext.IpAddress;
+        var deviceInfo = _userContext.UserAgent;
 
-        if (result.Success)
-        {
-            _logger.LogInformation("Access token successfully refreshed.");
-        }
-        else
-        {
-            _logger.LogWarning("Failed token refresh attempt: {ResultErrorMessage}.", result.ErrorMessage);
-        }
+        var command = new RefreshTokenCommand(
+            RefreshToken: refreshTokenDto.Token,
+            IpAddress: ipAddress!,
+            DeviceInfo: deviceInfo!);
+        
+        var result = await _sender.Send(command, cancellationToken);
 
         return result.ToActionResult();
     }
 
     [HttpPost("request-password-reset")]
-    public async Task<IActionResult> RequestPasswordResetAsync([FromBody] RequestPasswordResetRequest request)
+    [ProducesResponseType(typeof(void), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> RequestPasswordReset([FromBody] PasswordResetRequest passwordResetRequest)
     {
-        var result = await _authService.RequestPasswordResetAsync(request.Email);
+        var command = new RequestPasswordResetCommand(Email: passwordResetRequest.Email);
 
-        if (result.Success)
-        {
-            _logger.LogInformation("Password reset successfully requested.");
-        }
-        else
-        {
-            _logger.LogWarning("Failed password reset request: {ResultErrorMessage}.", result.ErrorMessage);
-        }
-        
+        var result = await _sender.Send(command);
+
         return result.ToActionResult();
     }
 
     [HttpPost("reset-password")]
-    public async Task<IActionResult> ResetPasswordAsync([FromBody] ResetPasswordRequest request)
+    [ProducesResponseType(typeof(void), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
     {
-        var result = await _authService.ResetPasswordAsync(request);
+        var command = new ResetPasswordCommand(
+            Email: request.Email, 
+            Token: request.Token, 
+            request.NewPassword);
         
-        if (result.Success)
-        {
-            _logger.LogInformation("Password successfully reset.");
-        }
-        else
-        {
-            _logger.LogWarning("Failed password reset: {ResultErrorMessage}.", result.ErrorMessage);
-        }
+        var result = await _sender.Send(command);
 
         return result.ToActionResult();
     }
 
-    [HttpPost("send-email-confirmation")]
-    public async Task<IActionResult> SendEmailConfirmationAsync([FromBody] EmailConfirmationRequest request)
-    { 
-        var result = await _authService.SendEmailConfirmationAsync(request.Email);
+    [HttpPost("request-email-confirmation")]
+    [ProducesResponseType(typeof(void), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> RequestEmailConfirmation([FromBody] EmailConfirmationRequest request)
+    {
+        var command = new RequestEmailConfirmationCommand(Email: request.Email);
         
-        if (result.Success)
-        {
-            _logger.LogInformation("Email confirmation successfully sent.");
-        }
-        else
-        {
-            _logger.LogWarning("Failed email confirmation request: {ResultErrorMessage}.", result.ErrorMessage);
-        }
-        
+        var result = await _sender.Send(command);
+
         return result.ToActionResult();
     }
 
     [HttpPost("confirm-email")]
-    public async Task<IActionResult> ConfirmEmailAsync([FromBody] ConfirmEmailRequest request)
+    [ProducesResponseType(typeof(void), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> ConfirmEmail([FromBody] ConfirmEmailRequest request)
     {
-        var result = await _authService.ConfirmEmailAsync(request.Email, request.Token);
+        var command = new ConfirmEmailCommand(
+            Email: request.Email, 
+            Token: request.Token);
         
-        if (result.Success)
-        {
-            _logger.LogInformation("Email successfully confirmed.");
-        }
-        else
-        {
-            _logger.LogWarning("Failed email confirmation: {ResultErrorMessage}.", result.ErrorMessage);
-        }
-        
+        var result = await _sender.Send(command);
+
         return result.ToActionResult();
     }
 }
