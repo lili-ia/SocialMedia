@@ -1,5 +1,5 @@
 using MediatR;
-using SocialMedia.Shared.ResultPattern;
+using SocialMedia.Application.Common.ResultPattern;
 
 namespace SocialMedia.Application.Authentication.ConfirmEmail;
 

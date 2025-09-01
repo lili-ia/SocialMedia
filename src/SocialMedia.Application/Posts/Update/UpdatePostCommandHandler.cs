@@ -65,7 +65,7 @@ public class UpdatePostCommandHandler : IRequestHandler<UpdatePostCommand, Resul
             
             _logger.LogInformation("Post {PostId} successfully updated by user {UserId}.", post.Id, request.UserId);
 
-            var dto = await _postRepository.GetDetailsAsync(post.Id, PostMapper.ToDto, cancellationToken);
+            var dto = await _postRepository.GetDetailsAsync(post.Id, PostMapper.ProjectToDto, cancellationToken);
 
             if (dto is not null)
             {

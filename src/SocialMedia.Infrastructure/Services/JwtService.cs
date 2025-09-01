@@ -18,21 +18,29 @@ public class JwtService : IJwtService
         _configuration = configuration;
     }   
     
-    public string GenerateToken(string userId, string email)
+    public string GenerateToken(string userId, string email, string role)
     {
         var claims = new[]
         {       
             new Claim(ClaimTypes.NameIdentifier, userId),
-            new Claim(ClaimTypes.Email, email)
+            new Claim(ClaimTypes.Email, email),
+            new Claim(ClaimTypes.Role, role)
         };
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"] ?? string.Empty));
+        
+        var keyString = _configuration["Jwt:Key"];
+        if (string.IsNullOrEmpty(keyString))
+            throw new InvalidOperationException("JWT Key is not configured");
+
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyString));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
         var token = new JwtSecurityToken(
-            _configuration["Jwt:Issuer"],
-            _configuration["Jwt:Audience"],
-            claims, 
-            expires: DateTime.UtcNow.AddHours(2),
-            signingCredentials: creds);
+            issuer: _configuration["Jwt:Issuer"],
+            audience: _configuration["Jwt:Audience"],
+            claims: claims,
+            expires: DateTime.UtcNow.AddMinutes(30),  
+            signingCredentials: creds
+        );
 
         return new JwtSecurityTokenHandler().WriteToken(token);
     }

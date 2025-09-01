@@ -2,9 +2,9 @@ using Domain.Entities;
 using Domain.Enums;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using SocialMedia.Application.Common.ResultPattern;
 using SocialMedia.Application.Contracts;
 using SocialMedia.Application.Contracts.Repositories;
-using SocialMedia.Shared.ResultPattern;
 
 namespace SocialMedia.Application.Authentication.ConfirmEmail;
 

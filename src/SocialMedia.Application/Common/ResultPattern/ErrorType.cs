@@ -1,4 +1,4 @@
-namespace SocialMedia.Shared.ResultPattern;
+namespace SocialMedia.Application.Common.ResultPattern;
 
 public enum ErrorType
 {

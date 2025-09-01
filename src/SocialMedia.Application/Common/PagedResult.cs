@@ -1,4 +1,4 @@
-namespace SocialMedia.Shared.DTOs;
+namespace SocialMedia.Application.Common;
 
 public class PagedResult<T>
 {

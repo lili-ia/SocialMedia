@@ -14,7 +14,7 @@ using SocialMedia.Extensions;
 
 namespace SocialMedia.Controllers;
 
-[Authorize]
+[Produces("application/json")]
 [Route("api/users")]
 [ApiController]
 public class UsersController : ControllerBase
