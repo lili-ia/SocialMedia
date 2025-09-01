@@ -4,7 +4,7 @@ public class CommentDto
 {
     public string Text { get; set; } = null!;
 
-    public Guid UserId { get; set; }
+    public Guid? UserId { get; set; }
 
     public string? Username { get; set; }
     

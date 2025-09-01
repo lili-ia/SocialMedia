@@ -1,4 +1,4 @@
-namespace SocialMedia.Shared.DTOs.User;
+namespace SocialMedia.Application.DTOs.User;
 
 public class UserProfileDto
 {

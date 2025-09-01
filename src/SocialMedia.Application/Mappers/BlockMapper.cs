@@ -10,7 +10,9 @@ public static class BlockMapper
         block => new BlockedUserDto
         {
             BlockedUserId = block.Blocked.Id,
-            BlockedUsername = block.Blocked.Username,
+            BlockedUsername = block.Blocked.Status != Domain.Enums.UserStatus.Deactivated
+                ? block.Blocked.Username 
+                : "deleted",
             BlockedAt = block.BlockedAt
         };
 }

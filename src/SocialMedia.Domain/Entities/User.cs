@@ -1,61 +1,48 @@
-﻿using System.ComponentModel.DataAnnotations;
-using Domain.Enums;
+﻿using Domain.Enums;
 
 namespace Domain.Entities;
 
 public class User : BaseEntity
 {
-    [Required]
-    [StringLength(50, MinimumLength = 3)]
-    public string Username { get; set; } = "";
+    public string Username { get; set; } = null!;
 
-    [Required]
-    public DateTime BirthDate { get; set; } = DateTime.UtcNow;
+    public DateTime BirthDate { get; set; }
 
-    [Required]
-    [EmailAddress]
-    [StringLength(100)]
-    public string Email { get; set; } = "";
+    public string Email { get; set; } = null!;
 
-    [Required]
-    [StringLength(255, MinimumLength = 6)]
-    public string PasswordHash { get; set; } = "";
+    public string PasswordHash { get; set; } = null!;
 
-    [Url]
-    [StringLength(255)]
-    public string? ProfilePicUrl { get; set; }
-
-    [StringLength(300)]
+    public Guid? ProfilePicId { get; set; }
+    
     public string? Bio { get; set; }
 
-    [Required]
-    public UserStatus Status { get; set; } = UserStatus.Pending;
+    public UserStatus Status { get; set; } 
 
     public DateTime? LastSeen { get; set; }
     
-    [Required]
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAt { get; set; }
 
-    [Required]
     public UserRole UserRole { get; set; } = UserRole.User;
+    
+    public ProfilePic? ProfilePic { get; set; }
 
-    public virtual ICollection<Comment> Comments { get; set; } = new List<Comment>();
+    public ICollection<Comment> Comments { get; set; } = new List<Comment>();
     
-    public virtual ICollection<Message> Messages { get; set; } = new List<Message>();
+    public ICollection<Message> Messages { get; set; } = new List<Message>();
     
-    public virtual ICollection<Post> Posts { get; set; } = new List<Post>();
+    public ICollection<Post> Posts { get; set; } = new List<Post>();
     
-    public virtual ICollection<Follow> Followees { get; set; } = new List<Follow>();
+    public ICollection<Follow> Followees { get; set; } = new List<Follow>();
     
-    public virtual ICollection<Follow> Followers { get; set; } = new List<Follow>();
+    public ICollection<Follow> Followers { get; set; } = new List<Follow>();
     
-    public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
+    public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
     
-    public virtual ICollection<PostLike> PostLikes { get; set; } = new List<PostLike>();
+    public ICollection<PostLike> PostLikes { get; set; } = new List<PostLike>();
     
-    public virtual ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+    public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
     
-    public virtual ICollection<PostView> PostViews { get; set; } = new List<PostView>();
+    public ICollection<PostView> PostViews { get; set; } = new List<PostView>();
     
-    public virtual ICollection<Block> BlockedUsers { get; set; } = new List<Block>();
+    public ICollection<Block> BlockedUsers { get; set; } = new List<Block>();
 }

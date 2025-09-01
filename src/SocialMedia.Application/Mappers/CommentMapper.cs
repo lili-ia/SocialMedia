@@ -6,14 +6,6 @@ namespace SocialMedia.Application.Mappers;
 
 public static class CommentMapper
 {
-    public static CommentDto ToDto(this Comment comment) => new()
-    {
-        Text = comment.Text,
-        UserId = comment.UserId,
-        PostId = comment.PostId,
-        CreatedAt = comment.CreatedAt
-    };
-    
     public static CommentDto ToDto(this Comment comment, string username) => new()
     {
         Text = comment.Text,
@@ -23,12 +15,25 @@ public static class CommentMapper
         CreatedAt = comment.CreatedAt
     };
     
+    public static CommentDto ToDto(this Comment comment) => new()
+    {
+        Text = comment.Text,
+        UserId = comment.UserId,
+        Username = comment.User.Status != Domain.Enums.UserStatus.Deactivated
+            ? comment.User.Username 
+            : "deleted",
+        PostId = comment.PostId,
+        CreatedAt = comment.CreatedAt
+    };
+    
     public static Expression<Func<Comment, CommentDto>> ProjectToDto => 
         comment => new CommentDto
         {
             Text = comment.Text,
             UserId = comment.UserId,
-            Username = comment.User.Username,
+            Username = comment.User.Status != Domain.Enums.UserStatus.Deactivated
+                ? comment.User.Username 
+                : "deleted",
             PostId = comment.PostId,
             CreatedAt = comment.CreatedAt
         };
