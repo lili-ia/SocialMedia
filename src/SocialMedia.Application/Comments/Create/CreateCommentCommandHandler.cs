@@ -51,26 +51,29 @@ public class CreateCommentCommandHandler : IRequestHandler<CreateCommentCommand,
         }
 
         var post = await _postRepository.GetByIdAsync(request.PostId, cancellationToken);
-
-        if (post is null || !post.IsActive)
+        
+        if (post is null || (!post.IsActive && request.UserId != post.UserId))
         {
             _logger.LogInformation("Post {PostId} not found or not active.", request.PostId);
             
             return Result<CommentDto>.Failure("Post not found.", ErrorType.NotFound);
         }
         
-        var blockExists = await _blockRepository
-            .IsBlockedByEitherAsync(post.UserId, request.UserId, cancellationToken);
-
-        if (blockExists)
+        if (request.UserId != post.UserId)
         {
-            _logger.LogInformation("There is a block between {PostAuthorId} and {CommentAuthorId}.", 
-                post.UserId, request.UserId);
+            var blockExists = await _blockRepository
+                .IsBlockedByEitherAsync(post.UserId, request.UserId, cancellationToken);
+
+            if (blockExists)
+            {
+                _logger.LogInformation("There is a block between {PostAuthorId} and {CommentAuthorId}.", 
+                    post.UserId, request.UserId);
                 
-            return Result<CommentDto>.Failure("Post not found.", ErrorType.NotFound);
+                return Result<CommentDto>.Failure("Post not found.", ErrorType.NotFound);
+            }
         }
         
-        var username = await _userRepository.GetUsernameById(request.UserId, cancellationToken);
+        var username = await _userRepository.GetUsernameByIdAsync(request.UserId, cancellationToken);
 
         if (username is null)
         {
