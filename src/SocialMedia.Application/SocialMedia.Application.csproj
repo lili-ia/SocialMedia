@@ -9,7 +9,6 @@
     <ItemGroup>
       <ProjectReference Include="..\SocialMedia.Domain\SocialMedia.Domain.csproj" />
       <ProjectReference Include="..\SocialMedia.Persistence\SocialMedia.Persistence.csproj" />
-      <ProjectReference Include="..\SocialMedia.Shared\SocialMedia.Shared.csproj" />
     </ItemGroup>
 
     <ItemGroup>
