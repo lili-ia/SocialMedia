@@ -1,6 +1,6 @@
 ﻿namespace Domain.Entities;
 
-public class Follow
+public class Follow : BaseEntity
 {
     public DateTime FollowedAt { get; set; } = DateTime.UtcNow;
     

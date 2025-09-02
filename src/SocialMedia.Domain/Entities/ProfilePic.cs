@@ -8,7 +8,7 @@ public class ProfilePic : BaseEntity
 
     public ContentType ContentType { get; set; }
 
-    public DateTime CreatedAt { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public string Url { get; set; } = null!;
     
