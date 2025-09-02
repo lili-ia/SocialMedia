@@ -16,11 +16,11 @@ public interface IPostRepository
         Expression<Func<Post, TResult>> selector, 
         CancellationToken cancellationToken = default);
 
-    Task RemoveAsync(Post post, CancellationToken cancellationToken);
+    Task RemoveAsync(Guid id, CancellationToken cancellationToken);
     
     Task<IReadOnlyList<TResult>> GetListAsync<TResult>(
+        Expression<Func<Post, TResult>> selector,
         Expression<Func<Post, bool>>? predicate = null,
-        Expression<Func<Post, TResult>>? selector = null,
         Func<IQueryable<Post>, IOrderedQueryable<Post>>? orderBy = null,
         int? skip = null,
         int? take = null,

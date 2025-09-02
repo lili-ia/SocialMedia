@@ -18,13 +18,13 @@ public interface IFollowRepository
 
     Task<IReadOnlyList<TResult>> GetActiveFolloweesForUserAsync<TResult>(
         Guid userId, 
-        Expression<Func<User, TResult>> selector,
+        Expression<Func<Follow, TResult>> selector,
         IList<Guid>? excludeIds,
         CancellationToken cancellationToken = default);
     
-    Task<IReadOnlyList<UserPreviewDto>> GetActiveFollowersForUserAsync<TResult>(
+    Task<IReadOnlyList<TResult>> GetActiveFollowersForUserAsync<TResult>(
         Guid userId, 
-        Expression<Func<User, TResult>> selector,
+        Expression<Func<Follow, TResult>> selector,
         IList<Guid>? excludeIds,
         CancellationToken cancellationToken = default);
 }

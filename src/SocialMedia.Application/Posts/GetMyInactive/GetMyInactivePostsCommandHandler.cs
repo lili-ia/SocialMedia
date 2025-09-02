@@ -40,8 +40,8 @@ public class GetMyInactivePostsCommandHandler : IRequestHandler<GetMyInactivePos
         var skip = (request.Page - 1) * request.PageSize;
         
         var posts = await _postRepository.GetListAsync(
-            predicate: p => p.UserId == request.UserId && !p.IsActive, 
             selector: PostMapper.ProjectToDto, 
+            predicate: p => p.UserId == request.UserId && !p.IsActive, 
             orderBy: q => q
                 .OrderByDescending(p => p.CreatedAt),
             skip: skip,

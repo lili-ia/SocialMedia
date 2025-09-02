@@ -32,7 +32,7 @@ public class GetFolloweesOfUserCommandHandler : IRequestHandler<GetFolloweesOfUs
         if (request.UserId != request.ForUserId && request.ForUserId is not null)
         {
             blockedUserIds = await _blockRepository.
-                GetBlockedByEitherGuidsAsync(request.ForUserId.Value, cancellationToken);
+                GetBlockedByEitherIdsAsync(request.ForUserId.Value, cancellationToken);
             
             if (blockedUserIds.Contains(request.UserId))
             {
@@ -44,8 +44,8 @@ public class GetFolloweesOfUserCommandHandler : IRequestHandler<GetFolloweesOfUs
         }
         
         var followees = await _followRepository.GetActiveFolloweesForUserAsync(
-            request.UserId, 
-            UserMapper.ToUserPreviewDto, 
+            userId: request.UserId, 
+            selector: FollowMapper.ToFolloweeUserPreviewDto, 
             excludeIds: blockedUserIds?.ToList(), 
             cancellationToken);
         
