@@ -45,7 +45,7 @@ public class SearchUsersCommandHandler : IRequestHandler<SearchUsersCommand, Res
         if (request.ForUserId is not null)
         {
             blockedUsersIds = await _blockRepository
-                .GetBlockedByEitherGuidsAsync(request.ForUserId.Value, cancellationToken);
+                .GetBlockedByEitherIdsAsync(request.ForUserId.Value, cancellationToken);
         }
 
         var searchResult = await _userRepository.SearchActiveByUsernameAsync(

@@ -87,8 +87,8 @@ public class GetPublicPostsOfUserCommandHandler : IRequestHandler<GetPublicPosts
         var skip = (request.Page - 1) * request.PageSize;
         
         var posts = await _postRepository.GetListAsync(
-            predicate: p => p.UserId == authorId && p.IsActive, 
             selector: PostMapper.ProjectToDto, 
+            predicate: p => p.UserId == authorId && p.IsActive, 
             orderBy: q => q
                 .OrderByDescending(p => p.CreatedAt),
             skip: skip,

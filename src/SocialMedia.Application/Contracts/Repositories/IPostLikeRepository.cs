@@ -12,7 +12,7 @@ public interface IPostLikeRepository
 
     Task RemoveAsync(Guid likerId, Guid postId, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<UserPreviewDto>> GetPostLikersAsync<TResult>(
+    Task<IReadOnlyList<TResult>> GetPostLikersAsync<TResult>(
         Guid postId, 
         Expression<Func<PostLike, bool>> filter,
         Expression<Func<PostLike, TResult>> selector,

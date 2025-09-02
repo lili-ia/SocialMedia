@@ -43,10 +43,10 @@ public class GetFeedFromPopularCommandHandler : IRequestHandler<GetFeedFromPopul
         var since = DateTime.UtcNow.AddDays(-7);
 
         var posts = await _postRepository.GetListAsync(
+            selector: PostMapper.ProjectToDto,
             predicate: p => p.IsActive 
                             && p.CreatedAt >= since 
                             && p.User.Status == UserStatus.Active,
-            selector: PostMapper.ProjectToDto,
             orderBy: q => q
                 .OrderByDescending(p => p.PostLikes.Count)
                 .ThenByDescending(p => p.PostViews.Count),

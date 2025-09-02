@@ -7,6 +7,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\SocialMedia.Application\SocialMedia.Application.csproj" />
       <ProjectReference Include="..\SocialMedia.Domain\SocialMedia.Domain.csproj" />
     </ItemGroup>
 
@@ -19,7 +20,6 @@
 
     <ItemGroup>
       <Folder Include="Migrations\" />
-      <Folder Include="Repositories\" />
     </ItemGroup>
 
 </Project>

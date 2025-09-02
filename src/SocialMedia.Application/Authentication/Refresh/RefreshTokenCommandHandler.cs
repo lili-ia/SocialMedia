@@ -85,7 +85,6 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
 
         try
         {
-            await _tokenRepository.UpdateAsync(token, cancellationToken);
             await _tokenRepository.AddAsync(newRefreshToken, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
             

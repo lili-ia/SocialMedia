@@ -43,7 +43,7 @@ public class DeletePostCommandHandler : IRequestHandler<DeletePostCommand, Resul
 
         try
         {
-            await _postRepository.RemoveAsync(post, cancellationToken);
+            await _postRepository.RemoveAsync(post.Id, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
             
             _logger.LogInformation("Post {PostId} successfully deleted by user {UserId}.", post.Id, request.UserId);

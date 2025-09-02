@@ -44,7 +44,11 @@ public class GetFeedFromFolloweesCommandHandler : IRequestHandler<GetFeedFromFol
         }
 
         var followeesIds = await _followRepository
-            .GetActiveFolloweesForUserAsync(request.ForUserId, u => u.Id, null, cancellationToken);
+            .GetActiveFolloweesForUserAsync(
+                userId: request.ForUserId, 
+                selector: f => f.FolloweeId, 
+                excludeIds: null, 
+                cancellationToken);
 
         if (followeesIds.Count == 0)
         {
@@ -61,8 +65,8 @@ public class GetFeedFromFolloweesCommandHandler : IRequestHandler<GetFeedFromFol
         var skip = (request.Page - 1) * request.PageSize;
 
         var posts = await _postRepository.GetListAsync(
-            predicate: filter,
             selector: PostMapper.ProjectToDto,
+            predicate: filter,
             orderBy: null,
             skip: skip,
             take: request.PageSize,
