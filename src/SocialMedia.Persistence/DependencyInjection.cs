@@ -10,12 +10,11 @@ public static class DependencyInjection
     {
         services.AddDbContext<SocialMediaDbContext>(options =>
         {
-            options.UseSqlServer(config.GetConnectionString("DefaultConnection"), sqlOptions =>
+            options.UseNpgsql(config.GetConnectionString("DefaultConnection"), sqlOptions =>
                 sqlOptions.EnableRetryOnFailure(
                     maxRetryCount: 5,
-                    maxRetryDelay: TimeSpan.FromSeconds(10),
-                    errorNumbersToAdd: null
-                )
+                    maxRetryDelay: TimeSpan.FromSeconds(10), 
+                    errorCodesToAdd: null)
             );
         });
         

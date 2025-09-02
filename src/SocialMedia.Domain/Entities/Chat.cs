@@ -1,15 +1,18 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace Domain.Entities;
+﻿namespace Domain.Entities;
 
 public class Chat : BaseEntity
 {
-    [Required]
-    public bool IsGroup { get; set; } = false;
+    public string? Title { get; set; }
+    
+    public bool IsGroup { get; set; }
 
-    [Required]
-    [StringLength(100, MinimumLength = 1)]
-    public string Title { get; set; } = "";
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    
+    public Guid? LastMessageId { get; set; }
+    
+    public Message? LastMessage { get; set; }
 
-    public virtual ICollection<Message> Messages { get; set; } = new List<Message>();
+    public ICollection<Message> Messages { get; set; } = [];
+
+    public ICollection<ChatParticipant> ChatParticipants { get; set; } = [];
 }

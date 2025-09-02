@@ -13,7 +13,6 @@
         <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.3" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.0"/>
         <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.0-preview.2.25164.1" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.3" />
         <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="8.1.0" />
         <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="8.1.0" />
     </ItemGroup>

@@ -1,23 +1,18 @@
-﻿using System.ComponentModel.DataAnnotations;
-using Domain.Enums;
+﻿using Domain.Enums;
 
 namespace Domain.Entities;
 
 public class Notification : BaseEntity
 {
-    [Required]
-    public Guid RecipientId { get; set; }
-
-    [Required]
-    public NotificationType Type { get; set; } = NotificationType.System;
-
-    public bool IsRead { get; set; } = false;
-
-    [Required]
+    public NotificationType Type { get; set; }
+    
+    public bool IsRead { set; get; }
+    
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
-
-    [Required]
-    public Dictionary<string, string> Data { get; set; } = new();
+    
+    public Dictionary<string, string> Data { get; set; } = [];
+    
+    public Guid RecipientId { get; set; }
 
     public virtual User Recipient { get; set; } = null!;
 }

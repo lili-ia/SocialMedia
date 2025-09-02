@@ -1,14 +1,14 @@
 namespace Domain.Entities;
 
-public class Block : BaseEntity
+public sealed class Block : BaseEntity
 {
+    public DateTime BlockedAt { get; set; } = DateTime.UtcNow;
+    
     public Guid BlockerId { get; set; }
+    
+    public User Blocker { get; set; }  = null!;
     
     public Guid BlockedId { get; set; }
     
-    public DateTime BlockedAt { get; set; }
-    
-    public virtual User Blocker { get; set; }  = null!;
-
-    public virtual User Blocked { get; set; } = null!;
+    public User Blocked { get; set; } = null!;
 }

@@ -4,9 +4,9 @@ using Microsoft.Extensions.Configuration;
 
 namespace SocialMedia.Persistence;
 
-public class SocialMediaDbContextFactory : IDesignTimeDbContextFactory<SocialMediaContext>
+public class SocialMediaDbContextFactory : IDesignTimeDbContextFactory<SocialMediaDbContext>
 {
-    public SocialMediaContext CreateDbContext(string[] args)
+    public SocialMediaDbContext CreateDbContext(string[] args)
     {
         var builder = new ConfigurationBuilder()
             .SetBasePath(Path.Combine(Directory.GetCurrentDirectory(), "..", "SocialMedia.API"))
@@ -14,11 +14,11 @@ public class SocialMediaDbContextFactory : IDesignTimeDbContextFactory<SocialMed
         
         IConfiguration config = builder.Build();
         
-        var optionsBuilder = new DbContextOptionsBuilder<SocialMediaContext>();
-        var connectionString = config.GetConnectionString("AZURE_SQL_CONNECTIONSTRING");
+        var optionsBuilder = new DbContextOptionsBuilder<SocialMediaDbContext>();
+        var connectionString = config.GetConnectionString("DefaultConnection");
 
-        optionsBuilder.UseSqlServer(connectionString);
+        optionsBuilder.UseNpgsql(connectionString);
 
-        return new SocialMediaContext(optionsBuilder.Options);
+        return new SocialMediaDbContext(optionsBuilder.Options);
     }
 }
