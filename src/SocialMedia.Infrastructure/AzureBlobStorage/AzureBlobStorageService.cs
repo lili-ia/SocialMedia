@@ -1,4 +1,5 @@
 using Azure.Storage.Blobs;
+using Microsoft.Extensions.Options;
 using SocialMedia.Application.Contracts;
 
 namespace Infrastructure.AzureBlobStorage;
@@ -8,10 +9,10 @@ public class AzureBlobStorageService : IFileStorageService
     private readonly BlobServiceClient _blobServiceClient;
     private readonly AzureStorageOptions _options;
     
-    public AzureBlobStorageService(BlobServiceClient blobServiceClient, AzureStorageOptions options)
+    public AzureBlobStorageService(BlobServiceClient blobServiceClient, IOptions<AzureStorageOptions> options)
     {
         _blobServiceClient = blobServiceClient;
-        _options = options;
+        _options = options.Value;
     }
 
     public async Task<string> UploadFileAsync(string fileName, Stream fileStream, CancellationToken cancellationToken)
