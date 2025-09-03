@@ -41,8 +41,8 @@ jobs:
         run: dotnet publish ${{ env.API_PROJECT_PATH }} -c Release -o ./publish
 
       - name: Apply EF Core migrations
-      - run: dotnet ef database update --project ${{ env.PERSISTENCE_PROJECT_PATH }} --startup-project ${{ env.API_PROJECT_PATH }} --configuration Release
-      - env:
+        run: dotnet ef database update --project ${{ env.PERSISTENCE_PROJECT_PATH }} --startup-project ${{ env.API_PROJECT_PATH }} --configuration Release
+        env:
           ConnectionStrings__DefaultConnection: ${{ secrets.CONNECTION_STRING }}
 
       - name: Deploy to Azure Web App
