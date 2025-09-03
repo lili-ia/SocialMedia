@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Mail;
+using Microsoft.Extensions.Options;
 using SocialMedia.Application.Contracts;
 
 namespace Infrastructure.Email;
@@ -8,9 +9,9 @@ public class SmtpEmailSender : IEmailSender
 {
     private readonly SmtpSettings _settings;
 
-    public SmtpEmailSender(SmtpSettings settings)
+    public SmtpEmailSender(IOptions<SmtpSettings> settings)
     {
-        _settings = settings;
+        _settings = settings.Value;
     }
     
     public async Task SendEmailAsync(string to, string subject, string body)

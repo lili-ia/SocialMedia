@@ -8,6 +8,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using SocialMedia.Application.Contracts;
+using SocialMedia.Application.Contracts.Repositories;
+using SocialMedia.Persistence.Repositories;
 
 namespace Infrastructure;
 
@@ -21,7 +23,8 @@ public static class DependencyInjection
         services.AddTransient<IEmailSender, SmtpEmailSender>();
         services.AddTransient<IPasswordService, PasswordService>();
         AddAuthentication(services, config);
-        
+        AddAzureStorage(services, config);
+        AddRepositories(services);
         
         return services;
     }
@@ -52,8 +55,23 @@ public static class DependencyInjection
     private static void AddAzureStorage(IServiceCollection services, IConfiguration config)
     {
         services.Configure<AzureStorageOptions>(config.GetSection("AzureStorage"));
-        services.AddSingleton(x => new BlobServiceClient(config
-            .GetConnectionString("AzureStorage:ConnectionString")));
+        services.AddSingleton(x =>
+        {
+            var options = config.GetSection("AzureStorage").Get<AzureStorageOptions>();
+            return new BlobServiceClient(options.ConnectionString);
+        });
         services.AddSingleton<IFileStorageService, AzureBlobStorageService>();
+    }
+
+    private static void AddRepositories(IServiceCollection services)
+    {
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IPostRepository, PostRepository>();
+        services.AddScoped<IBlockRepository, BlockRepository>();
+        services.AddScoped<ICommentRepository, CommentRepository>();
+        services.AddScoped<IFollowRepository, FollowRepository>();
+        services.AddScoped<IPostLikeRepository, PostLikeRepository>();
+        services.AddScoped<ITokenRepository, TokenRepository>();
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
     }
 }
