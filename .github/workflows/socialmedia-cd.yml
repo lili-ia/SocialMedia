@@ -1,0 +1,46 @@
+name: CD Backend
+
+on:
+  push:
+    branches:
+      - main
+      
+env:
+  DOTNET_VERSION: '9.0.x'
+  SOLUTION_PATH: 'src/SocialMedia.sln'
+  API_PROJECT_PATH: 'src/SocialMedia.API'
+  PERSISTENCE_PROJECT_PATH: 'src/SocialMedia.Persistence'
+
+jobs:
+  deploy:
+    name: Deploy Backend to Azure Web App
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore ${{ env.SOLUTION_PATH }}
+
+      - name: Build
+        run: dotnet build ${{ env.SOLUTION_PATH }} --no-restore
+
+      - name: Publish
+        run: dotnet publish ${{ env.API_PROJECT_PATH }} -c Release -o ./publish
+
+      - name: Apply EF Core migrations
+      - run: dotnet ef database update --project ${{ env.PERSISTENCE_PROJECT_PATH }} --startup-project ${{ env.API_PROJECT_PATH }} --configuration Release
+      - env:
+          ConnectionStrings__DefaultConnection: ${{ secrets.CONNECTION_STRING }}
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v2
+        with:
+          slot-name: production
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
