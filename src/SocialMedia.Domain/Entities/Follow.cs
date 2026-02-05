@@ -1,9 +1,7 @@
 ﻿namespace Domain.Entities;
 
-public class Follow : BaseEntity
+public sealed class Follow : BaseEntity
 {
-    public DateTime FollowedAt { get; set; } = DateTime.UtcNow;
-    
     public Guid FollowerId { get; set; }
     
     public User Follower { get; set; } = null!;

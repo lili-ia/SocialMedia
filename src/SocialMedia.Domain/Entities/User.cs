@@ -2,29 +2,42 @@
 
 namespace Domain.Entities;
 
-public class User : BaseEntity
+public sealed class User : BaseEntity
 {
-    public string Username { get; set; } = null!;
+    public string UsernameNormalized { get; set; } = null!;
 
-    public string Email { get; set; } = null!;
+    public string EmailNormalized { get; set; } = null!;
+    
+    public DateOnly BirthDate { get; set; }
    
     public string PasswordHash { get; set; } = null!;
-    
-    public UserStatus Status { get; set; } 
-    
-    public DateTime BirthDate { get; set; }
-    
-    public string? Bio { get; set; }
 
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-    public DateTime? LastSeen { get; set; }
-
+    public UserStatus Status
+    {
+        get => _status;
+        set
+        {
+            if (_status != value)
+            {
+                _status = value;
+                StatusChangedAt = DateTime.UtcNow;
+            }
+        }
+    } 
+    
     public UserRole UserRole { get; set; } = UserRole.User;
     
-    public Guid? ProfilePicId { get; set; }
+    public string? Bio { get; set; }
     
-    public ProfilePic? ProfilePic { get; set; }
+    public DateTime? LastSeen { get; set; }
+    
+    public Guid? CurrentProfilePicId { get; set; }
+    
+    public ProfilePic? CurrentProfilePic { get; set; }
+    
+    public DateTime? StatusChangedAt { get; private set; }
+    
+    public string? StatusReason { get; set; }
 
     public ICollection<Comment> Comments { get; set; } = [];
     
@@ -47,4 +60,6 @@ public class User : BaseEntity
     public ICollection<Block> BlockedUsers { get; set; } = [];
     
     public ICollection<Block> BlockedByUsers { get; set; } = [];
+
+    private UserStatus _status = UserStatus.Pending;
 }

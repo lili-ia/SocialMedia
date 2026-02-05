@@ -14,32 +14,40 @@ public class SocialMediaDbContext : DbContext
         : base(options)
     {
     }
+    
+    public DbSet<Block> Blocks { get; set; }
 
-    public virtual DbSet<Chat> Chats { get; set; }
+    public DbSet<Chat> Chats { get; set; }
+    
+    public DbSet<ChatParticipant> ChatParticipants { get; set; }
 
-    public virtual DbSet<Comment> Comments { get; set; }
+    public DbSet<Comment> Comments { get; set; }
+    
+    public DbSet<EmailConfirmationToken> EmailConfirmationTokens { get; set; }
+    
+    public DbSet<Follow> Follows { get; set; }
+    
+    public DbSet<Message> Messages { get; set; }
+    
+    public DbSet<MessageAttachment> MessageAttachments { get; set; }
+    
+    public DbSet<Notification> Notifications { get; set; }
+    
+    public DbSet<PasswordResetToken> PasswordResetTokens { get; set; }
 
-    public virtual DbSet<Message> Messages { get; set; }
+    public DbSet<Post> Posts { get; set; }
+    
+    public DbSet<PostFile> PostFiles { get; set; }
+    
+    public DbSet<PostLike> PostLikes { get; set; }
 
-    public virtual DbSet<Post> Posts { get; set; }
-
-    public virtual DbSet<User> Users { get; set; }
+    public DbSet<PostView> PostViews { get; set; }
     
-    public virtual DbSet<RefreshToken> RefreshTokens { get; set; }
+    public DbSet<ProfilePic> ProfilePics { get; set; }
     
-    public virtual DbSet<PasswordResetToken> PasswordResetTokens { get; set; }
+    public DbSet<RefreshToken> RefreshTokens { get; set; }
     
-    public virtual DbSet<EmailConfirmationToken> EmailConfirmationTokens { get; set; }
-    
-    public virtual DbSet<PostLike> PostLikes { get; set; }
-    
-    public virtual DbSet<PostView> PostViews { get; set; }
-    
-    public virtual DbSet<Follow> Follows { get; set; }
-    
-    public virtual DbSet<Notification> Notifications { get; set; }
-    
-    public virtual DbSet<Block> Blocks { get; set; }
+    public DbSet<User> Users { get; set; }
     
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

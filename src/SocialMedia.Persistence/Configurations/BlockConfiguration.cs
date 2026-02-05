@@ -8,24 +8,13 @@ public class BlockConfiguration : IEntityTypeConfiguration<Block>
 {
     public void Configure(EntityTypeBuilder<Block> builder)
     {
-        builder.ToTable("Blocks");
+        builder.Property(u => u.Version)
+            .IsRowVersion();
         
-        builder.HasKey(b => b.Id);
-
-        builder.Property(b => b.BlockedAt)
-            .IsRequired()
-            .HasDefaultValueSql("NOW() AT TIME ZONE 'UTC'");
-
-        builder.HasOne(b => b.Blocker)
-            .WithMany() 
-            .HasForeignKey(b => b.BlockerId)
-            .OnDelete(DeleteBehavior.NoAction);
-
-        builder.HasOne(b => b.Blocked)
-            .WithMany() 
-            .HasForeignKey(b => b.BlockedId)
-            .OnDelete(DeleteBehavior.NoAction);
-
-        builder.HasIndex(b => new { b.BlockerId, b.BlockedId }).IsUnique(); 
+        builder.HasIndex(b => new { b.BlockerId, b.BlockedId })
+            .IsUnique(); 
+        
+        builder.ToTable(t => 
+            t.HasCheckConstraint("CK_Block_NotSelf", "\"BlockerId\" <> \"BlockedId\""));
     }
 }
