@@ -1,6 +1,6 @@
 namespace Domain.Entities;
 
-public class PasswordResetToken : UserTokenBase
+public sealed class PasswordResetToken : UserTokenBase
 {
    
 }

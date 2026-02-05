@@ -11,8 +11,8 @@ public static class BlockMapper
         {
             BlockedUserId = block.Blocked.Id,
             BlockedUsername = block.Blocked.Status != Domain.Enums.UserStatus.Deactivated
-                ? block.Blocked.Username 
+                ? block.Blocked.UsernameNormalized 
                 : "deleted",
-            BlockedAt = block.BlockedAt
+            BlockedAt = block.CreatedAt
         };
 }

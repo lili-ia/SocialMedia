@@ -8,26 +8,31 @@ public class ProfilePicConfiguration : IEntityTypeConfiguration<ProfilePic>
 {
     public void Configure(EntityTypeBuilder<ProfilePic> builder)
     {
-        builder.ToTable("ProfilePics");
-
-        builder.HasKey(pp => pp.Id);
-
-        builder.Property(pp => pp.FileName)
+        builder.Property(u => u.Version)
+            .IsRowVersion();
+        
+        builder.Property(p => p.OriginalFileName)
             .IsRequired()
             .HasMaxLength(255);
+    
+        builder.Property(p => p.OriginalStorageKey)
+            .IsRequired()
+            .HasMaxLength(500);
+        
+        builder.Property(p => p.ThumbnailStorageKey)
+            .IsRequired()
+            .HasMaxLength(500);
 
-        builder.Property(pp => pp.Url)
-            .IsRequired();
+        builder.HasOne(p => p.User)
+            .WithOne(u => u.CurrentProfilePic)
+            .HasForeignKey<ProfilePic>(p => p.UserId);
 
-        builder.Property(pp => pp.ContentType)
-            .IsRequired();
-
-        builder.Property(pp => pp.CreatedAt)
-            .HasDefaultValueSql("NOW() AT TIME ZONE 'UTC'");
-
-        builder.HasOne(pp => pp.User)
-            .WithMany()
-            .HasForeignKey(pp => pp.UserId)
-            .OnDelete(DeleteBehavior.NoAction);
+        builder.HasIndex(p => p.UserId);
+        
+        builder.HasIndex(p => p.OriginalStorageKey)
+            .IsUnique();
+        
+        builder.HasIndex(p => p.ThumbnailStorageKey)
+            .IsUnique();
     }
 }

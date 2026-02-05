@@ -8,22 +8,21 @@ public class ChatParticipantConfiguration : IEntityTypeConfiguration<ChatPartici
 {
     public void Configure(EntityTypeBuilder<ChatParticipant> builder)
     {
-        builder.ToTable("ChatParticipants");
+        builder.Property(u => u.Version)
+            .IsRowVersion();
         
-        builder.HasKey(cp => new { cp.ChatId, cp.UserId }); 
+        builder.HasIndex(cp => new { cp.UserId, cp.ChatId })
+            .IsUnique();
 
-        builder.Property(cp => cp.JoinedAt)
-            .IsRequired()
-            .HasDefaultValueSql("NOW() AT TIME ZONE 'UTC'");
+        builder.HasIndex(cp => new { cp.ChatId, cp.UserId })
+            .IncludeProperties(cp => cp.IsAdmin);
 
         builder.HasOne(cp => cp.Chat)
             .WithMany(c => c.ChatParticipants)
-            .HasForeignKey(cp => cp.ChatId)
-            .OnDelete(DeleteBehavior.NoAction);
+            .HasForeignKey(cp => cp.ChatId);
 
         builder.HasOne(cp => cp.User)
-            .WithMany() 
-            .HasForeignKey(cp => cp.UserId)
-            .OnDelete(DeleteBehavior.NoAction);
+            .WithMany()
+            .HasForeignKey(cp => cp.UserId);
     }
 }

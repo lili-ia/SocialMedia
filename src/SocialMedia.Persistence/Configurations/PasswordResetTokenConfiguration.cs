@@ -8,28 +8,15 @@ public class PasswordResetTokenConfiguration : IEntityTypeConfiguration<Password
 {
     public void Configure(EntityTypeBuilder<PasswordResetToken> builder)
     {
-        builder.ToTable("PasswordResetTokens");
+        builder.Property(u => u.Version)
+            .IsRowVersion();
         
-        builder.HasKey(t => t.Id);
-
         builder.Property(t => t.Token)
             .IsRequired()
             .HasMaxLength(200);
 
-        builder.Property(t => t.IsRevoked)
-            .IsRequired()
-            .HasDefaultValue(false);
-
-        builder.Property(t => t.CreatedAt)
-            .IsRequired()
-            .HasDefaultValueSql("NOW() AT TIME ZONE 'UTC'");
-
-        builder.Property(t => t.ExpiresAt)
-            .IsRequired();
-
         builder.HasOne(t => t.User)
             .WithMany()
-            .HasForeignKey(t => t.UserId)
-            .OnDelete(DeleteBehavior.NoAction);
+            .HasForeignKey(t => t.UserId);
     }
 }

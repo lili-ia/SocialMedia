@@ -6,13 +6,13 @@ public class Notification : BaseEntity
 {
     public NotificationType Type { get; set; }
     
-    public bool IsRead { set; get; }
+    public bool IsRead { get; set; }
     
-    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+    public DateTime? ReadAt { get; set; }
     
     public Dictionary<string, string> Data { get; set; } = [];
     
     public Guid RecipientId { get; set; }
 
-    public virtual User Recipient { get; set; } = null!;
+    public User Recipient { get; set; } = null!;
 }

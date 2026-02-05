@@ -1,14 +1,12 @@
 ﻿namespace Domain.Entities;
 
-public class PostLike : BaseEntity
+public sealed class PostLike : BaseEntity
 {
     public Guid UserId { get; set; }
+    
+    public User User { get; set; } = null!;
 
     public Guid PostId { get; set; }
-
-    public DateTime LikedAt { get; set; } = DateTime.UtcNow;
     
-    public virtual User User { get; set; } = null!;
-
-    public virtual Post Post { get; set; } = null!;
+    public Post Post { get; set; } = null!;
 }

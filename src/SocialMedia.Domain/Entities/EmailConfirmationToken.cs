@@ -1,6 +1,6 @@
 namespace Domain.Entities;
 
-public class EmailConfirmationToken : UserTokenBase
+public sealed class EmailConfirmationToken : UserTokenBase
 {
    
 }
