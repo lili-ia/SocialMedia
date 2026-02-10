@@ -6,110 +6,119 @@ using SocialMedia.Application.Contracts.Repositories;
 
 namespace SocialMedia.Persistence.Repositories;
 
-public class UserRepository : IUserRepository
+public class UserRepository(SocialMediaDbContext db) : IUserRepository
 {
-    private readonly SocialMediaDbContext _db;
+    public async Task<User?> GetByIdAsync(Guid id, CancellationToken ct = default, bool tracking = false)
+    {
+        var query = db.Users.AsQueryable();
 
-    public UserRepository(SocialMediaDbContext db)
-    {
-        _db = db;
-    }
-    
-     public async Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
-    {
-        return await _db.Users
-            .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
+        if (!tracking)
+        {
+            query = query.AsNoTracking();
+        }
+        
+        return await query.FirstOrDefaultAsync(u => u.Id == id, ct);
     }
 
-    public async Task AddAsync(User user, CancellationToken cancellationToken = default)
+    public async Task AddAsync(User user, CancellationToken ct = default)
     {
-        await _db.Users.AddAsync(user, cancellationToken);
+        await db.Users.AddAsync(user, ct);
     }
 
     public async Task<User?> GetByEmailOrUsernameAsync(
         string email, 
         string username, 
-        CancellationToken cancellationToken = default)
+        CancellationToken ct = default,
+        bool tracking = false)
     {
-        return await _db.Users
-            .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Email == email || u.Username == username, cancellationToken);
+        var query = db.Users.AsQueryable();
+
+        if (!tracking)
+        {
+            query = query.AsNoTracking();
+        }
+
+        return await query.FirstOrDefaultAsync(u => u.EmailNormalized == email || u.UsernameNormalized == username, ct);
     }
 
-    public async Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
+    public async Task<User?> GetByEmailAsync(string email, CancellationToken ct = default, bool tracking = false)
     {
-        return await _db.Users
-            .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
+        var query = db.Users.AsQueryable();
+
+        if (!tracking)
+        {
+            query = query.AsNoTracking();
+        }
+        
+        return await query.FirstOrDefaultAsync(u => u.EmailNormalized == email, ct);
     }
 
     public async Task<bool> ExistsAsync(
         Guid userId, 
         UserRole role = UserRole.User, 
-        CancellationToken cancellationToken = default)
+        CancellationToken ct = default)
     {
-        return await _db.Users
+        return await db.Users
             .AsNoTracking()
-            .AnyAsync(u => u.Id == userId && u.UserRole == role, cancellationToken);
+            .AnyAsync(u => u.Id == userId && u.UserRole == role, ct);
     }
 
     public async Task<bool> IsActiveAsync(
         Guid userId, 
         UserRole role = UserRole.User, 
-        CancellationToken cancellationToken = default)
+        CancellationToken ct = default)
     {
-        return await _db.Users
+        return await db.Users
             .AsNoTracking()
-            .AnyAsync(u => u.Id == userId && u.Status == UserStatus.Active && u.UserRole == role, cancellationToken);
+            .AnyAsync(u => u.Id == userId && u.Status == UserStatus.Active && u.UserRole == role, ct);
     }
 
-    public async Task<Guid?> GetIdByUsernameAsync(string username, CancellationToken cancellationToken = default)
+    public async Task<Guid?> GetIdByUsernameAsync(string username, CancellationToken ct = default)
     {
-        return await _db.Users
+        return await db.Users
             .AsNoTracking()
-            .Where(u => u.Username == username)
+            .Where(u => u.UsernameNormalized == username)
             .Select(u => (Guid?)u.Id)
-            .FirstOrDefaultAsync(cancellationToken);
+            .FirstOrDefaultAsync(ct);
     }
 
-    public async Task<string?> GetUsernameByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<string?> GetUsernameByIdAsync(Guid id, CancellationToken ct = default)
     {
-        return await _db.Users
+        return await db.Users
             .AsNoTracking()
             .Where(u => u.Id == id)
-            .Select(u => u.Username)
-            .FirstOrDefaultAsync(cancellationToken);
+            .Select(u => u.UsernameNormalized)
+            .FirstOrDefaultAsync(ct);
     }
 
     public async Task<TResult?> GetActiveDetailsByIdAsync<TResult>(
         Guid id, 
         Expression<Func<User, TResult>> selector, 
-        CancellationToken cancellationToken = default)
+        CancellationToken ct = default)
     {
-        return await _db.Users
+        return await db.Users
             .AsNoTracking()
             .Where(u => u.Id == id && u.Status == UserStatus.Active)
             .Select(selector)
-            .FirstOrDefaultAsync(cancellationToken);
+            .FirstOrDefaultAsync(ct);
     }
 
     public async Task<IReadOnlyList<TResult>> SearchActiveByUsernameAsync<TResult>(
         string username,
         Expression<Func<User, TResult>> selector,
         List<Guid>? excludeIds = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken ct = default)
     {
-        var query = _db.Users
+        var query = db.Users
             .AsNoTracking()
-            .Where(u => u.Status == UserStatus.Active && u.Username.Contains(username));
+            .Where(u => u.Status == UserStatus.Active && u.UsernameNormalized.Contains(username));
 
         if (excludeIds != null && excludeIds.Any())
             query = query.Where(u => !excludeIds.Contains(u.Id));
 
         var results = await query
             .Select(selector)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         return results.AsReadOnly();
     }

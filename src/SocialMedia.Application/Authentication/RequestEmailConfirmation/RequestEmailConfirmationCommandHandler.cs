@@ -3,72 +3,76 @@ using Domain.Entities;
 using Domain.Enums;
 using FluentValidation;
 using MediatR;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using SocialMedia.Application.Common;
+using SocialMedia.Application.Common.Configurations;
 using SocialMedia.Application.Common.ResultPattern;
 using SocialMedia.Application.Contracts;
 using SocialMedia.Application.Contracts.Repositories;
 
 namespace SocialMedia.Application.Authentication.RequestEmailConfirmation;
 
-public class RequestEmailConfirmationCommandHandler : IRequestHandler<RequestEmailConfirmationCommand, Result>
+public class RequestEmailConfirmationCommandHandler(
+    IUserRepository userRepository,
+    IUnitOfWork unitOfWork,
+    IEmailSender emailSender,
+    ILogger<RequestEmailConfirmationCommandHandler> logger,
+    IValidator<RequestEmailConfirmationCommand> validator,
+    IOptions<ClientSettings> settings,
+    IEmailBuilder emailBuilder,
+    IPendingEmailRepository emailRepository,
+    IHashService hashService,
+    ITokenRepository tokenRepository)
+    : IRequestHandler<RequestEmailConfirmationCommand, Result<MessageResponse>>
 {
-    private readonly IUserRepository _userRepository;
-    private readonly ITokenRepository _tokenRepository;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IEmailSender _emailSender;
-    private readonly IPasswordService _passwordService;
-    private readonly ILogger<RequestEmailConfirmationCommandHandler> _logger;
-    private readonly IValidator<RequestEmailConfirmationCommand> _validator;
-
-    public RequestEmailConfirmationCommandHandler(
-        IUserRepository userRepository,
-        ITokenRepository tokenRepository,
-        IUnitOfWork unitOfWork,
-        IEmailSender emailSender,
-        IPasswordService passwordService,
-        ILogger<RequestEmailConfirmationCommandHandler> logger, 
-        IValidator<RequestEmailConfirmationCommand> validator)
+    private const string Subject = "Verify your email for SocialMedia"; 
+    
+    public async Task<Result<MessageResponse>> Handle(RequestEmailConfirmationCommand request, CancellationToken cancellationToken)
     {
-        _userRepository = userRepository;
-        _tokenRepository = tokenRepository;
-        _unitOfWork = unitOfWork;
-        _emailSender = emailSender;
-        _passwordService = passwordService;
-        _logger = logger;
-        _validator = validator;
-    }
+        logger.LogInformation("User with email {Email} requests email confirmation token.", request.Email);
 
-    public async Task<Result> Handle(RequestEmailConfirmationCommand request, CancellationToken cancellationToken)
-    {
-        _logger.LogInformation("User with email {Email} requests email confirmation token.", request.Email);
-
-        var validationResult = _validator.Validate(request);
+        var validationResult = validator.Validate(request);
 
         if (!validationResult.IsValid)
         {
-            return validationResult.ToFailureResult();
+            return validationResult.ToFailureResult<MessageResponse>();
         }
         
         var normalizedEmail = request.Email.Trim().ToLower();
         
-        var user = await _userRepository.GetByEmailAsync(normalizedEmail, cancellationToken);
+        var user = await userRepository.GetByEmailAsync(normalizedEmail, cancellationToken, tracking: true);
 
         if (user is null)
         {
-            _logger.LogWarning("User with email {Email} not found.", normalizedEmail);
-            
-            return Result.Success();
+            logger.LogWarning("User with email {Email} not found.", normalizedEmail);
+
+            return Result<MessageResponse>.Success(new MessageResponse("Success! Check your inbox."));
         }
 
         if (user.Status != UserStatus.Pending)
         {
-            _logger.LogWarning("User with email {Email} already confirmed email.", normalizedEmail);
+            logger.LogWarning("User with email {Email} already confirmed email.", normalizedEmail);
             
-            return Result<bool>.Failure("Email already confirmed", ErrorType.Conflict);
+            return Result<MessageResponse>.Failure("Email already confirmed", ErrorType.Conflict);
         }
+        
+        var retryThreshold = DateTime.UtcNow.AddMinutes(-2);
+        
+        if (user.LastEmailSentAt.HasValue && user.LastEmailSentAt > retryThreshold)
+        {
+            var secondsToWait = (int)(user.LastEmailSentAt.Value.AddMinutes(2) - DateTime.UtcNow).TotalSeconds;
+            
+            return Result<MessageResponse>.Failure(
+                $"Please wait {secondsToWait} seconds before requesting another email.", 
+                ErrorType.TooManyRequests);
+        }
+        
+        user.LastEmailSentAt = DateTime.UtcNow;
 
-        var rawToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
-        var hashedToken = _passwordService.HashPassword(rawToken);
+        var rawToken = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
+        var hashedToken = hashService.HashDeterministic(rawToken);
 
         var token = new EmailConfirmationToken
         {
@@ -76,29 +80,36 @@ public class RequestEmailConfirmationCommandHandler : IRequestHandler<RequestEma
             UserId = user.Id,
             Token = hashedToken,
             CreatedAt = DateTime.UtcNow,
-            ExpiresAt = DateTime.UtcNow.AddDays(1),
+            ExpiresAt = DateTime.UtcNow.AddHours(1),
             IsRevoked = false
         };
+        
+        await tokenRepository.AddAsync(token, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        
+        var verificationLink = $"{settings.Value.ClientUrl}/api/auth/confirm-email?token={rawToken}";
+        var body = emailBuilder.BuildEmailVerificationBody(user.UsernameNormalized, verificationLink);
+        
+        var emailSenderResponse = await emailSender.SendEmailAsync(normalizedEmail, Subject, body, cancellationToken);
 
-        try
+        if (!emailSenderResponse.IsSuccess)
         {
-            await _tokenRepository.AddAsync(token, cancellationToken);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            var pendingEmail = new PendingEmail
+            {
+                To = user.EmailNormalized,
+                Subject = Subject,
+                Body = body
+            };
 
-            var body = $"<p>Please confirm your email by clicking the link below:</p>" +
-                       $"<p><a href='https://example.com/confirm-email?token={Uri.EscapeDataString(rawToken)}&email={Uri.EscapeDataString(normalizedEmail)}'>Confirm Email</a></p>";
-
-            await _emailSender.SendEmailAsync(normalizedEmail, "Confirm your email", body);
-
-            _logger.LogInformation("Email confirmation token sent to {Email}.", normalizedEmail);
-
-            return Result<bool>.Success(true);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error sending email confirmation token to {Email}", normalizedEmail);
+            await emailRepository.AddAsync(pendingEmail, cancellationToken);
             
-            return Result<bool>.Failure("An internal error occurred", ErrorType.ServerError);
+            return Result<MessageResponse>.InternalError("Couldn't send a verification email. Please try later.");
         }
+        
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        
+        logger.LogInformation("Confirmation email resent to {Email}.", normalizedEmail);
+        
+        return Result<MessageResponse>.Success(new MessageResponse("Success! Check your inbox."));
     }
 }

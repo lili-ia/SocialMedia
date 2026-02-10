@@ -17,11 +17,12 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration config)
     {
-        services.AddTransient<IJwtService, JwtService>();
+        services.AddTransient<ITokenService, TokenService>();
         services.AddTransient<IPasswordHasher<object>, PasswordHasher<object>>();
         services.Configure<SmtpSettings>(config.GetSection("SmtpSettings"));
         services.AddTransient<IEmailSender, SmtpEmailSender>();
-        services.AddTransient<IPasswordService, PasswordService>();
+        services.AddTransient<IHashService, HashService>();
+        services.AddHostedService<EmailBackgroundWorker>();
         AddAuthentication(services, config);
         AddAzureStorage(services, config);
         AddRepositories(services);

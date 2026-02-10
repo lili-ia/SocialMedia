@@ -22,6 +22,9 @@ public class Result
 
     public static Result Failure(string errorMessage, ErrorType errorType = ResultPattern.ErrorType.Unknown)
         => new Result(errorMessage, errorType);
+    
+    public new static Result InternalError(string errorMessage = "An internal error occured. Please, try later.")
+        => new Result(errorMessage, ResultPattern.ErrorType.ServerError);
 }
 
 public class Result<T> : Result
@@ -40,4 +43,7 @@ public class Result<T> : Result
 
     public new static Result<T> Failure(string errorMessage, ErrorType errorType = ResultPattern.ErrorType.Unknown)
         => new Result<T>(errorMessage, errorType);
+    
+    public new static Result<T> InternalError(string errorMessage = "An internal error occured. Please, try later.")
+        => new Result<T>(errorMessage, ResultPattern.ErrorType.ServerError);
 }

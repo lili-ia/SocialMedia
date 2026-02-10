@@ -34,6 +34,8 @@ public class SocialMediaDbContext : DbContext
     public DbSet<Notification> Notifications { get; set; }
     
     public DbSet<PasswordResetToken> PasswordResetTokens { get; set; }
+    
+    public DbSet<PendingEmail> PendingEmails { get; set; }
 
     public DbSet<Post> Posts { get; set; }
     

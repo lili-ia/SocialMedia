@@ -6,21 +6,21 @@ namespace SocialMedia.Application.Contracts.Repositories;
 
 public interface IUserRepository
 {
-    Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<User?> GetByIdAsync(Guid id, CancellationToken ct = default, bool tracking = false);
 
-    Task AddAsync(User user, CancellationToken cancellationToken = default);
+    Task AddAsync(User user, CancellationToken ct = default); 
 
-    Task<User?> GetByEmailOrUsernameAsync(string email, string username, CancellationToken cancellationToken = default);
+    Task<User?> GetByEmailOrUsernameAsync(string email, string username, CancellationToken ct = default, bool tracking = false);
     
-    Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default);
+    Task<User?> GetByEmailAsync(string email, CancellationToken ct = default, bool tracking = false);
 
-    Task<bool> ExistsAsync(Guid userId, UserRole role = UserRole.User, CancellationToken cancellationToken = default);
+    Task<bool> ExistsAsync(Guid userId, UserRole role = UserRole.User, CancellationToken ct = default);
 
-    Task<bool> IsActiveAsync(Guid userId, UserRole role = UserRole.User, CancellationToken cancellationToken = default);
+    Task<bool> IsActiveAsync(Guid userId, UserRole role = UserRole.User, CancellationToken ct = default);
 
-    Task<Guid?> GetIdByUsernameAsync(string username, CancellationToken cancellationToken = default);
+    Task<Guid?> GetIdByUsernameAsync(string username, CancellationToken ct = default);
 
-    Task<string?> GetUsernameByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<string?> GetUsernameByIdAsync(Guid id, CancellationToken ct = default);
 
     Task<TResult?> GetActiveDetailsByIdAsync<TResult>(
         Guid id, 

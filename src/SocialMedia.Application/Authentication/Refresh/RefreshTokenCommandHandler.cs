@@ -9,100 +9,81 @@ using SocialMedia.Application.DTOs.Auth;
 
 namespace SocialMedia.Application.Authentication.Refresh;
 
-public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, Result<AuthResponse>>
+public class RefreshTokenCommandHandler(
+    IValidator<RefreshTokenCommand> validator,
+    ILogger<RefreshTokenCommandHandler> logger,
+    IUserRepository userRepository,
+    ITokenService tokenService,
+    ITokenRepository tokenRepository,
+    IUnitOfWork unitOfWork)
+    : IRequestHandler<RefreshTokenCommand, Result<AuthResponse>>
 {
-    private readonly IValidator<RefreshTokenCommand> _validator;
-    private readonly ILogger<RefreshTokenCommandHandler> _logger;
-    private readonly IUserRepository _userRepository;
-    private readonly IJwtService _jwtService;
-    private readonly ITokenRepository _tokenRepository;
-    private readonly IUnitOfWork _unitOfWork;
-    
-    public RefreshTokenCommandHandler(
-        IValidator<RefreshTokenCommand> validator, 
-        ILogger<RefreshTokenCommandHandler> logger, 
-        IUserRepository userRepository, 
-        IPasswordService passwordService, 
-        IJwtService jwtService, 
-        ITokenRepository tokenRepository, 
-        IUnitOfWork unitOfWork)
-    {
-        _validator = validator;
-        _logger = logger;
-        _userRepository = userRepository;
-        _jwtService = jwtService;
-        _tokenRepository = tokenRepository;
-        _unitOfWork = unitOfWork;
-    }
-    
     public async Task<Result<AuthResponse>> Handle(RefreshTokenCommand request, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Attempting to refresh token {RefreshToken}.", request.RefreshToken);
+        logger.LogInformation("Attempting to refresh token {RefreshToken}.", request.RefreshToken);
 
-        var validationResult = _validator.Validate(request);
+        var validationResult = validator.Validate(request);
 
         if (!validationResult.IsValid)
         {
             return validationResult.ToFailureResult<AuthResponse>();
         }
         
-        var token = await _tokenRepository.GetValidTokenAsync<RefreshToken>(request.RefreshToken, cancellationToken);
+        var token = await tokenRepository.GetValidTokenAsync<RefreshToken>(request.RefreshToken, cancellationToken);
 
-        if (token is null)
+        if (token is null || !token.IsActive)
         {
-            _logger.LogWarning("Expired or invalid refresh token attempt. IP: {IP}, Device: {Device}", 
+            logger.LogWarning("Expired or invalid refresh token attempt. IP: {IP}, Device: {Device}", 
                 request.IpAddress, request.DeviceInfo);
+            
+            if (token is { IsUsed: true })
+            {
+                logger.LogCritical("Used refresh token replay detected for User {UserId}. Revoking all tokens.", token.UserId);
+                await tokenRepository.RevokeAllUserTokensAsync<RefreshToken>(token.UserId, cancellationToken);
+                await unitOfWork.SaveChangesAsync(cancellationToken);
+            }
             
             return Result<AuthResponse>.Failure("Invalid refresh token", ErrorType.Unauthorized);
         }
 
-        var user = await _userRepository.GetByIdAsync(token.UserId, cancellationToken);
+        var user = await userRepository.GetByIdAsync(token.UserId, cancellationToken);
         
         if (user is null)
         {
-            _logger.LogWarning("User with id {UserId} not found.", token.UserId);
+            logger.LogWarning("User with id {UserId} not found.", token.UserId);
             
             return Result<AuthResponse>.Failure("Invalid login attempt.", ErrorType.Unauthorized);
         }
-
-        var newAccessToken = _jwtService
-            .GenerateToken(token.UserId.ToString(), user.Email, user.UserRole.ToString());
-        var newRefreshTokenString = _jwtService.GenerateRefreshToken();
         
+        var newRefreshTokenString = tokenService.GenerateRefreshToken();
+    
         var newRefreshToken = new RefreshToken
         {
-            Id = Guid.NewGuid(),
             Token = newRefreshTokenString,
-            UserId = user.Id,
-            ExpiresAt = DateTime.UtcNow.AddDays(7),
-            CreatedAt = DateTime.UtcNow,
             IsRevoked = false,
-            IpAddress = request.IpAddress,
-            DeviceInfo = request.DeviceInfo
+            ExpiresAt = DateTime.UtcNow.AddDays(7),
+            UserId = user.Id
         };
 
         token.IsRevoked = true;
+        token.IsUsed = true;
+        token.RevokedAt = DateTime.UtcNow;
+        token.ReasonForRevocation = "Refreshed";
+        token.ReplacedByToken = newRefreshTokenString;
 
-        try
-        {
-            await _tokenRepository.AddAsync(newRefreshToken, cancellationToken);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-            
-            _logger.LogInformation("Refresh token for user with id {UserId} was successfully created.", user.Id);
-            
-            var authResponse = new AuthResponse
-            {
-                AccessToken = newAccessToken,
-                RefreshToken = newRefreshToken.Token
-            };
+        await tokenRepository.AddAsync(newRefreshToken, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        await unitOfWork.CommitTransactionAsync(cancellationToken);
 
-            return Result<AuthResponse>.Success(authResponse);
-        }
-        catch (Exception e)
+        var newAccessToken = tokenService
+            .GenerateAccessToken(token.UserId.ToString(), user.EmailNormalized, user.UserRole.ToString());
+        
+        var authResponse = new AuthResponse
         {
-            _logger.LogError(e, "Error creating token for user with id {UserId}.", user.Id);
-            
-            return Result<AuthResponse>.Failure("An internal error occured.", ErrorType.ServerError);
-        }
+            AccessToken = newAccessToken,
+            RefreshToken = newRefreshToken.Token
+        };
+        
+        return Result<AuthResponse>.Success(authResponse);
     }
 }

@@ -1,81 +1,71 @@
 using Domain.Entities;
 using Domain.Enums;
+using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using SocialMedia.Application.Common;
 using SocialMedia.Application.Common.ResultPattern;
 using SocialMedia.Application.Contracts;
 using SocialMedia.Application.Contracts.Repositories;
 
 namespace SocialMedia.Application.Authentication.ConfirmEmail;
 
-public class ConfirmEmailCommandHandler : IRequestHandler<ConfirmEmailCommand, Result>
+public class ConfirmEmailCommandHandler(
+    IUserRepository userRepository,
+    IUnitOfWork unitOfWork,
+    ILogger<ConfirmEmailCommandHandler> logger,
+    IValidator<ConfirmEmailCommand> validator,
+    ITokenRepository tokenRepository,
+    IHashService hashService)
+    : IRequestHandler<ConfirmEmailCommand, Result<MessageResponse>>
 {
-    private readonly IUserRepository _userRepository;
-    private readonly ITokenRepository _tokenRepository;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IPasswordService _passwordService;
-    private readonly ILogger<ConfirmEmailCommandHandler> _logger;
-
-    public ConfirmEmailCommandHandler(
-        IUserRepository userRepository,
-        ITokenRepository tokenRepository,
-        IUnitOfWork unitOfWork,
-        IPasswordService passwordService,
-        ILogger<ConfirmEmailCommandHandler> logger)
+    public async Task<Result<MessageResponse>> Handle(ConfirmEmailCommand request, CancellationToken ct)
     {
-        _userRepository = userRepository;
-        _tokenRepository = tokenRepository;
-        _unitOfWork = unitOfWork;
-        _passwordService = passwordService;
-        _logger = logger;
-    }
+        var validationResult = validator.Validate(request);
 
-    public async Task<Result> Handle(ConfirmEmailCommand request, CancellationToken cancellationToken)
-    {
-        _logger.LogInformation("Attempting to confirm email {Email}.", request.Email);
+        if (!validationResult.IsValid)
+        {
+            return validationResult.ToFailureResult<MessageResponse>();
+        }
+
+        var hashedToken = hashService.HashDeterministic(request.Token);
+        var token = await tokenRepository.GetValidTokenAsync<EmailConfirmationToken>(hashedToken, ct);
+
+        if (token is null)
+        {
+            return Result<MessageResponse>.Failure("Token is expired or already used.", ErrorType.Unauthorized);
+        }
+        
+        var user = await userRepository.GetByIdAsync(token.UserId, ct, tracking: true);
+        
+        if (user is null)
+        {
+            return Result<MessageResponse>.Failure("User not found.", ErrorType.NotFound);
+        }
 
         var normalizedEmail = request.Email.Trim().ToLower();
-        var user = await _userRepository.GetByEmailAsync(normalizedEmail, cancellationToken);
-
-        if (user == null)
+        
+        if (user.EmailNormalized != normalizedEmail)
         {
-            _logger.LogWarning("User with email {Email} not found.", normalizedEmail);
-            
-            return Result.Failure("Invalid email or token", ErrorType.BadRequest);
+            return Result<MessageResponse>.Failure(
+                "This link is no longer valid for your current email.", 
+                ErrorType.Unauthorized);
         }
-
-        var hashedToken = _passwordService.HashPassword(request.Token);
-
-        var token = await _tokenRepository.GetValidTokenAsync<EmailConfirmationToken>(hashedToken, cancellationToken);
-
-        if (token == null)
-        {
-            _logger.LogWarning("Invalid or expired token for user {Email}.", normalizedEmail);
-            
-            return Result.Failure("Invalid or expired token.", ErrorType.Forbidden);
-        }
-
+        
         if (user.Status != UserStatus.Pending)
         {
-            return Result<bool>.Failure("Email already confirmed.", ErrorType.Conflict);
+            return Result<MessageResponse>.Success(new MessageResponse("You already confirmed your email."));
         }
-
+        
         user.Status = UserStatus.Active;
-        token.IsRevoked = true;
+        token.IsRevoked = true; 
+        token.RevokedAt = DateTime.UtcNow;
+        token.ReasonForRevocation = "Email Confirmation Successful";
 
-        try
-        {
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-            
-            _logger.LogInformation("Email confirmed for user {Email}.", normalizedEmail);
-            
-            return Result<bool>.Success(true);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error confirming email for user {Email}.", normalizedEmail);
-            
-            return Result<bool>.Failure("An internal error occurred.", ErrorType.ServerError);
-        }
+        await unitOfWork.SaveChangesAsync(ct); 
+    
+        logger.LogInformation("User {UserId} verified email.", user.Id);
+        
+        return Result<MessageResponse>.Success(new MessageResponse("You successfully confirmed your email."));
     }
 }

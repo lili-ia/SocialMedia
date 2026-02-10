@@ -38,6 +38,8 @@ public sealed class User : BaseEntity
     public DateTime? StatusChangedAt { get; private set; }
     
     public string? StatusReason { get; set; }
+    
+    public DateTime? LastEmailSentAt { get; set; }
 
     public ICollection<Comment> Comments { get; set; } = [];
     

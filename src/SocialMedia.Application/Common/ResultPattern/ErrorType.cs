@@ -9,5 +9,6 @@ public enum ErrorType
     Unauthorized, 
     Forbidden,
     BadRequest,
-    Conflict
+    Conflict,
+    TooManyRequests
 }

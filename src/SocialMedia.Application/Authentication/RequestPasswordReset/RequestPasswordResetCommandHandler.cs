@@ -2,65 +2,70 @@ using System.Security.Cryptography;
 using Domain.Entities;
 using FluentValidation;
 using MediatR;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using SocialMedia.Application.Common;
+using SocialMedia.Application.Common.Configurations;
 using SocialMedia.Application.Common.ResultPattern;
 using SocialMedia.Application.Contracts;
 using SocialMedia.Application.Contracts.Repositories;
 
 namespace SocialMedia.Application.Authentication.RequestPasswordReset;
 
-public class RequestPasswordResetCommandHandler : IRequestHandler<RequestPasswordResetCommand, Result>
+public class RequestPasswordResetCommandHandler(
+    IValidator<RequestPasswordResetCommand> validator,
+    ILogger<RequestPasswordResetCommandHandler> logger,
+    IUserRepository userRepository,
+    IHashService hashService,
+    IUnitOfWork unitOfWork,
+    ITokenRepository tokenRepository,
+    IEmailSender emailSender,
+    IEmailBuilder emailBuilder,
+    IPendingEmailRepository emailRepository,
+    IOptions<ClientSettings> clientSettings) 
+    : IRequestHandler<RequestPasswordResetCommand, Result<MessageResponse>> 
 {
-    private readonly IValidator<RequestPasswordResetCommand> _validator;
-    private readonly ILogger<RequestPasswordResetCommandHandler> _logger;
-    private readonly IUserRepository _userRepository;
-    private readonly IPasswordService _passwordService;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly ITokenRepository _tokenRepository;
-    private readonly IEmailSender _emailSender;
-    
-    public RequestPasswordResetCommandHandler(
-        IValidator<RequestPasswordResetCommand> validator, 
-        ILogger<RequestPasswordResetCommandHandler> logger, 
-        IUserRepository userRepository, 
-        IPasswordService passwordService, 
-        IUnitOfWork unitOfWork, 
-        ITokenRepository tokenRepository, 
-        IEmailSender emailSender)
+    private readonly string Subject = "Reset your password for SocialMedia";
+    public async Task<Result<MessageResponse>> Handle(RequestPasswordResetCommand request, CancellationToken cancellationToken)
     {
-        _validator = validator;
-        _logger = logger;
-        _userRepository = userRepository;
-        _passwordService = passwordService;
-        _unitOfWork = unitOfWork;
-        _tokenRepository = tokenRepository;
-        _emailSender = emailSender;
-    }
-    
-    public async Task<Result> Handle(RequestPasswordResetCommand request, CancellationToken cancellationToken)
-    {
-        _logger.LogInformation("User with email {Email} requests password reset token.", request.Email);
+        logger.LogInformation("User with email {Email} requests password reset token.", request.Email);
 
-        var validationResult = _validator.Validate(request);
+        var validationResult = validator.Validate(request);
         
         if (!validationResult.IsValid)
         {
-            return validationResult.ToFailureResult();
+            return validationResult.ToFailureResult<MessageResponse>();
         }
 
         var normalizedEmail = request.Email.Trim().ToLower();
         
-        var user = await _userRepository.GetByEmailAsync(normalizedEmail, cancellationToken);
+        var user = await userRepository.GetByEmailAsync(normalizedEmail, cancellationToken, tracking: true);
 
         if (user is null)
         {
-            _logger.LogWarning("User with email {Email} not found.", normalizedEmail);
+            logger.LogWarning("User with email {Email} not found.", normalizedEmail);
             
-            return Result.Success();
+            return Result<MessageResponse>.Success(
+                new MessageResponse("If your account exists, you'll get an email with reset instructions."));
         }
         
-        var rawToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
-        var hashedToken = _passwordService.HashPassword(rawToken);
+        if (user.LastEmailSentAt.HasValue)
+        {
+            var secondsToWait = (int)(user.LastEmailSentAt.Value.AddMinutes(2) - DateTime.UtcNow).TotalSeconds;
+
+            if (secondsToWait > 0)
+            {
+                return Result<MessageResponse>.Failure(
+                    $"Please wait {secondsToWait} seconds before requesting another email.", 
+                    ErrorType.TooManyRequests);
+            }
+        }
+        
+        user.LastEmailSentAt = DateTime.UtcNow;
+        
+        var rawToken = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
+        var hashedToken = hashService.HashDeterministic(rawToken);
 
         var token = new PasswordResetToken
         {
@@ -71,24 +76,33 @@ public class RequestPasswordResetCommandHandler : IRequestHandler<RequestPasswor
             ExpiresAt = DateTime.UtcNow.AddHours(1),
             IsRevoked = false
         };
+        
+        await tokenRepository.AddAsync(token, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        try
+        var resetLink = $"{clientSettings.Value.ClientUrl}/api/auth/reset-password?" + 
+            $"token={Uri.EscapeDataString(rawToken)}&email={Uri.EscapeDataString(user.EmailNormalized)}";
+
+        var body = emailBuilder.BuildPasswordResetBody(user.UsernameNormalized, resetLink);
+        
+        var emailSenderResponse = await emailSender.SendEmailAsync(user.EmailNormalized, Subject, body, cancellationToken);
+        
+        if (!emailSenderResponse.IsSuccess)
         {
-            await _tokenRepository.AddAsync(token, cancellationToken);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            var pendingEmail = new PendingEmail
+            {
+                To = user.EmailNormalized,
+                Subject = Subject,
+                Body = body 
+            };
 
-            var body = $"<p>Reset password using this link:</p>" +
-                       $"<p><a href='https://example.com/reset-password?token={Uri.EscapeDataString(rawToken)}&email={Uri.EscapeDataString(user.Email)}'>Reset Password</a></p>";
-
-            await _emailSender.SendEmailAsync(user.Email, "Reset your password", body);
-
-            return Result.Success();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error sending password reset email to user {Email}.", user.Email);
+            await emailRepository.AddAsync(pendingEmail, cancellationToken);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
             
-            return Result.Failure("An internal error occurred.", ErrorType.ServerError);
+            return Result<MessageResponse>.InternalError("Couldn't send a verification email. Please try later.");
         }
+        
+        return Result<MessageResponse>.Success(
+            new MessageResponse("If your account exists, you'll get an email with reset instructions."));
     }
 }

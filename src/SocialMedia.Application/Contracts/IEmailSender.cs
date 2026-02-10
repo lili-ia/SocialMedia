@@ -2,5 +2,5 @@ namespace SocialMedia.Application.Contracts;
 
 public interface IEmailSender
 {
-    Task SendEmailAsync(string email, string subject, string message);
+    Task<EmailSenderResponse> SendEmailAsync(string email, string subject, string message, CancellationToken ct);
 }
