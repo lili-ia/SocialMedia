@@ -12,11 +12,30 @@ public static class PostMapper
             PostId = post.Id,
             Text = post.Text,
             UserId = post.UserId,
-            Username = post.User.Username,
-            IsActive = post.IsActive,
+            Username = post.User.UsernameNormalized,
+            IsHidden = post.IsHidden,
             CreatedAt = post.CreatedAt,
             UpdatedAt = post.UpdatedAt,
-            CommentsCount = post.Comments.Count,
-            LikesCount = post.PostLikes.Count
+            CommentCount = post.CommentCount,
+            LikeCount = post.LikeCount,
+            ViewCount = post.ViewCount,
+            FileStorageKeys = post.PostFiles
+                .Select(f => f.OriginalStorageKey)
+                .ToList()
         };
+
+    public static PostDto ToDto(this Post post, string? username = null, List<string>? fileUrls = null) => new PostDto
+    {
+        PostId = post.Id,
+        Text = post.Text,
+        UserId = post.UserId,
+        Username = username,
+        IsHidden = post.IsHidden,
+        CreatedAt = post.CreatedAt,
+        UpdatedAt = post.UpdatedAt,
+        CommentCount = post.CommentCount,
+        LikeCount = post.LikeCount,
+        ViewCount = 0,
+        FileUrls = fileUrls
+    };
 }

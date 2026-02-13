@@ -1,88 +1,122 @@
+using Domain.Entities;
+using Domain.Enums;
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using SixLabors.ImageSharp;
+using SocialMedia.Application.Common;
+using SocialMedia.Application.Common.Exceptions;
 using SocialMedia.Application.Common.ResultPattern;
+using SocialMedia.Application.Contracts;
 using SocialMedia.Application.Contracts.Repositories;
 using SocialMedia.Application.DTOs.Post;
 using SocialMedia.Application.Mappers;
 
 namespace SocialMedia.Application.Posts.Update;
 
-public class UpdatePostCommandHandler : IRequestHandler<UpdatePostCommand, Result<PostDto>>
+public class UpdatePostCommandHandler(
+    IValidator<UpdatePostCommand> validator,
+    ILogger<UpdatePostCommandHandler> logger,
+    IPostRepository postRepository,
+    IUnitOfWork unitOfWork,
+    IFileStorageService fileStorage,
+    IFileRepository fileRepository)
+    : IRequestHandler<UpdatePostCommand, Result<PostDto>>
 {
-    private readonly ILogger<UpdatePostCommandHandler> _logger;
-    private readonly IValidator<UpdatePostCommand> _validator;
-    private readonly IPostRepository _postRepository;
-    private readonly IUnitOfWork _unitOfWork;
-    
-    public UpdatePostCommandHandler(
-        IValidator<UpdatePostCommand> validator, 
-        ILogger<UpdatePostCommandHandler> logger, 
-        IPostRepository postRepository, 
-        IUnitOfWork unitOfWork)
+    public async Task<Result<PostDto>> Handle(UpdatePostCommand request, CancellationToken ct)
     {
-        _validator = validator;
-        _logger = logger;
-        _postRepository = postRepository;
-        _unitOfWork = unitOfWork;
-    }
-    
-    public async Task<Result<PostDto>> Handle(UpdatePostCommand request, CancellationToken cancellationToken)
-    {
-        _logger.LogInformation("Handling UpdatePostCommand {@Command}.", request);
-        
-        var validationResult = _validator.Validate(request);
+        var validationResult = validator.Validate(request);
         
         if (!validationResult.IsValid)
         {
-            _logger.LogWarning("Validation failed for UpdatePostCommand: {Errors}", validationResult.Errors);
-            
             return validationResult.ToFailureResult<PostDto>();
         }
 
-        var post = await _postRepository.GetByIdAsync(request.PostId, cancellationToken);
+        var post = await postRepository.GetByIdWithFilesAsync(request.PostId, ct);
 
         if (post is null)
         {
-            _logger.LogWarning("Post {PostId} not found.", request.PostId);
+            logger.LogWarning("Post {PostId} not found.", request.PostId);
             
             return Result<PostDto>.Failure("Post not found.", ErrorType.NotFound);
         }
 
         if (post.UserId != request.UserId)
         {
-            _logger.LogWarning("User {UserId} doesn't own post {PostId}, access denied.", request.UserId, request.PostId);
-
-            return Result<PostDto>.Failure("Access denied.", ErrorType.Forbidden);
+            logger.LogWarning("User {UserId} unauthorized for post {PostId}.", request.UserId, request.PostId);
+            
+            return Result<PostDto>.Failure("You do not own this post.", ErrorType.Forbidden);
         }
+        
+        var keptKeys = request.KeptStorageKeys ?? [];
+        
+        var filesToRemove = post.PostFiles
+            .Where(f => !keptKeys.Contains(f.OriginalStorageKey))
+            .ToList();
 
+        foreach (var file in filesToRemove)
+        {
+            post.PostFiles.Remove(file);
+            await fileStorage.DeleteFileAsync(file.OriginalStorageKey, ct);
+        }
+        
+        if (request.NewFiles is { Count: > 0 })
+        {
+            try
+            {
+                var postFiles = await Task.WhenAll(request.NewFiles.Select(async f =>
+                {
+                    byte[] bytes;
+                    
+                    await using (var ms = new MemoryStream())
+                    {
+                        await f.Content.CopyToAsync(ms, ct);
+                        bytes = ms.ToArray();
+                    }
+                    
+                    var storageKey = await fileStorage.UploadFileAsync(f.FileName, new MemoryStream(bytes), MediaFolder.PostFiles, ct);
+                    
+                    var info = await Image.IdentifyAsync(new MemoryStream(bytes), ct);
+                    
+                    return new PostFile 
+                    {
+                        UserId = request.UserId,
+                        OriginalFileName = f.FileName,
+                        ContentType = ContentType.Image,
+                        OriginalStorageKey = storageKey,
+                        OriginalFileSize = bytes.Length,
+                        PostId = post.Id,
+                        Width = info.Width,
+                        Height = info.Height
+                    };
+                }));
+                
+                await fileRepository.AddRangeAsync(postFiles, ct);
+            }
+            catch (FileStorageException ex) 
+            {
+                logger.LogError(ex, "S3 Upload failed for user {UserId}", request.UserId);
+                
+                return Result<PostDto>.InternalError("An error occurred while uploading images.");
+            }
+        }
+        
         post.Text = request.Text;
         post.UpdatedAt = DateTime.UtcNow;
 
-        try
+        await unitOfWork.SaveChangesAsync(ct);
+        
+        logger.LogInformation("Post {PostId} successfully updated.", post.Id);
+
+        var dto = await postRepository.GetDetailsAsync(request.PostId, PostMapper.ProjectToDto, ct);
+
+        if (dto is null)
         {
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-            
-            _logger.LogInformation("Post {PostId} successfully updated by user {UserId}.", post.Id, request.UserId);
-
-            var dto = await _postRepository.GetDetailsAsync(post.Id, PostMapper.ProjectToDto, cancellationToken);
-
-            if (dto is not null)
-            {
-                return Result<PostDto>.Success(dto);
-            }
-            
-            _logger.LogWarning("Post {PostId} details not found after update.", post.Id);
-                
-            return Result<PostDto>.Failure("Post details not found after update.", ErrorType.NotFound);
-
+            return Result<PostDto>.Failure("Post not found.", ErrorType.NotFound);
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "An error occured while updating post {PostId} by user {UserId}.", 
-                request.PostId, request.UserId);
-            
-            return Result<PostDto>.Failure("An internal error occured.", ErrorType.ServerError);
-        }
+
+        dto.FileUrls = dto.FileStorageKeys?.Select(key => fileStorage.GetPresignedUrl(key, 60)).ToList();
+        
+        return Result<PostDto>.Success(dto);
     }
 }

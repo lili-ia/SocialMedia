@@ -1,11 +1,14 @@
 using System.Linq.Expressions;
 using Domain.Entities;
+using SocialMedia.Application.DTOs.Post;
 
 namespace SocialMedia.Application.Contracts.Repositories;
 
 public interface IPostRepository
 {
-    Task<Post?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<Post?> GetByIdAsync(Guid id, CancellationToken ct = default);
+    
+    Task<Post?> GetByIdWithFilesAsync(Guid id, CancellationToken ct = default);
     
     Task<(bool IsActive, Guid AuthorId)?> GetStatusAsync(Guid id, CancellationToken cancellationToken);
     
@@ -18,13 +21,19 @@ public interface IPostRepository
 
     Task RemoveAsync(Guid id, CancellationToken cancellationToken);
     
-    Task<IReadOnlyList<TResult>> GetListAsync<TResult>(
-        Expression<Func<Post, TResult>> selector,
-        Expression<Func<Post, bool>>? predicate = null,
-        Func<IQueryable<Post>, IOrderedQueryable<Post>>? orderBy = null,
+    Task<List<PostDto>> GetPublicOfAuthor(
+        Guid authorId,
+        Guid? targetUserId,
         int? skip = null,
         int? take = null,
-        CancellationToken cancellationToken = default);
+        CancellationToken ct = default);
+    
+    Task<List<TResult>> GetHiddenOfAuthor<TResult>(
+        Guid authorId,
+        Expression<Func<Post, TResult>> selector,
+        int? skip = null,
+        int? take = null,
+        CancellationToken ct = default);
     
     Task<Guid?> GetUserIdByPostIdAsync(Guid id, CancellationToken cancellationToken = default);
 }

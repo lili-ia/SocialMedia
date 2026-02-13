@@ -29,7 +29,7 @@ public class CreatePostCommandValidator : AbstractValidator<CreatePostCommand>
             {
                 file.RuleFor(f => f.FileName)
                     .Must(f => AllowedExtensions.Contains(Path.GetExtension(f).ToLower()))
-                    .WithMessage(f => $"File '{f.FileName} must be a photo (.jpeg, .jpg, .png).'");
+                    .WithMessage(f => $"File '{f.FileName} must be a photo or gif (.jpeg, .jpg, .png, .gif).'");
                 
                 file.RuleFor(f => f.Content.Length)
                     .LessThanOrEqualTo(MaxFileSizeBytes)

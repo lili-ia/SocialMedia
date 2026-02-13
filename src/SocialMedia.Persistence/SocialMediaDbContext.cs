@@ -1,4 +1,5 @@
-﻿using Domain.Entities;
+﻿using System.Linq.Expressions;
+using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using SocialMedia.Persistence.Configurations;
 
@@ -14,7 +15,25 @@ public class SocialMediaDbContext : DbContext
         : base(options)
     {
     }
-    
+
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = new CancellationToken())
+    {
+        var entries = ChangeTracker
+            .Entries()
+            .Where(e => e.Entity is BaseEntity && e.State == EntityState.Deleted);
+
+        foreach (var entry in entries)
+        {
+            entry.State = EntityState.Modified;
+
+            var entity = (BaseEntity)entry.Entity;
+            entity.IsDeleted = true;
+            entity.DeletedAt = DateTime.UtcNow;
+        }
+        
+        return base.SaveChangesAsync(cancellationToken);
+    }
+
     public DbSet<Block> Blocks { get; set; }
 
     public DbSet<Chat> Chats { get; set; }
@@ -54,5 +73,23 @@ public class SocialMediaDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(UserConfiguration).Assembly);
+
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            if (typeof(BaseEntity).IsAssignableFrom(entityType.ClrType))
+            {
+                modelBuilder.Entity(entityType.ClrType)
+                    .HasQueryFilter(ConvertFilterExpression(entityType.ClrType));
+            }
+        }
+    }
+    
+    private static LambdaExpression ConvertFilterExpression(Type type)
+    {
+        var parameter = Expression.Parameter(type, "e");
+        var property = Expression.Property(parameter, nameof(BaseEntity.IsDeleted));
+        var comparison = Expression.Equal(property, Expression.Constant(false));
+        
+        return Expression.Lambda(comparison, parameter);
     }
 }

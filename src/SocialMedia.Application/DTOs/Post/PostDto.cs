@@ -1,6 +1,8 @@
+using System.Text.Json.Serialization;
+
 namespace SocialMedia.Application.DTOs.Post;
 
-public record class PostDto
+public record PostDto
 {
     public Guid PostId { get; set; }
     
@@ -10,15 +12,21 @@ public record class PostDto
     
     public string? Username { get; set; }
 
-    public bool IsActive { get; set; } = true;
+    public bool IsHidden { get; set; } = true;
 
     public DateTime? CreatedAt { get; set; } = DateTime.UtcNow;
 
     public DateTime? UpdatedAt { get; set; }
 
-    public int CommentsCount { get; set; } = 0;
+    public int CommentCount { get; set; } = 0;
 
-    public int LikesCount { get; set; } = 0;
+    public int LikeCount { get; set; } = 0;
     
-    public bool IsLiked { get; set; }
+    public int ViewCount { get; set; } = 0;
+    
+    public bool? IsLikedByTargetUser { get; set; }
+    
+    public List<string>? FileUrls { get; set; }
+    
+    public List<string>? FileStorageKeys { get; set; }
 }

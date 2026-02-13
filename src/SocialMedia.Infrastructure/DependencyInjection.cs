@@ -1,6 +1,7 @@
 using System.Text;
+using Amazon.S3;
 using Azure.Storage.Blobs;
-using Infrastructure.AzureBlobStorage;
+using Infrastructure.AmazonS3Storage;
 using Infrastructure.BackgroundJobs;
 using Infrastructure.Email;
 using Infrastructure.Security;
@@ -24,7 +25,7 @@ public static class DependencyInjection
         services.AddHostedService<EmailBackgroundWorker>();
         services.AddHostedService<TokenBackgroundWorker>();
         AddAuthentication(services, config);
-        AddAzureStorage(services, config);
+        AddAmazonS3Storage(services, config);
         
         return services;
     }
@@ -47,21 +48,26 @@ public static class DependencyInjection
                 };
             });
         
-        services.AddAuthorization();
+        services.AddAuthorization(options =>
+        {
+            options.AddPolicy("ActiveUser", policy => 
+                policy.RequireClaim("is_active", "true"));
+        });
         services.AddHttpContextAccessor();
         services.AddTransient<IUserContext, UserContext>();
     }
 
-    private static void AddAzureStorage(IServiceCollection services, IConfiguration config)
+    private static void AddAmazonS3Storage(IServiceCollection services, IConfiguration config)
     {
-        services.Configure<AzureStorageOptions>(options => 
-            config.GetSection(AzureStorageOptions.SectionName).Bind(options));
+        services.AddSingleton<IAmazonS3>(sp => new AmazonS3Client(
+            config["AmazonS3:AccessKey"],
+            config["AmazonS3:SecretKey"],
+            Amazon.RegionEndpoint.EUNorth1
+        ));
+
+        services.Configure<AmazonS3StorageOptions>(options => 
+            config.GetSection(AmazonS3StorageOptions.SectionName).Bind(options));
         
-        services.AddSingleton(x =>
-        {
-            var options = config.GetSection("AzureStorage").Get<AzureStorageOptions>();
-            return new BlobServiceClient(options.ConnectionString);
-        });
-        services.AddSingleton<IFileStorageService, AzureBlobStorageService>();
+        services.AddSingleton<IFileStorageService, AmazonS3StorageService>();
     }
 }

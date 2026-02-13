@@ -35,6 +35,7 @@ public static class DependencyInjection
         services.AddScoped<IPostLikeRepository, PostLikeRepository>();
         services.AddScoped<ITokenRepository, TokenRepository>();
         services.AddScoped<IPendingEmailRepository, PendingEmailRepository>(); 
+        services.AddScoped<IFileRepository, FileRepository>(); 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
     }
 }

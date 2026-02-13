@@ -1,132 +1,97 @@
 using Domain.Entities;
-using Domain.Enums;
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using SixLabors.ImageSharp;
+using SocialMedia.Application.Common;
+using SocialMedia.Application.Common.Exceptions;
 using SocialMedia.Application.Common.ResultPattern;
 using SocialMedia.Application.Contracts;
 using SocialMedia.Application.Contracts.Repositories;
+using SocialMedia.Application.DTOs.Post;
+using SocialMedia.Application.Mappers;
+using ContentType = Domain.Enums.ContentType;
 
 namespace SocialMedia.Application.Posts.Create;
 
-public class CreatePostCommandHandler : IRequestHandler<CreatePostCommand, Result<Guid>>
+public class CreatePostCommandHandler(
+    IPostRepository postRepository,
+    IUnitOfWork unitOfWork,
+    IValidator<CreatePostCommand> validator,
+    ILogger<CreatePostCommandHandler> logger,
+    IFileStorageService fileStorage,
+    IFileRepository fileRepository)
+    : IRequestHandler<CreatePostCommand, Result<PostDto>>
 {
-    private readonly IPostRepository _postRepository;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IValidator<CreatePostCommand> _validator;
-    private readonly ILogger<CreatePostCommandHandler> _logger;
-    private readonly IUserRepository _userRepository;
-    private readonly IFileStorageService _fileStorage;
-
-    public CreatePostCommandHandler(
-        IPostRepository postRepository, 
-        IUnitOfWork unitOfWork, 
-        IValidator<CreatePostCommand> validator,
-        ILogger<CreatePostCommandHandler> logger,
-        IUserRepository userRepository, 
-        IFileStorageService fileStorage)
+    public async Task<Result<PostDto>> Handle(CreatePostCommand request, CancellationToken ct)
     {
-        _postRepository = postRepository;
-        _unitOfWork = unitOfWork;
-        _validator = validator;
-        _logger = logger;
-        _userRepository = userRepository;
-        _fileStorage = fileStorage;
-    }
-    
-    public async Task<Result<Guid>> Handle(CreatePostCommand request, CancellationToken cancellationToken)
-    {
-        _logger.LogInformation("Handling CreatePostCommand {@Command}.", request);
-
-        var validationResult = _validator.Validate(request);
+        var validationResult = validator.Validate(request);
         
         if (!validationResult.IsValid)
         {
-            _logger.LogWarning("Validation failed for CreatePostCommand: {Errors}", validationResult.Errors);
-            
-            return validationResult.ToFailureResult<Guid>();
+            return validationResult.ToFailureResult<PostDto>();
         }
 
-        var isActive = await _userRepository.IsActiveAsync(request.UserId, UserRole.User, cancellationToken);
-
-        if (!isActive)
-        {
-            _logger.LogWarning("User {UserId} can not upload posts unless they have Active user status.", request.UserId);
-            
-            return Result<Guid>.Failure("Access denied.", ErrorType.Forbidden);
-        }
-        
         var post = new Post
         {
-            Id = Guid.NewGuid(),
             Text = request.Text,
-            UserId = request.UserId,
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
+            IsHidden = false,
+            UserId = request.UserId
         };
-
-        var uploadedFiles = new List<string>();
         
+        await postRepository.AddAsync(post, ct);
+
+        List<string> presignedUrls = [];
+
         if (request.Files is { Count: > 0 })
         {
             try
             {
-                var files = await Task.WhenAll(request.Files.Select(async f =>
+                var postFiles = await Task.WhenAll(request.Files.Select(async f =>
                 {
-                    var url = await _fileStorage.UploadFileAsync(f.FileName, f.Content, cancellationToken);
-                    uploadedFiles.Add(url);
-
-                    return new PostFile
+                    byte[] bytes;
+                    
+                    await using (var ms = new MemoryStream())
                     {
-                        Id = Guid.NewGuid(),
-                        PostId = post.Id,
-                        FileName = f.FileName,
+                        await f.Content.CopyToAsync(ms, ct);
+                        bytes = ms.ToArray();
+                    }
+                    
+                    var storageKey = await fileStorage.UploadFileAsync(f.FileName, new MemoryStream(bytes), MediaFolder.PostFiles, ct);
+                    
+                    var info = await Image.IdentifyAsync(new MemoryStream(bytes), ct);
+                    
+                    return new PostFile 
+                    {
+                        UserId = request.UserId,
+                        OriginalFileName = f.FileName,
                         ContentType = ContentType.Image,
-                        Url = url
+                        OriginalStorageKey = storageKey,
+                        OriginalFileSize = bytes.Length,
+                        PostId = post.Id,
+                        Width = info.Width,
+                        Height = info.Height
                     };
                 }));
-
-                post.PostFiles = files;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "An error occured while trying to upload a file to the file storage.");
                 
-                return Result<Guid>.Failure("An internal error occured.", ErrorType.ServerError);
+                await fileRepository.AddRangeAsync(postFiles, ct);
+
+                presignedUrls = postFiles
+                    .Select(f => fileStorage.GetPresignedUrl(f.OriginalStorageKey, 60))
+                    .ToList();
             }
-        }
-
-        try
-        {
-            await _postRepository.AddAsync(post, cancellationToken);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-            _logger.LogInformation("Post {PostId} successfully created by user {UserId}.", post.Id, request.UserId);
-
-            return Result<Guid>.Success(post.Id);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "An error occured while creating a post by user {UserId}.", request.UserId);
-            
-            await DeleteUploadedFilesAsync(uploadedFiles, cancellationToken);
-            
-            return Result<Guid>.Failure("An internal error occured.", ErrorType.ServerError);
-        }
-    }
-    
-    private async Task DeleteUploadedFilesAsync(IEnumerable<string> urls, CancellationToken cancellationToken)
-    {
-        foreach (var url in urls)
-        {
-            try
+            catch (FileStorageException ex) // todo implement a background job that will cleanup orphaned files
             {
-                await _fileStorage.DeleteFileAsync(url, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to delete orphaned file {FileUrl}.", url);
+                logger.LogError(ex, "S3 Upload failed for user {UserId}", request.UserId);
+                
+                return Result<PostDto>.InternalError("An error occurred while uploading images.");
             }
         }
+
+        await unitOfWork.SaveChangesAsync(ct);
+        
+        logger.LogInformation("Post {PostId} created by user {UserId}.", post.Id, request.UserId);
+
+        return Result<PostDto>.Success(post.ToDto(null, presignedUrls));
     }
 }

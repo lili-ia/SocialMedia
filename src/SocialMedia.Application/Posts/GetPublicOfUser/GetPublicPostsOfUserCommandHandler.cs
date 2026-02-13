@@ -10,74 +10,57 @@ using SocialMedia.Application.Mappers;
 
 namespace SocialMedia.Application.Posts.GetPublicOfUser;
 
-public class GetPublicPostsOfUserCommandHandler : IRequestHandler<GetPublicPostsOfUserCommand, Result<IReadOnlyList<PostDto>>>
+public class GetPublicPostsOfUserCommandHandler(
+    ILogger<GetPublicPostsOfUserCommandHandler> logger,
+    IPostRepository postRepository,
+    IBlockRepository blockRepository,
+    IUserRepository userRepository,
+    IValidator<GetPublicPostsOfUserCommand> validator,
+    IFileStorageService fileStorage)
+    : IRequestHandler<GetPublicPostsOfUserCommand, Result<IReadOnlyList<PostDto>>>
 {
-    private readonly ILogger<GetPublicPostsOfUserCommandHandler> _logger;
-    private readonly IPostRepository _postRepository;
-    private readonly IBlockRepository _blockRepository;
-    private readonly IUserRepository _userRepository;
-    private readonly IValidator<GetPublicPostsOfUserCommand> _validator;
-    
-    public GetPublicPostsOfUserCommandHandler(
-        ILogger<GetPublicPostsOfUserCommandHandler> logger, 
-        IPostRepository postRepository, 
-        IBlockRepository blockRepository, 
-        IUserRepository userRepository, 
-        IValidator<GetPublicPostsOfUserCommand> validator)
+    public async Task<Result<IReadOnlyList<PostDto>>> Handle(GetPublicPostsOfUserCommand request, CancellationToken ct)
     {
-        _logger = logger;
-        _postRepository = postRepository;
-        _blockRepository = blockRepository;
-        _userRepository = userRepository;
-        _validator = validator;
-    }
-
-    public async Task<Result<IReadOnlyList<PostDto>>> Handle(GetPublicPostsOfUserCommand request, CancellationToken cancellationToken)
-    {
-         _logger.LogInformation("Handling GetPublicPostsOfUserCommand {@Command}.", request);
-        
-        var validationResult = _validator.Validate(request);
+        var validationResult = validator.Validate(request);
         
         if (!validationResult.IsValid)
         {
-            _logger.LogWarning("Validation failed for GetPublicPostsOfUserCommand: {Errors}", validationResult.Errors);
-            
             return validationResult.ToFailureResult<IReadOnlyList<PostDto>>();
         }
-
+        
         var authorId = request.AuthorUserId;
         
-        if (request.AuthorUserId is not null)
+        if (authorId is not null)
         {
-            var authorExists = await _userRepository.ExistsAsync(request.AuthorUserId.Value, UserRole.User, cancellationToken);
-
+            var authorExists = await userRepository.ExistsAsync(authorId.Value, UserRole.User, ct);
+        
             if (!authorExists)
             {
-                _logger.LogWarning("Author {AuthorId} not found.", request.AuthorUserId);
+                logger.LogWarning("Author {AuthorId} not found.", authorId);
             
                 return Result<IReadOnlyList<PostDto>>.Failure("Author not found.", ErrorType.NotFound);
             }
         }
         else
         {
-            authorId = await _userRepository.GetIdByUsernameAsync(request.AuthorUsername!, cancellationToken);
+            authorId = await userRepository.GetIdByUsernameAsync(request.AuthorUsername!, ct);
         }
         
         if (authorId is null)
         {
-            _logger.LogWarning("Author {AuthorUsername} not found.", request.AuthorUsername);
+            logger.LogWarning("Author {AuthorUsername} not found.", request.AuthorUsername);
             
             return Result<IReadOnlyList<PostDto>>.Failure("Author not found.", ErrorType.NotFound);
         }
         
         if (request.TargetUserId is not null)
         {
-            var blockExists = await _blockRepository
-                .IsBlockedByEitherAsync(authorId.Value, request.TargetUserId.Value, cancellationToken);
-
+            var blockExists = await blockRepository
+                .IsBlockedByEitherAsync(authorId.Value, request.TargetUserId.Value, ct);
+        
             if (blockExists)
             {
-                _logger.LogInformation("There is a block between {AuthorId} and {TargetUserId}.", 
+                logger.LogInformation("There is a block between {AuthorId} and {TargetUserId}.", 
                     request.AuthorUserId, request.TargetUserId.Value);
             
                 return Result<IReadOnlyList<PostDto>>.Failure("Author not found.", ErrorType.NotFound);
@@ -85,17 +68,25 @@ public class GetPublicPostsOfUserCommandHandler : IRequestHandler<GetPublicPosts
         }
         
         var skip = (request.Page - 1) * request.PageSize;
+
+        var posts = await postRepository.GetPublicOfAuthor(
+            authorId.Value,
+            request.TargetUserId,
+            skip,
+            request.PageSize,
+            ct);
         
-        var posts = await _postRepository.GetListAsync(
-            selector: PostMapper.ProjectToDto, 
-            predicate: p => p.UserId == authorId && p.IsActive, 
-            orderBy: q => q
-                .OrderByDescending(p => p.CreatedAt),
-            skip: skip,
-            take: request.PageSize,
-            cancellationToken);
+        foreach (var post in posts)
+        {
+            if (post.FileStorageKeys is not null)
+            {
+                post.FileUrls = post.FileStorageKeys
+                    .Select(key => fileStorage.GetPresignedUrl(key, 60))
+                    .ToList();
+            }
+        }
         
-        _logger.LogInformation("Retrieved {Count} posts by author {AuthorId} for user {TargetUserId}.", 
+        logger.LogInformation("Retrieved {Count} posts by author {AuthorId} for user {TargetUserId}.", 
             posts.Count, request.AuthorUserId, request.TargetUserId?.ToString() ?? "Anonymous");
         
         return Result<IReadOnlyList<PostDto>>.Success(posts);

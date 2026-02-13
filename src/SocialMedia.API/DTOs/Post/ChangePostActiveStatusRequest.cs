@@ -2,5 +2,5 @@ namespace SocialMedia.DTOs.Post;
 
 public class ChangePostActiveStatusRequest
 {
-    public bool ActiveStatus { get; set; }
+    public bool MustBeHidden { get; set; }
 }

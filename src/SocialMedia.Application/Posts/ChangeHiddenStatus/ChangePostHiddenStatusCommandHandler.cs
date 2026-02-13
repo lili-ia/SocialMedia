@@ -1,0 +1,47 @@
+using MediatR;
+using Microsoft.Extensions.Logging;
+using SocialMedia.Application.Common;
+using SocialMedia.Application.Common.ResultPattern;
+using SocialMedia.Application.Contracts.Repositories;
+
+namespace SocialMedia.Application.Posts.ChangeHiddenStatus;
+
+public class ChangePostHiddenStatusCommandHandler(
+    ILogger<ChangePostHiddenStatusCommandHandler> logger,
+    IPostRepository postRepository,
+    IUnitOfWork unitOfWork)
+    : IRequestHandler<ChangePostHiddenStatusCommand, Result>
+{
+    public async Task<Result> Handle(ChangePostHiddenStatusCommand request, CancellationToken ct)
+    {
+        var post = await postRepository.GetByIdAsync(request.PostId, ct);
+
+        if (post is null)
+        {
+            logger.LogWarning("Post {PostId} not found.", request.PostId);
+            
+            return Result.Failure("Post not found.", ErrorType.NotFound);
+        }
+        
+        if (post.UserId != request.UserId)
+        {
+            logger.LogWarning("User {UserId} doesn't own post {PostId}, access denied.", request.UserId, request.PostId);
+
+            return Result.Failure("Access denied.", ErrorType.Forbidden);
+        }
+
+        if (post.IsHidden == request.MustBeHidden)
+        {
+            var status = post.IsHidden ? "hidden" : "active";
+    
+            return Result.Failure($"Post is already {status}.", ErrorType.Conflict);
+        }
+
+        post.IsHidden = request.MustBeHidden;
+        post.UpdatedAt = DateTime.UtcNow;
+
+        await unitOfWork.SaveChangesAsync(ct);
+        
+        return Result.Success();
+    }
+}

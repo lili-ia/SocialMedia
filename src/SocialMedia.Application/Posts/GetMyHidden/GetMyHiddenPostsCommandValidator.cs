@@ -1,10 +1,10 @@
 using FluentValidation;
 
-namespace SocialMedia.Application.Posts.GetMyInactive;
+namespace SocialMedia.Application.Posts.GetMyHidden;
 
-public class GetMyInactivePostsCommandValidator : AbstractValidator<GetMyInactivePostsCommand>
+public class GetMyHiddenPostsCommandValidator : AbstractValidator<GetMyHiddenPostsCommand>
 {
-    public GetMyInactivePostsCommandValidator()
+    public GetMyHiddenPostsCommandValidator()
     {
         RuleFor(x => x.UserId)
                 .NotEmpty().WithMessage("UserId must be provided.");

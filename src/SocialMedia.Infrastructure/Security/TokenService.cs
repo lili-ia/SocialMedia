@@ -11,13 +11,14 @@ namespace Infrastructure.Security;
 
 public class TokenService(IConfiguration configuration) : ITokenService
 {
-    public string GenerateAccessToken(string userId, string email, string role)
+    public string GenerateAccessToken(string userId, string email, string role, bool isActive)
     {
         var claims = new[]
         {       
             new Claim(ClaimTypes.NameIdentifier, userId),
             new Claim(ClaimTypes.Email, email),
-            new Claim(ClaimTypes.Role, role)
+            new Claim(ClaimTypes.Role, role),
+            new Claim("is_active", isActive.ToString().ToLower())
         };
         
         var keyString = configuration["Jwt:Key"];
