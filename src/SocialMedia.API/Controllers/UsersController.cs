@@ -61,23 +61,23 @@ public class UsersController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> UpdateOwnProfile(
-        [FromBody] UpdateUserRequest request, 
+        [FromForm] UpdateUserRequest request, 
         CancellationToken cancellationToken = default)
     {
         var userId = _userContext.UserId;
 
         FileData? file = null;
 
-        if (request.ProfilePic is not null)
+        if (request.NewProfilePic is not null)
         {
             await using var ms = new MemoryStream();
-            await request.ProfilePic.CopyToAsync(ms, cancellationToken);
-            file = new FileData(FileName: request.ProfilePic.FileName, Content: request.ProfilePic.OpenReadStream());
+            await request.NewProfilePic.CopyToAsync(ms, cancellationToken);
+            file = new FileData(FileName: request.NewProfilePic.FileName, Content: request.NewProfilePic.OpenReadStream());
         }
         
         var command = new UpdateUserCommand(
             UserId: userId, 
-            BirthDate: request.BirthDate, 
+            BirthDate: request.BirthDate,
             ProfilePic: file, 
             Bio: request.Bio);
 

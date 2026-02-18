@@ -24,8 +24,9 @@ public class ProfilePicConfiguration : IEntityTypeConfiguration<ProfilePic>
             .HasMaxLength(500);
 
         builder.HasOne(p => p.User)
-            .WithOne(u => u.CurrentProfilePic)
-            .HasForeignKey<ProfilePic>(p => p.UserId);
+            .WithMany() 
+            .HasForeignKey(p => p.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(p => p.UserId);
         

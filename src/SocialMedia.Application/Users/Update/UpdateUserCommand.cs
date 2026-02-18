@@ -7,6 +7,6 @@ namespace SocialMedia.Application.Users.Update;
 
 public sealed record UpdateUserCommand(
     Guid UserId,
-    DateTime? BirthDate,
+    DateOnly? BirthDate,
     FileData? ProfilePic,
     string? Bio) : IRequest<Result<UpdateUserDto>>;

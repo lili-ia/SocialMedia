@@ -3,6 +3,10 @@ using Domain.Enums;
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Processing;
+using SocialMedia.Application.Common;
+using SocialMedia.Application.Common.Exceptions;
 using SocialMedia.Application.Common.ResultPattern;
 using SocialMedia.Application.Contracts;
 using SocialMedia.Application.Contracts.Repositories;
@@ -11,121 +15,111 @@ using SocialMedia.Application.Mappers;
 
 namespace SocialMedia.Application.Users.Update;
 
-public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, Result<UpdateUserDto>>
+public class UpdateUserCommandHandler(
+    ILogger<UpdateUserCommandHandler> logger,
+    IUserRepository userRepository,
+    IValidator<UpdateUserCommand> validator,
+    IFileStorageService fileStorage,
+    IUnitOfWork unitOfWork,
+    IFileRepository fileRepository)
+    : IRequestHandler<UpdateUserCommand, Result<UpdateUserDto>>
 {
-    private readonly ILogger<UpdateUserCommandHandler> _logger;
-    private readonly IUserRepository _userRepository;
-    private readonly IValidator<UpdateUserCommand> _validator;
-    private readonly IFileStorageService _fileStorage;
-    private readonly IUnitOfWork _unitOfWork;
-
-    public UpdateUserCommandHandler(
-        ILogger<UpdateUserCommandHandler> logger, 
-        IUserRepository userRepository, 
-        IValidator<UpdateUserCommand> validator, 
-        IFileStorageService fileStorage, 
-        IUnitOfWork unitOfWork)
+    public async Task<Result<UpdateUserDto>> Handle(UpdateUserCommand request, CancellationToken ct)
     {
-        _logger = logger;
-        _userRepository = userRepository;
-        _validator = validator;
-        _fileStorage = fileStorage;
-        _unitOfWork = unitOfWork;
-    }
-
-    public async Task<Result<UpdateUserDto>> Handle(UpdateUserCommand request, CancellationToken cancellationToken)
-    {
-        _logger.LogInformation("Handling UpdateUserCommand {@Command}.", request);
-
-        var validationResult = _validator.Validate(request);
+        var validationResult = validator.Validate(request);
         
         if (!validationResult.IsValid)
         {
-            _logger.LogWarning("Validation failed for UpdateUserCommand: {Errors}", validationResult.Errors);
+            logger.LogWarning("Validation failed for UpdateUserCommand: {Errors}", validationResult.Errors);
             
             return validationResult.ToFailureResult<UpdateUserDto>();
         }
-
-        var user = await _userRepository.GetByIdAsync(request.UserId, cancellationToken);
-
+        
+        var user = await userRepository.GetByIdAsync(request.UserId, ct, tracking: true);
+        
         if (user is null)
         {
-            _logger.LogWarning("User {UserId} not found.", request.UserId);
+            logger.LogWarning("User {UserId} not found.", request.UserId);
             
             return Result<UpdateUserDto>.Failure("User not found.", ErrorType.NotFound);
         }
-
-        string? profilePicUrl = null;
+        
+        string? newOriginalKey = null;
         
         if (request.ProfilePic is not null)
         {
             try
             {
-                profilePicUrl = await _fileStorage
-                    .UploadFileAsync(request.ProfilePic.FileName, request.ProfilePic.Content, cancellationToken);
+                using var ms = new MemoryStream();
+                await request.ProfilePic.Content.CopyToAsync(ms, ct);
+                var bytes = ms.ToArray();
 
-                if (user.ProfilePic is null)
-                {
-                    user.ProfilePic = new ProfilePic
+                var originalKey = await fileStorage.UploadFileAsync(
+                    request.ProfilePic.FileName, 
+                    new MemoryStream(bytes), 
+                    MediaFolder.ProfilePics, ct);
+
+                using var image = Image.Load(bytes);
+                var originalWidth = image.Width;
+                var originalHeight = image.Height;
+
+                image.Mutate(x => 
+                    x.Resize(new ResizeOptions
                     {
-                        Id = Guid.NewGuid(),
-                        UserId = request.UserId,
-                        FileName = request.ProfilePic.FileName,
-                        ContentType = ContentType.Image,
-                        Url = profilePicUrl
-                    };
-                }
-                else
-                {
-                    await _fileStorage.DeleteFileAsync(user.ProfilePic.Url, cancellationToken);
-
-                    user.ProfilePic.FileName = request.ProfilePic.FileName;
-                    user.ProfilePic.ContentType = ContentType.Image;
-                    user.ProfilePic.Url = profilePicUrl;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "An error occured while uploading the profile picture.");
+                        Mode = ResizeMode.Max,
+                        Size = new Size(200, 200)
+                    }));
+            
+                using var thumbMs = new MemoryStream();
+                await image.SaveAsJpegAsync(thumbMs, ct);
+                var thumbnailSize = thumbMs.Length;
+                thumbMs.Position = 0;
                 
-                return Result<UpdateUserDto>.Failure("An internal error occured.", ErrorType.ServerError);
+                var thumbKey = await fileStorage.UploadFileAsync(
+                    $"thumb_{request.ProfilePic.FileName}", 
+                    thumbMs, 
+                    MediaFolder.ProfilePics, ct);
+                
+                var newProfilePic = new ProfilePic
+                {
+                    UserId = user.Id,
+                    OriginalFileName = request.ProfilePic.FileName,
+                    ContentType = ContentType.Image,
+                    OriginalStorageKey = originalKey,
+                    ThumbnailStorageKey = thumbKey,
+                    ThumbnailFileSize = thumbnailSize,
+                    OriginalFileSize = bytes.Length,
+                    Width = originalWidth,
+                    Height = originalHeight,
+                };
+
+                newOriginalKey = originalKey;
+                
+                await fileRepository.AddAsync(newProfilePic, ct);
+
+                user.CurrentProfilePic = newProfilePic;
+            }
+            catch (FileStorageException ex)
+            {
+                logger.LogError(ex, "S3 Upload failed for user {UserId}", request.UserId);
+                
+                return Result<UpdateUserDto>.InternalError("An error occurred while uploading profile pic.");
             }
         }
-
+        
         user.Bio = request.Bio ?? user.Bio;
         user.BirthDate = request.BirthDate ?? user.BirthDate;
+        user.UpdatedAt = DateTime.UtcNow;
+        
+        await unitOfWork.SaveChangesAsync(ct);
 
-        try
+        var dto = user.ToUpdateUserDto();
+        
+        if (newOriginalKey is not null)
         {
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-            _logger.LogInformation("User {UserId} profile successfully updated.", request.UserId);
-
-            var userDto = user.ToUpdateUserDto();
-            
-            return Result<UpdateUserDto>.Success(userDto);
+            dto.ProfilePicUrl = fileStorage.GetPresignedUrl(newOriginalKey);
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "An error occured while updating user {UserId} profile.", request.UserId);
-
-            if (profilePicUrl is not null)
-            {
-                await DeleteUploadedProfilePicAsync(profilePicUrl, cancellationToken);
-            }
-
-            return Result<UpdateUserDto>.Failure("An internal error occured.", ErrorType.ServerError);
-        }
-    }
-    private async Task DeleteUploadedProfilePicAsync(string url, CancellationToken cancellationToken)
-    {
-        try
-        {
-            await _fileStorage.DeleteFileAsync(url, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to delete orphaned file {FileUrl}.", url);
-        }
+        
+        return Result<UpdateUserDto>.Success(dto);
     }
 }

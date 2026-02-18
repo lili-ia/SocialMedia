@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace SocialMedia.Application.DTOs.User;
 
 public class UserPreviewDto
@@ -6,5 +8,8 @@ public class UserPreviewDto
     
     public string Username { get; set; }
     
-    public string? ProfilePicUrl { get; set; }
+    public string? ThumbnailProfilePicUrl { get; set; }
+    
+    [JsonIgnore]
+    public string? ThumbnailProfilePicStorageKey { get; set; }
 }

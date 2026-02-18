@@ -34,8 +34,10 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .IsRowVersion();
 
         builder.HasOne(u => u.CurrentProfilePic)
-            .WithOne(p => p.User);
-
+            .WithMany()
+            .HasForeignKey(u => u.CurrentProfilePicId) 
+            .OnDelete(DeleteBehavior.SetNull);
+        
         builder.HasMany(u => u.Messages)
             .WithOne(m => m.Sender);
 

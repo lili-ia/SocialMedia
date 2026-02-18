@@ -1,4 +1,5 @@
 using Domain.Entities;
+using Domain.Enums;
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -75,8 +76,11 @@ public class RefreshTokenCommandHandler(
         await unitOfWork.SaveChangesAsync(cancellationToken);
         await unitOfWork.CommitTransactionAsync(cancellationToken);
 
-        var newAccessToken = tokenService
-            .GenerateAccessToken(token.UserId.ToString(), user.EmailNormalized, user.UserRole.ToString());
+        var newAccessToken = tokenService.GenerateAccessToken(
+            token.UserId.ToString(), 
+            user.EmailNormalized, 
+            user.UserRole.ToString(), 
+            user.Status == UserStatus.Active);
         
         var authResponse = new AuthResponse
         {

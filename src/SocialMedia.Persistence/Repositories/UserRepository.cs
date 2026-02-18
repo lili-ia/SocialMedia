@@ -10,7 +10,9 @@ public class UserRepository(SocialMediaDbContext db) : IUserRepository
 {
     public async Task<User?> GetByIdAsync(Guid id, CancellationToken ct = default, bool tracking = false)
     {
-        var query = db.Users.AsQueryable();
+        var query = db.Users
+            .Include(u => u.CurrentProfilePic)
+            .AsQueryable();
 
         if (!tracking)
         {
@@ -103,7 +105,7 @@ public class UserRepository(SocialMediaDbContext db) : IUserRepository
             .FirstOrDefaultAsync(ct);
     }
 
-    public async Task<IReadOnlyList<TResult>> SearchActiveByUsernameAsync<TResult>(
+    public async Task<List<TResult>> SearchActiveByUsernameAsync<TResult>(
         string username,
         Expression<Func<User, TResult>> selector,
         List<Guid>? excludeIds = null,
@@ -116,10 +118,8 @@ public class UserRepository(SocialMediaDbContext db) : IUserRepository
         if (excludeIds != null && excludeIds.Any())
             query = query.Where(u => !excludeIds.Contains(u.Id));
 
-        var results = await query
+        return await query
             .Select(selector)
             .ToListAsync(ct);
-
-        return results.AsReadOnly();
     }
 }

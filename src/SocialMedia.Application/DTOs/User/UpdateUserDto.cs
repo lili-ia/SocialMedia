@@ -4,7 +4,7 @@ public class UpdateUserDto
 {
     public string Username { get; set; } = null!;
 
-    public DateTime BirthDate { get; set; }
+    public DateOnly BirthDate { get; set; }
 
     public string Email { get; set; } = null!;
     
@@ -13,4 +13,6 @@ public class UpdateUserDto
     public string? Bio { get; set; }
     
     public DateTime CreatedAt { get; set; }
+    
+    public DateTime? UpdatedAt { get; set; }
 }

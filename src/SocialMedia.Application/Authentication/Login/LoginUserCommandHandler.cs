@@ -1,4 +1,5 @@
 using Domain.Entities;
+using Domain.Enums;
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -51,8 +52,16 @@ public class LoginUserCommandHandler(
             return Result<AuthResponse>.Failure("Invalid email or password.", ErrorType.Unauthorized);
         }
 
-        var accessToken = tokenService
-            .GenerateAccessToken(existingUser.Id.ToString(), normalizedEmail, existingUser.UserRole.ToString());
+        if (existingUser.Status != UserStatus.Active)
+        {
+            return Result<AuthResponse>.Failure("You can not login unless you confirm your email.", ErrorType.Forbidden);
+        }
+
+        var accessToken = tokenService.GenerateAccessToken(
+            existingUser.Id.ToString(), 
+            normalizedEmail, 
+            existingUser.UserRole.ToString(),
+            existingUser.Status == UserStatus.Active);
         
         var refreshTokenString = tokenService.GenerateRefreshToken();
         

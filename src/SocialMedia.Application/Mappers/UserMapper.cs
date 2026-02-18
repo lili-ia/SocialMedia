@@ -9,45 +9,52 @@ public static class UserMapper
 {
     public static UpdateUserDto ToUpdateUserDto(this User user) => new()
     {
-        Username = user.Username,
+        Username = user.UsernameNormalized,
         BirthDate = user.BirthDate,
-        Email = user.Email,
-        ProfilePicUrl = user.ProfilePic?.Url,
+        Email = user.EmailNormalized,
+        ProfilePicUrl = null,
         Bio = user.Bio,
-        CreatedAt = user.CreatedAt
+        CreatedAt = user.CreatedAt,
+        UpdatedAt = user.UpdatedAt
     };
 
     public static Expression<Func<User, UserPrivateDto>> ToUserPrivateDto => 
-        user => new UserPrivateDto 
+        user => new UserPrivateDto
         {
-            Username = user.Username,
-            ProfilePicUrl = user.ProfilePic.Url,
+            Username = user.UsernameNormalized,
+            ProfilePicStorageKey = user.CurrentProfilePic != null 
+                ? user.CurrentProfilePic.OriginalStorageKey 
+                : null,
             Bio = user.Bio,
-            PostsCount = user.Posts.Count(p => p.User.Status == UserStatus.Active && p.IsActive),
-            FollowersCount = user.Followers.Count(f => f.Follower.Status == UserStatus.Active),
-            FolloweesCount = user.Followees.Count(f => f.Followee.Status == UserStatus.Active),
-            BirthDate = user.BirthDate,
-            Email = user.Email,
+            PostsCount = user.Posts.Count,
+            FollowersCount = user.Followers.Count,
+            FolloweesCount = user.Followees.Count,
+            BirthDate =  user.BirthDate,
+            Email = user.EmailNormalized,
             CreatedAt = user.CreatedAt
         };
     
     public static Expression<Func<User, UserPublicDto>> ToUserPublicDto => 
-        user => new UserPublicDto 
+        user => new UserPublicDto
         {
-            Username = user.Username,
-            ProfilePicUrl = user.ProfilePic.Url,
+            Username = user.UsernameNormalized,
+            ProfilePicStorageKey = user.CurrentProfilePic != null 
+                ? user.CurrentProfilePic.OriginalStorageKey 
+                : null,
             Bio = user.Bio,
-            PostsCount = user.Posts.Count(p => p.User.Status == UserStatus.Active && p.IsActive),
-            FollowersCount = user.Followers.Count(f => f.Follower.Status == UserStatus.Active),
-            FolloweesCount = user.Followees.Count(f => f.Followee.Status == UserStatus.Active)
+            PostsCount = user.Posts.Count,
+            FollowersCount = user.Followers.Count,
+            FolloweesCount = user.Followees.Count,
         };
     
     public static Expression<Func<User, UserPreviewDto>> ToUserPreviewDto => 
         user => new UserPreviewDto
         {
             Id = user.Id,
-            Username = user.Username,
-            ProfilePicUrl = user.ProfilePic.Url
+            Username = user.UsernameNormalized,
+            ThumbnailProfilePicStorageKey = user.CurrentProfilePic != null 
+                ? user.CurrentProfilePic.ThumbnailStorageKey 
+                : null,
         };
 }
     

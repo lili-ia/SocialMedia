@@ -18,35 +18,34 @@ public class UpdateUserCommandValidator : AbstractValidator<UpdateUserCommand>
             .Must(x => 
                 !string.IsNullOrWhiteSpace(x.Bio) 
                 || x.ProfilePic is not null 
-                || x.BirthDate is not null)
-            .WithMessage("Either Bio, ProfilePic or BirthDate must be provided.");
+                || x.BirthDate is null)
+            .WithMessage("At least one field (Bio, ProfilePic, or BirthDate) must be provided.");
 
-        When(x => !string.IsNullOrWhiteSpace(x.Bio), () =>
-        {
-            RuleFor(x => x.Bio)
-                .MaximumLength(300).WithMessage("Bio max length must not exceed 300 characters.");
-        });
+        RuleFor(x => x.Bio)
+            .MaximumLength(300)
+            .When(x => x.Bio is not null);
         
         When(x => x.ProfilePic is not null, () =>
         {
-            RuleFor(x => x.ProfilePic).ChildRules(file =>
-            {
-                file.RuleFor(f => f.FileName)
-                    .Must(f => AllowedExtensions.Contains(Path.GetExtension(f).ToLower()))
-                    .WithMessage(f => $"File '{f.FileName} must be a photo (.jpeg, .jpg, .png).'");
-                
-                file.RuleFor(f => f.Content.Length)
-                    .LessThanOrEqualTo(MaxFileSizeBytes)
-                    .WithMessage(f => $"File '{f.FileName}' exceeds the maximum allowed size of 5 MB.");
-            });
+            RuleFor(x => x.ProfilePic!)
+                .ChildRules(file =>
+                {
+                    file.RuleFor(f => f.FileName)
+                        .Must(name => AllowedExtensions.Contains(Path.GetExtension(name).ToLower()))
+                        .WithMessage("File must be a photo (.jpeg, .jpg, .png).");
+                    
+                    file.RuleFor(f => f.Content.Length)
+                        .LessThanOrEqualTo(MaxFileSizeBytes)
+                        .WithMessage("File exceeds the maximum allowed size of 5 MB.");
+                });
         });
         
         When(x => x.BirthDate is not null, () =>
         {
             RuleFor(x => x.BirthDate)
-                .LessThanOrEqualTo(DateTime.UtcNow)
+                .Must(date => date!.Value <= DateOnly.FromDateTime(DateTime.UtcNow))
                 .WithMessage("BirthDate cannot be in the future.")
-                .Must(date => date <= DateTime.UtcNow.AddYears(-MinimumAge))
+                .Must(date => date!.Value <= DateOnly.FromDateTime(DateTime.UtcNow).AddYears(-MinimumAge))
                 .WithMessage($"User must be at least {MinimumAge} years old.");
         });
     }

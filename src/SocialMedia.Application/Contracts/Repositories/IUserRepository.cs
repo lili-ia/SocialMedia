@@ -27,7 +27,7 @@ public interface IUserRepository
         Expression<Func<User, TResult>> selector,
         CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<TResult>> SearchActiveByUsernameAsync<TResult>(
+    Task<List<TResult>> SearchActiveByUsernameAsync<TResult>(
         string username, 
         Expression<Func<User, TResult>> selector,
         List<Guid>? excludeIds,
