@@ -17,17 +17,8 @@ namespace SocialMedia.Controllers;
 [Produces("application/json")]
 [Route("api/users")]
 [ApiController]
-public class UsersController : ControllerBase
+public class UsersController(IUserContext userContext, ISender sender) : ControllerBase
 {
-    private readonly IUserContext _userContext;
-    private readonly ISender _sender;
-
-    public UsersController(IUserContext userContext, ISender sender)
-    {
-        _userContext = userContext;
-        _sender = sender;
-    }
-
     /// <summary>
     /// Retrieves the authenticated user's private profile information.
     /// </summary>
@@ -39,11 +30,11 @@ public class UsersController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetOwnProfile(CancellationToken cancellationToken = default)
     {
-        var userId = _userContext.UserId;
+        var userId = userContext.UserId;
 
         var command = new GetPrivateUserInfoCommand(userId);
 
-        var result = await _sender.Send(command, cancellationToken);
+        var result = await sender.Send(command, cancellationToken);
 
         return result.ToActionResult();
     }
@@ -64,7 +55,7 @@ public class UsersController : ControllerBase
         [FromForm] UpdateUserRequest request, 
         CancellationToken cancellationToken = default)
     {
-        var userId = _userContext.UserId;
+        var userId = userContext.UserId;
 
         FileData? file = null;
 
@@ -81,7 +72,7 @@ public class UsersController : ControllerBase
             ProfilePic: file, 
             Bio: request.Bio);
 
-        var result = await _sender.Send(command, cancellationToken);
+        var result = await sender.Send(command, cancellationToken);
 
         return result.ToActionResult();
     }
@@ -93,16 +84,16 @@ public class UsersController : ControllerBase
     /// <returns>Status of the operation.</returns>
     [Authorize(Roles = "User")]
     [HttpDelete("me")]
-    [ProducesResponseType(typeof(void), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> DeactivateOwnProfile(CancellationToken cancellationToken = default)
     {
-        var userId = _userContext.UserId;
+        var userId = userContext.UserId;
 
         var command = new DeactivateUserCommand(userId);
 
-        var result = await _sender.Send(command, cancellationToken);
+        var result = await sender.Send(command, cancellationToken);
 
         return result.ToActionResult();
     }
@@ -118,13 +109,13 @@ public class UsersController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetPublicProfile([FromRoute] Guid userId, CancellationToken cancellationToken = default)
     {
-        var forUserId = _userContext.UserIdOrNull;
+        var forUserId = userContext.UserIdOrNull;
 
         var command = new GetPublicUserInfoCommand(
             UserId: userId, 
             ForUserId: forUserId);
 
-        var result = await _sender.Send(command, cancellationToken);
+        var result = await sender.Send(command, cancellationToken);
 
         return result.ToActionResult();
     }
@@ -138,7 +129,7 @@ public class UsersController : ControllerBase
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>List of matching users.</returns>
     [HttpGet("search")]
-    [ProducesResponseType(typeof(IReadOnlyList<UserPreviewDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(List<UserPreviewDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> SearchUsers(
         [FromQuery] string username, 
@@ -146,7 +137,7 @@ public class UsersController : ControllerBase
         [FromQuery] int pageSize = 20, 
         CancellationToken cancellationToken = default)
     {
-        var forUserId = _userContext.UserIdOrNull;
+        var forUserId = userContext.UserIdOrNull;
 
         var command = new SearchUsersCommand(
             ForUserId: forUserId, 
@@ -154,7 +145,7 @@ public class UsersController : ControllerBase
             Page: page, 
             PageSize: pageSize);
 
-        var result = await _sender.Send(command, cancellationToken);
+        var result = await sender.Send(command, cancellationToken);
 
         return result.ToActionResult();
     }

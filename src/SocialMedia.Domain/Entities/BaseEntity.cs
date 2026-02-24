@@ -1,16 +1,51 @@
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using Domain.Events;
+
 namespace Domain.Entities;
 
-public class BaseEntity
+public abstract class BaseEntity
 {
-    public Guid Id { get; set; } = Guid.NewGuid();
-    
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    
-    public DateTime? UpdatedAt { get; set; }
-    
-    public bool IsDeleted { get; set; }
-    
-    public DateTime? DeletedAt { get; set; }
-    
-    public uint Version { get; set; }
+    private readonly List<IDomainEvent> _domainEvents = [];
+
+    protected BaseEntity()
+    {
+        Id = Guid.NewGuid();
+        CreatedAt = DateTime.UtcNow;
+    }
+
+    public Guid Id { get; private set; }
+
+    public DateTime CreatedAt { get; private set; }
+
+    public DateTime? UpdatedAt { get; private set; }
+
+    public bool IsDeleted { get; private set; }
+
+    public DateTime? DeletedAt { get; private set; }
+
+    [ConcurrencyCheck]
+    public uint Version { get; private set; }
+
+    [NotMapped]
+    public IReadOnlyCollection<IDomainEvent> DomainEvents =>
+        _domainEvents.AsReadOnly();
+
+    protected void AddDomainEvent(IDomainEvent domainEvent)
+        => _domainEvents.Add(domainEvent);
+
+    public void ClearDomainEvents()
+        => _domainEvents.Clear();
+
+    public void MarkAsUpdated()
+        => UpdatedAt = DateTime.UtcNow;
+
+    public void SoftDelete()
+    {
+        if (IsDeleted)
+            return;
+
+        IsDeleted = true;
+        DeletedAt = DateTime.UtcNow;
+    }
 }

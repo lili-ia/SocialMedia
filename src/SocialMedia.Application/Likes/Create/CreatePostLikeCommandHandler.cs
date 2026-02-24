@@ -1,84 +1,74 @@
+using System.Text.Json;
 using Domain.Entities;
+using Domain.Enums;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using SocialMedia.Application.Common.Exceptions;
 using SocialMedia.Application.Common.ResultPattern;
 using SocialMedia.Application.Contracts.Repositories;
 using SocialMedia.Application.DTOs.Like;
+using SocialMedia.Application.Notifications.Models;
 
 namespace SocialMedia.Application.Likes.Create;
 
-public class CreatePostLikeCommandHandler : IRequestHandler<CreatePostLikeCommand, Result<PostLikeResponse>>
+public class CreatePostLikeCommandHandler(
+    ILogger<CreatePostLikeCommandHandler> logger,
+    IUnitOfWork unitOfWork,
+    IPostLikeRepository postLikeRepository,
+    IPostRepository postRepository,
+    IBlockRepository blockRepository,
+    INotificationRepository notificationRepository)
+    : IRequestHandler<CreatePostLikeCommand, Result<PostLikeResponse>>
 {
-    private readonly ILogger<CreatePostLikeCommandHandler> _logger;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IPostLikeRepository _postLikeRepository;
-    private readonly IPostRepository _postRepository;
-    private readonly IBlockRepository _blockRepository;
-
-    public CreatePostLikeCommandHandler(
-        ILogger<CreatePostLikeCommandHandler> logger, 
-        IUnitOfWork unitOfWork, 
-        IPostLikeRepository postLikeRepository, 
-        IPostRepository postRepository, 
-        IBlockRepository blockRepository)
+    public async Task<Result<PostLikeResponse>> Handle(CreatePostLikeCommand request, CancellationToken ct)
     {
-        _logger = logger;
-        _unitOfWork = unitOfWork;
-        _postLikeRepository = postLikeRepository;
-        _postRepository = postRepository;
-        _blockRepository = blockRepository;
-    }
+        var post = await postRepository.GetByIdWithAuthorAsync(request.PostId, ct);
 
-    public async Task<Result<PostLikeResponse>> Handle(CreatePostLikeCommand request, CancellationToken cancellationToken)
-    {
-        _logger.LogInformation("Handling CreatePostLikeCommand {@Command}.", request);
-        
-        var postAuthorId = await _postRepository.GetUserIdByPostIdAsync(request.PostId, cancellationToken);
-
-        if (postAuthorId is null)
+        if (post is null)
         {
-            _logger.LogWarning("Post {PostId} not found.", request.PostId);
+            logger.LogWarning("Post {PostId} not found.", request.PostId);
             
             return Result<PostLikeResponse>.Failure("Post not found.", ErrorType.NotFound);
         }
 
-        var blockExists = await _blockRepository
-            .IsBlockedByEitherAsync(request.LikerId, postAuthorId.Value, cancellationToken);
+        var blockExists = await blockRepository
+            .IsBlockedByEitherAsync(request.LikerId, post.UserId, ct);
 
         if (blockExists)
         {
-            _logger.LogWarning("There is a block between {LikerId} and {PostAuthorId}.", 
-                request.LikerId, postAuthorId.Value);
+            logger.LogWarning("There is a block between {LikerId} and {PostAuthorId}.", 
+                request.LikerId, post.UserId);
                 
             return Result<PostLikeResponse>.Failure("Post not found.", ErrorType.NotFound);
         }
-        
-        var alreadyLiked = await _postLikeRepository.ExistsAsync(request.LikerId, request.PostId, cancellationToken);
-        
-        if (alreadyLiked)
-        {
-            _logger.LogInformation("User {LikerId} already liked post {PostId}.", request.LikerId, request.PostId);
-            
-            return Result<PostLikeResponse>.Failure("You already liked this post.", ErrorType.Conflict);
-        }
 
-        var like = new PostLike
+        var like = PostLike.Create(request.PostId, post.UserId, request.LikerId, post.User.UsernameNormalized);
+        
+        var notificationData = new PostLikedNotificationData
         {
-            Id = Guid.NewGuid(),
-            UserId = request.LikerId,
-            PostId = request.PostId,
-            LikedAt = DateTime.UtcNow
+            LikerId = request.LikerId,
+            LikerUsername =  post.User.UsernameNormalized,
+            PostId = request.PostId
+        };
+        
+        var notification = new Notification
+        {
+            Type = NotificationType.Like,
+            IsRead = false,
+            Data = JsonSerializer.Serialize(notificationData),  
+            RecipientId = post.UserId,
         };
 
         try
         {
-            await _postLikeRepository.AddAsync(like, cancellationToken);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            await postLikeRepository.AddAsync(like, ct);
+            await notificationRepository.AddAsync(notification, ct);
+            await unitOfWork.SaveChangesAsync(ct);
 
-            _logger.LogInformation("User {LikerId} successfully liked post {PostId} by user {PostAuthorId}.",
-                request.LikerId, request.PostId, postAuthorId);
+            logger.LogInformation("User {LikerId} successfully liked post {PostId} by user {PostAuthorId}.",
+                request.LikerId, request.PostId, post.UserId);
 
-            var likeCount = await _postLikeRepository.GetLikeCountAsync(request.PostId, cancellationToken);
+            var likeCount = await postLikeRepository.GetLikeCountAsync(request.PostId, ct);
             
             return Result<PostLikeResponse>.Success(new PostLikeResponse
             {
@@ -86,12 +76,11 @@ public class CreatePostLikeCommandHandler : IRequestHandler<CreatePostLikeComman
                 LikeCount = likeCount
             });
         }
-        catch (Exception ex)
+        catch (DuplicatePostLikeException)
         {
-            _logger.LogError(ex, "An error occured while user {UserId} liking a post {PostId} by {PostAuthorId}.", 
-                request.LikerId, request.PostId, postAuthorId);
+            logger.LogInformation("User {LikerId} already liked post {PostId}.", request.LikerId, request.PostId);
             
-            return Result<PostLikeResponse>.Failure("An internal error occured.", ErrorType.ServerError);
+            return Result<PostLikeResponse>.Failure("You already liked this post.", ErrorType.Conflict);
         }
     }
 }

@@ -1,18 +1,21 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿namespace Domain.Events;
 
-namespace Domain.Events;
-
-public class PostLikedEvent : NotificationEvent
+public sealed class PostLikedEvent : DomainEvent
 {
-    [Required]
-    public Guid FromUserId { get; set; }
-    
-    [Required]
-    public string FromUsername { get; set; }
-    
-    [Required]
-    public Guid ToUserId { get; set; }
-    
-    [Required]
-    public Guid PostId { get; set; }
+    public Guid FromUserId { get; }
+    public string FromUsername { get; }
+    public Guid ToUserId { get; }
+    public Guid PostId { get; }
+
+    public PostLikedEvent(
+        Guid fromUserId,
+        string fromUsername,
+        Guid toUserId,
+        Guid postId)
+    {
+        FromUserId = fromUserId;
+        FromUsername = fromUsername;
+        ToUserId = toUserId;
+        PostId = postId;
+    }
 }

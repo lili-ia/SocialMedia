@@ -1,6 +1,5 @@
 using System.Text;
 using Amazon.S3;
-using Azure.Storage.Blobs;
 using Infrastructure.AmazonS3Storage;
 using Infrastructure.BackgroundJobs;
 using Infrastructure.Email;

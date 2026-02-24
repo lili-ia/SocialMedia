@@ -5,67 +5,62 @@ using SocialMedia.Application.Contracts.Repositories;
 
 namespace SocialMedia.Persistence.Repositories;
 
-public class PostLikeRepository : IPostLikeRepository
+public class PostLikeRepository(SocialMediaDbContext db) : IPostLikeRepository
 {
-    private readonly SocialMediaDbContext _db;
-
-    public PostLikeRepository(SocialMediaDbContext db)
+    public async Task AddAsync(PostLike postLike, CancellationToken ct = default)
     {
-        _db = db;
+        await db.PostLikes.AddAsync(postLike, ct);
     }
 
-    public async Task AddAsync(PostLike postLike, CancellationToken cancellationToken = default)
+    public async Task<bool> ExistsAsync(Guid likerId, Guid postId, CancellationToken ct = default)
     {
-        await _db.PostLikes.AddAsync(postLike, cancellationToken);
+        return await db.PostLikes
+            .AnyAsync(pl => pl.UserId == likerId && pl.PostId == postId, ct);
     }
 
-    public async Task<bool> ExistsAsync(Guid likerId, Guid postId, CancellationToken cancellationToken = default)
+    public async Task<int> RemoveAsync(Guid likerId, Guid postId, CancellationToken ct = default)
     {
-        return await _db.PostLikes
-            .AnyAsync(pl => pl.UserId == likerId && pl.PostId == postId, cancellationToken);
-    }
-
-    public async Task RemoveAsync(Guid likerId, Guid postId, CancellationToken cancellationToken = default)
-    {
-        await _db.PostLikes
+        return await db.PostLikes
             .Where(pl => pl.UserId == likerId && pl.PostId == postId)
-            .ExecuteDeleteAsync(cancellationToken);
+            .ExecuteDeleteAsync(ct);
     }
 
-    public async Task<IReadOnlyList<TResult>> GetPostLikersAsync<TResult>(
+    public async Task<IReadOnlyList<TResult>> GetNotBlockedPostLikersAsync<TResult>(
         Guid postId, 
-        Expression<Func<PostLike, bool>> filter, 
+        Guid targetUserId,
         Expression<Func<PostLike, TResult>> selector, 
         int skip = 0, 
         int take = 20,
-        CancellationToken cancellationToken = default)
+        CancellationToken ct = default)
     {
-        var query = _db.PostLikes
+        var query = db.PostLikes
             .AsNoTracking()
-            .Where(pl => pl.PostId == postId);
-        
-        query = query.Where(filter);
+            .Where(pl => pl.PostId == postId &&
+                !db.Blocks.Any(b =>
+                    (b.BlockerId == targetUserId && b.BlockedId == pl.UserId) ||
+                    (b.BlockerId == pl.UserId && b.BlockedId == targetUserId)
+                ));
 
         var likers = await query
-            .OrderBy(pl => pl.LikedAt)
+            .OrderBy(pl => pl.CreatedAt)
             .Skip(skip)
             .Take(take)
             .Select(selector)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
 
         return likers.AsReadOnly();
     }
 
-    public async Task<bool> IsLikedByUserAsync(Guid postId, Guid userId, CancellationToken cancellationToken = default)
+    public async Task<bool> IsLikedByUserAsync(Guid postId, Guid userId, CancellationToken ct = default)
     {
-        return await _db.PostLikes
-            .AnyAsync(pl => pl.PostId == postId && pl.UserId == userId, cancellationToken);
+        return await db.PostLikes
+            .AnyAsync(pl => pl.PostId == postId && pl.UserId == userId, ct);
     }
 
-    public async Task<int> GetLikeCountAsync(Guid postId, CancellationToken cancellationToken = default)
+    public async Task<int> GetLikeCountAsync(Guid postId, CancellationToken ct = default)
     {
-        return await _db.PostLikes
+        return await db.PostLikes
             .AsNoTracking()
-            .CountAsync(pl => pl.PostId == postId, cancellationToken);
+            .CountAsync(pl => pl.PostId == postId, ct);
     }
 }

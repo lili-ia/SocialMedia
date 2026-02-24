@@ -1,6 +1,5 @@
 using System.Linq.Expressions;
 using Domain.Entities;
-using SocialMedia.Application.DTOs.User;
 
 namespace SocialMedia.Application.Contracts.Repositories;
 
@@ -10,11 +9,11 @@ public interface IPostLikeRepository
 
     Task<bool> ExistsAsync(Guid likerId, Guid postId, CancellationToken cancellationToken = default);
 
-    Task RemoveAsync(Guid likerId, Guid postId, CancellationToken cancellationToken = default);
+    Task<int> RemoveAsync(Guid likerId, Guid postId, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<TResult>> GetPostLikersAsync<TResult>(
+    Task<IReadOnlyList<TResult>> GetNotBlockedPostLikersAsync<TResult>(
         Guid postId, 
-        Expression<Func<PostLike, bool>> filter,
+        Guid targetUserId,
         Expression<Func<PostLike, TResult>> selector,
         int skip = 0,
         int take = 20,

@@ -36,4 +36,6 @@ public interface IPostRepository
         CancellationToken ct = default);
     
     Task<Guid?> GetUserIdByPostIdAsync(Guid id, CancellationToken cancellationToken = default);
+
+    Task<Post?> GetByIdWithAuthorAsync(Guid id, CancellationToken ct = default);
 }

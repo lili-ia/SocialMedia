@@ -15,17 +15,8 @@ namespace SocialMedia.Controllers;
 [Produces("application/json")]
 [ApiController]
 [Route("api/posts/{postId:guid}/likes")]
-public class LikesController : ControllerBase
+public class LikesController(IUserContext userContext, ISender sender) : ControllerBase
 {
-    private readonly IUserContext _userContext;
-    private readonly ISender _sender;
-    
-    public LikesController(IUserContext userContext, ISender sender)
-    {
-        _userContext = userContext;
-        _sender = sender;
-    }
-
     /// <summary>
     /// Likes a post for the current user.
     /// </summary>
@@ -35,16 +26,15 @@ public class LikesController : ControllerBase
     [ProducesResponseType(typeof(PostLikeResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> LikePostAsync([FromRoute] Guid postId, CancellationToken cancellationToken = default)
     {
-        var userId = _userContext.UserId;
+        var userId = userContext.UserId;
 
         var command = new CreatePostLikeCommand(
             LikerId: userId, 
             PostId: postId);
 
-        var result = await _sender.Send(command, cancellationToken);
+        var result = await sender.Send(command, cancellationToken);
 
         return result.ToActionResult();
     }
@@ -55,18 +45,17 @@ public class LikesController : ControllerBase
     /// <param name="postId">The post ID.</param>
     /// <param name="cancellationToken"></param>
     [HttpDelete]
-    [ProducesResponseType(typeof(void), StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> UnlikePost([FromRoute] Guid postId, CancellationToken cancellationToken = default)
     {
-        var userId = _userContext.UserId;
+        var userId = userContext.UserId;
         
         var command = new DeletePostLikeCommand(
             PostId: postId, 
             LikerId: userId);
 
-        var result = await _sender.Send(command, cancellationToken);
+        var result = await sender.Send(command, cancellationToken);
 
         return result.ToActionResult();
     }
@@ -88,7 +77,7 @@ public class LikesController : ControllerBase
         [FromQuery] int pageSize = 20,
         CancellationToken cancellationToken = default)
     {
-        var userId = _userContext.UserId;
+        var userId = userContext.UserId;
         
         var command = new GetPostLikersCommand(
             PostId: postId, 
@@ -96,7 +85,7 @@ public class LikesController : ControllerBase
             Page: page, 
             PageSize: pageSize);
         
-        var result = await _sender.Send(command, cancellationToken);
+        var result = await sender.Send(command, cancellationToken);
 
         return result.ToActionResult();
     }

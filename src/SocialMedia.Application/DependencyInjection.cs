@@ -1,7 +1,10 @@
 using FluentValidation;
+using MediatR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using SocialMedia.Application.Common.Behaviors;
 using SocialMedia.Application.Common.Configurations;
+using SocialMedia.Application.Common.Events;
 using SocialMedia.Application.Contracts;
 using SocialMedia.Application.Services;
 
@@ -28,6 +31,8 @@ public static class DependencyInjection
         
         services.Configure<ClientSettings>(options => 
             config.GetSection(ClientSettings.SectionName).Bind(options));
+        
+        services.AddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
         
         return services;
     }

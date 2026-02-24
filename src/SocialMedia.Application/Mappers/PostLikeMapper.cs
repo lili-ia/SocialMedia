@@ -11,8 +11,10 @@ public static class PostLikeMapper
         {
             Id = like.User.Id,
             Username = like.User.Status != Domain.Enums.UserStatus.Deactivated
-                ? like.User.Username 
+                ? like.User.UsernameNormalized 
                 : "deleted",
-            ProfilePicUrl = like.User.ProfilePic.Url
+            ThumbnailProfilePicStorageKey = like.User.CurrentProfilePic != null 
+                ? like.User.CurrentProfilePic.ThumbnailStorageKey 
+                : null,
         };
 }

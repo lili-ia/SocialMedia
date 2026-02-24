@@ -119,4 +119,9 @@ public class PostRepository(SocialMediaDbContext db) : IPostRepository
             .Select(p => p.UserId)
             .FirstOrDefaultAsync(cancellationToken);
     }
+
+    public Task<Post?> GetByIdWithAuthorAsync(Guid id, CancellationToken ct = default)
+    {
+        throw new NotImplementedException();
+    }
 }
