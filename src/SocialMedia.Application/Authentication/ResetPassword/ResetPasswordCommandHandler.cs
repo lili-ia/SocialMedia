@@ -1,5 +1,4 @@
 using Domain.Entities;
-using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Common;
@@ -14,19 +13,11 @@ public class ResetPasswordCommandHandler(
     IHashService hashService,
     ITokenRepository tokenRepository,
     IUnitOfWork unitOfWork,
-    ILogger<ResetPasswordCommandHandler> logger,
-    IValidator<ResetPasswordCommand> validator)
+    ILogger<ResetPasswordCommandHandler> logger)
     : IRequestHandler<ResetPasswordCommand, Result<MessageResponse>>
 {
     public async Task<Result<MessageResponse>> Handle(ResetPasswordCommand request, CancellationToken cancellationToken)
     {
-        var validationResult = validator.Validate(request);
-
-        if (!validationResult.IsValid)
-        {
-            return validationResult.ToFailureResult<MessageResponse>();
-        }
-        
         var normalizedEmail = request.Email.Trim().ToLower();
 
         var user = await userRepository.GetByEmailAsync(normalizedEmail, cancellationToken);
@@ -45,12 +36,10 @@ public class ResetPasswordCommandHandler(
 
             return Result<MessageResponse>.Failure("Invalid or expired token.", ErrorType.Unauthorized);
         }
-
-        token.IsRevoked = true; 
-        token.RevokedAt = DateTime.UtcNow;
-        token.ReasonForRevocation = "Password Reset Successful";
         
-        user.PasswordHash = hashService.Hash(request.NewPassword);
+        token.Revoke("Password Reset Successful");
+        
+        user.UpdatePassword(request.NewPassword);
         
         await unitOfWork.SaveChangesAsync(cancellationToken);
         

@@ -14,7 +14,6 @@ using SocialMedia.Application.Contracts.Repositories;
 namespace SocialMedia.Application.Authentication.RequestPasswordReset;
 
 public class RequestPasswordResetCommandHandler(
-    IValidator<RequestPasswordResetCommand> validator,
     ILogger<RequestPasswordResetCommandHandler> logger,
     IUserRepository userRepository,
     IHashService hashService,
@@ -27,20 +26,12 @@ public class RequestPasswordResetCommandHandler(
     : IRequestHandler<RequestPasswordResetCommand, Result<MessageResponse>> 
 {
     private readonly string Subject = "Reset your password for SocialMedia";
-    public async Task<Result<MessageResponse>> Handle(RequestPasswordResetCommand request, CancellationToken cancellationToken)
+    
+    public async Task<Result<MessageResponse>> Handle(RequestPasswordResetCommand request, CancellationToken ct)
     {
-        logger.LogInformation("User with email {Email} requests password reset token.", request.Email);
-
-        var validationResult = validator.Validate(request);
-        
-        if (!validationResult.IsValid)
-        {
-            return validationResult.ToFailureResult<MessageResponse>();
-        }
-
         var normalizedEmail = request.Email.Trim().ToLower();
         
-        var user = await userRepository.GetByEmailAsync(normalizedEmail, cancellationToken, tracking: true);
+        var user = await userRepository.GetByEmailAsync(normalizedEmail, ct, tracking: true);
 
         if (user is null)
         {
@@ -50,9 +41,9 @@ public class RequestPasswordResetCommandHandler(
                 new MessageResponse("If your account exists, you'll get an email with reset instructions."));
         }
         
-        if (user.LastEmailSentAt.HasValue)
+        if (!user.CanSendEmail())
         {
-            var secondsToWait = (int)(user.LastEmailSentAt.Value.AddMinutes(2) - DateTime.UtcNow).TotalSeconds;
+            var secondsToWait = (int)(user.LastEmailSentAt!.Value.AddMinutes(2) - DateTime.UtcNow).TotalSeconds;
 
             if (secondsToWait > 0)
             {
@@ -62,42 +53,35 @@ public class RequestPasswordResetCommandHandler(
             }
         }
         
-        user.LastEmailSentAt = DateTime.UtcNow;
+        user.RecordEmailSent();
         
         var rawToken = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
         var hashedToken = hashService.HashDeterministic(rawToken);
 
-        var token = new PasswordResetToken
-        {
-            Id = Guid.NewGuid(),
-            UserId = user.Id,
-            Token = hashedToken,
-            CreatedAt = DateTime.UtcNow,
-            ExpiresAt = DateTime.UtcNow.AddHours(1),
-            IsRevoked = false
-        };
+        var token = PasswordResetToken.Create(
+            user.Id, 
+            hashedToken, 
+            DateTime.UtcNow.AddHours(1));
         
-        await tokenRepository.AddAsync(token, cancellationToken);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        await tokenRepository.AddAsync(token, ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         var resetLink = $"{clientSettings.Value.ClientUrl}/api/auth/reset-password?" + 
             $"token={Uri.EscapeDataString(rawToken)}&email={Uri.EscapeDataString(user.EmailNormalized)}";
 
         var body = emailBuilder.BuildPasswordResetBody(user.UsernameNormalized, resetLink);
         
-        var emailSenderResponse = await emailSender.SendEmailAsync(user.EmailNormalized, Subject, body, cancellationToken);
+        var emailSenderResponse = await emailSender.SendEmailAsync(user.EmailNormalized, Subject, body, ct);
         
         if (!emailSenderResponse.IsSuccess)
         {
-            var pendingEmail = new PendingEmail
-            {
-                To = user.EmailNormalized,
-                Subject = Subject,
-                Body = body 
-            };
+            var pendingEmail = PendingEmail.Create(
+                user.EmailNormalized,
+                Subject,
+                body);
 
-            await emailRepository.AddAsync(pendingEmail, cancellationToken);
-            await unitOfWork.SaveChangesAsync(cancellationToken);
+            await emailRepository.AddAsync(pendingEmail, ct);
+            await unitOfWork.SaveChangesAsync(ct);
             
             return Result<MessageResponse>.InternalError("Couldn't send a verification email. Please try later.");
         }

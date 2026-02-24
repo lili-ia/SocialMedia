@@ -1,7 +1,5 @@
 using System.Security.Cryptography;
 using Domain.Entities;
-using Domain.Enums;
-using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
@@ -15,7 +13,6 @@ using SocialMedia.Application.Contracts.Repositories;
 namespace SocialMedia.Application.Authentication.Register;
 
 public class RegisterUserCommandHandler(
-    IValidator<RegisterUserCommand> validator,
     ILogger<RegisterUserCommandHandler> logger,
     IUserRepository userRepository,
     IHashService hashService,
@@ -30,13 +27,6 @@ public class RegisterUserCommandHandler(
     private const string Subject = "Verify your email for SocialMedia"; 
     public async Task<Result<MessageResponse>> Handle(RegisterUserCommand request, CancellationToken ct)
     {
-        var validationResult = validator.Validate(request);
-
-        if (!validationResult.IsValid)
-        {
-            return validationResult.ToFailureResult<MessageResponse>();
-        }
-
         var normalizedEmail = request.Email.Trim().ToLower();
         var normalizedUsername = request.Username.Trim().ToLower();
         
@@ -49,35 +39,24 @@ public class RegisterUserCommandHandler(
         }
         
         var passwordHash = hashService.Hash(request.RawPassword);
-        
-        var user = new User
-        {
-            UsernameNormalized = normalizedUsername,
-            BirthDate = DateOnly.FromDateTime(request.BirthDate),
-            EmailNormalized = normalizedEmail,
-            PasswordHash = passwordHash,
-            Status = UserStatus.Pending
-        };
+
+        var user = User.Create(
+            normalizedUsername, 
+            normalizedEmail, 
+            passwordHash, 
+            DateOnly.FromDateTime(request.BirthDate));
         
         await userRepository.AddAsync(user, ct);
         
-        logger.LogInformation("User with email {Email} registered successfully. UserId: {UserId}", 
-            normalizedEmail, user.Id);
-        
-        user.LastEmailSentAt = DateTime.UtcNow;
+        logger.LogInformation("User with email {Email} registered successfully. UserId: {UserId}", normalizedEmail, user.Id);
         
         var rawToken = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
         var hashedToken = hashService.HashDeterministic(rawToken);
 
-        var token = new EmailConfirmationToken
-        {
-            Id = Guid.NewGuid(),
-            UserId = user.Id,
-            Token = hashedToken,
-            CreatedAt = DateTime.UtcNow,
-            ExpiresAt = DateTime.UtcNow.AddHours(1),
-            IsRevoked = false
-        };
+        var token = EmailConfirmationToken.Create(
+            user.Id, 
+            hashedToken, 
+            DateTime.UtcNow.AddHours(1));
         
         await tokenRepository.AddAsync(token, ct);
         await unitOfWork.SaveChangesAsync(ct);
@@ -90,12 +69,10 @@ public class RegisterUserCommandHandler(
 
         if (!emailSenderResponse.IsSuccess)
         {
-            var pendingEmail = new PendingEmail
-            {
-                To = user.EmailNormalized,
-                Subject = Subject,
-                Body = body
-            };
+            var pendingEmail = PendingEmail.Create(
+                user.EmailNormalized,
+                Subject,
+                body);
 
             await emailRepository.AddAsync(pendingEmail, ct);
             await unitOfWork.SaveChangesAsync(ct);

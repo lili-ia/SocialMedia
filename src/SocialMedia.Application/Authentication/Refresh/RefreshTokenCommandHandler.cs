@@ -1,6 +1,5 @@
 using Domain.Entities;
 using Domain.Enums;
-using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Common.ResultPattern;
@@ -11,7 +10,6 @@ using SocialMedia.Application.DTOs.Auth;
 namespace SocialMedia.Application.Authentication.Refresh;
 
 public class RefreshTokenCommandHandler(
-    IValidator<RefreshTokenCommand> validator,
     ILogger<RefreshTokenCommandHandler> logger,
     IUserRepository userRepository,
     ITokenService tokenService,
@@ -21,15 +19,6 @@ public class RefreshTokenCommandHandler(
 {
     public async Task<Result<AuthResponse>> Handle(RefreshTokenCommand request, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Attempting to refresh token {RefreshToken}.", request.RefreshToken);
-
-        var validationResult = validator.Validate(request);
-
-        if (!validationResult.IsValid)
-        {
-            return validationResult.ToFailureResult<AuthResponse>();
-        }
-        
         var token = await tokenRepository.GetValidTokenAsync<RefreshToken>(request.RefreshToken, cancellationToken);
 
         if (token is null || !token.IsActive)
@@ -57,24 +46,19 @@ public class RefreshTokenCommandHandler(
         }
         
         var newRefreshTokenString = tokenService.GenerateRefreshToken();
-    
-        var newRefreshToken = new RefreshToken
-        {
-            Token = newRefreshTokenString,
-            IsRevoked = false,
-            ExpiresAt = DateTime.UtcNow.AddDays(7),
-            UserId = user.Id
-        };
 
-        token.IsRevoked = true;
-        token.IsUsed = true;
-        token.RevokedAt = DateTime.UtcNow;
-        token.ReasonForRevocation = "Refreshed";
-        token.ReplacedByToken = newRefreshTokenString;
+        var newRefreshToken = RefreshToken.Create(
+            user.Id, 
+            newRefreshTokenString, 
+            DateTime.UtcNow.AddDays(7), 
+            request.IpAddress, 
+            request.DeviceInfo);
+        
+        token.Revoke("Refreshed");
+        token.MarkAsUsed(newRefreshTokenString);
 
         await tokenRepository.AddAsync(newRefreshToken, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        await unitOfWork.CommitTransactionAsync(cancellationToken);
 
         var newAccessToken = tokenService.GenerateAccessToken(
             token.UserId.ToString(), 

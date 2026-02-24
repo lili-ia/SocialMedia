@@ -1,6 +1,5 @@
 using Domain.Entities;
 using Domain.Enums;
-using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Common;
@@ -14,20 +13,12 @@ public class ConfirmEmailCommandHandler(
     IUserRepository userRepository,
     IUnitOfWork unitOfWork,
     ILogger<ConfirmEmailCommandHandler> logger,
-    IValidator<ConfirmEmailCommand> validator,
     ITokenRepository tokenRepository,
     IHashService hashService)
     : IRequestHandler<ConfirmEmailCommand, Result<MessageResponse>>
 {
     public async Task<Result<MessageResponse>> Handle(ConfirmEmailCommand request, CancellationToken ct)
     {
-        var validationResult = validator.Validate(request);
-
-        if (!validationResult.IsValid)
-        {
-            return validationResult.ToFailureResult<MessageResponse>();
-        }
-
         var hashedToken = hashService.HashDeterministic(request.Token);
         var token = await tokenRepository.GetValidTokenAsync<EmailConfirmationToken>(hashedToken, ct);
 
@@ -57,14 +48,12 @@ public class ConfirmEmailCommandHandler(
             return Result<MessageResponse>.Success(new MessageResponse("You already confirmed your email."));
         }
         
-        user.Status = UserStatus.Active;
-        token.IsRevoked = true; 
-        token.RevokedAt = DateTime.UtcNow;
-        token.ReasonForRevocation = "Email Confirmation Successful";
-
+        user.ChangeStatus(UserStatus.Active, "Email confirmed.");
+        token.Revoke("Email Confirmation Successful");
+        
         await unitOfWork.SaveChangesAsync(ct); 
     
-        logger.LogInformation("User {UserId} verified email.", user.Id);
+        logger.LogInformation("User {UserId} successfully verified email.", user.Id);
         
         return Result<MessageResponse>.Success(new MessageResponse("You successfully confirmed your email."));
     }

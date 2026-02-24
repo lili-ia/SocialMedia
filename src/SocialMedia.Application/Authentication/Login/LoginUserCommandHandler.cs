@@ -1,6 +1,5 @@
 using Domain.Entities;
 using Domain.Enums;
-using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Common.ResultPattern;
@@ -11,7 +10,6 @@ using SocialMedia.Application.DTOs.Auth;
 namespace SocialMedia.Application.Authentication.Login;
 
 public class LoginUserCommandHandler(
-    IValidator<LoginUserCommand> validator,
     ILogger<LoginUserCommandHandler> logger,
     IUserRepository userRepository,
     IHashService hashService,
@@ -22,15 +20,6 @@ public class LoginUserCommandHandler(
 {
     public async Task<Result<AuthResponse>> Handle(LoginUserCommand request, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Attempting to log in user with email {Email}.", request.Email);
-
-        var validationResult = validator.Validate(request);
-        
-        if (!validationResult.IsValid)
-        {
-            return validationResult.ToFailureResult<AuthResponse>();
-        }
-
         var normalizedEmail = request.Email.Trim().ToLower();
         var existingUser = await userRepository.GetByEmailAsync(normalizedEmail, cancellationToken);
 
@@ -64,17 +53,13 @@ public class LoginUserCommandHandler(
             existingUser.Status == UserStatus.Active);
         
         var refreshTokenString = tokenService.GenerateRefreshToken();
-        
-        var refreshToken = new RefreshToken
-        {
-            Id = Guid.NewGuid(),
-            Token = refreshTokenString,
-            UserId = existingUser.Id,
-            ExpiresAt = DateTime.UtcNow.AddDays(7),
-            CreatedAt = DateTime.UtcNow,
-            IpAddress = request.IpAddress,
-            DeviceInfo = request.DeviceInfo
-        };
+
+        var refreshToken = RefreshToken.Create(
+            existingUser.Id,
+            refreshTokenString,
+            DateTime.UtcNow.AddDays(7),
+            request.IpAddress,
+            request.DeviceInfo);
         
         await tokenRepository.AddAsync(refreshToken, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
