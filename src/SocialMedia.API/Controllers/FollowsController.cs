@@ -15,17 +15,8 @@ namespace SocialMedia.Controllers;
 [Produces("application/json")]
 [ApiController]
 [Route("api/follows")]
-public class FollowsController : ControllerBase
+public class FollowsController(ISender sender, IUserContext userContext) : ControllerBase
 {
-    private readonly ISender _sender;
-    private readonly IUserContext _userContext;
-
-    public FollowsController(ISender sender, IUserContext userContext)
-    {
-        _sender = sender;
-        _userContext = userContext;
-    }
-
     /// <summary>
     /// Follows a user.
     /// </summary>
@@ -40,10 +31,10 @@ public class FollowsController : ControllerBase
     public async Task<IActionResult> FollowUser([FromBody] CreateFollowRequest request, CancellationToken cancellationToken = default)
     {
         var command = new CreateFollowCommand(
-            FollowerId: _userContext.UserId, 
+            FollowerId: userContext.UserId, 
             FolloweeId: request.FolloweeId);
         
-        var result = await _sender.Send(command, cancellationToken);
+        var result = await sender.Send(command, cancellationToken);
         
         return result.ToActionResult();
     }
@@ -60,10 +51,10 @@ public class FollowsController : ControllerBase
     public async Task<IActionResult> UnfollowUser([FromRoute] Guid followeeId, CancellationToken cancellationToken = default)
     {
         var command = new DeleteFollowCommand(
-            FollowerId: _userContext.UserId, 
+            FollowerId: userContext.UserId, 
             FolloweeId: followeeId);
         
-        var result = await _sender.Send(command, cancellationToken);
+        var result = await sender.Send(command, cancellationToken);
         
         return result.ToActionResult();
     }
@@ -81,9 +72,9 @@ public class FollowsController : ControllerBase
     {
         var command = new GetFolloweesOfUserCommand(
             UserId: userId, 
-            ForUserId: _userContext.UserIdOrNull);
+            ForUserId: userContext.UserIdOrNull);
         
-        var result = await _sender.Send(command, cancellationToken);
+        var result = await sender.Send(command, cancellationToken);
         
         return result.ToActionResult();
     }
@@ -101,9 +92,9 @@ public class FollowsController : ControllerBase
     {
         var command = new GetFollowersOfUserCommand(
             UserId: userId, 
-            ForUserId: _userContext.UserIdOrNull);
+            ForUserId: userContext.UserIdOrNull);
         
-        var result = await _sender.Send(command, cancellationToken);
+        var result = await sender.Send(command, cancellationToken);
         
         return result.ToActionResult();
     }

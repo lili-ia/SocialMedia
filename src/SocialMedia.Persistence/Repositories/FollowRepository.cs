@@ -42,9 +42,9 @@ public class FollowRepository : IFollowRepository
             .CountAsync(f => f.FolloweeId == userId, cancellationToken);
     }
 
-    public async Task RemoveAsync(Guid followerId, Guid followeeId, CancellationToken cancellationToken = default)
+    public async Task<int> RemoveAsync(Guid followerId, Guid followeeId, CancellationToken cancellationToken = default)
     {
-        await _db.Follows
+        return await _db.Follows
             .Where(f => f.FollowerId == followerId && f.FolloweeId == followeeId)
             .ExecuteDeleteAsync(cancellationToken);
     }
@@ -87,7 +87,7 @@ public class FollowRepository : IFollowRepository
         }
         
         var followers = await query
-            .OrderByDescending(f => f.FollowedAt)
+            .OrderByDescending(f => f.CreatedAt)
             .Select(selector)
             .ToListAsync(cancellationToken);
 

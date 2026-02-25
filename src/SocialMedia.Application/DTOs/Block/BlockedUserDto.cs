@@ -1,10 +1,8 @@
+using SocialMedia.Application.DTOs.User;
+
 namespace SocialMedia.Application.DTOs.Block;
 
-public class BlockedUserDto
+public class BlockedUserDto : UserPreviewDto
 {
-    public Guid BlockedUserId { get; set; }
-
-    public string BlockedUsername { get; set; } = null!;
-    
     public DateTime BlockedAt { get; set; }
 }

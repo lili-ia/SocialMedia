@@ -7,4 +7,5 @@ namespace SocialMedia.Application.Comments.Create;
 public sealed record CreateCommentCommand(
     string Text, 
     Guid PostId, 
-    Guid UserId) : IRequest<Result<CommentDto>>;
+    Guid UserId,
+    Guid? ParentCommentId) : IRequest<Result<CommentWithAuthorDto>>;

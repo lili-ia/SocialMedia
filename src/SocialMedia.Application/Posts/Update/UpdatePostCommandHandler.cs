@@ -1,6 +1,5 @@
 using Domain.Entities;
 using Domain.Enums;
-using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using SixLabors.ImageSharp;
@@ -15,7 +14,6 @@ using SocialMedia.Application.Mappers;
 namespace SocialMedia.Application.Posts.Update;
 
 public class UpdatePostCommandHandler(
-    IValidator<UpdatePostCommand> validator,
     ILogger<UpdatePostCommandHandler> logger,
     IPostRepository postRepository,
     IUnitOfWork unitOfWork,
@@ -25,13 +23,6 @@ public class UpdatePostCommandHandler(
 {
     public async Task<Result<PostDto>> Handle(UpdatePostCommand request, CancellationToken ct)
     {
-        var validationResult = validator.Validate(request);
-        
-        if (!validationResult.IsValid)
-        {
-            return validationResult.ToFailureResult<PostDto>();
-        }
-
         var post = await postRepository.GetByIdWithFilesAsync(request.PostId, ct);
 
         if (post is null)
@@ -56,7 +47,7 @@ public class UpdatePostCommandHandler(
 
         foreach (var file in filesToRemove)
         {
-            post.PostFiles.Remove(file);
+            await fileRepository.RemoveAsync(file, ct);
             await fileStorage.DeleteFileAsync(file.OriginalStorageKey, ct);
         }
         
@@ -101,8 +92,7 @@ public class UpdatePostCommandHandler(
             }
         }
         
-        post.Text = request.Text;
-        post.UpdatedAt = DateTime.UtcNow;
+        post.UpdateText(request.Text);
 
         await unitOfWork.SaveChangesAsync(ct);
         

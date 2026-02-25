@@ -1,6 +1,5 @@
 using Domain.Entities;
 using Domain.Enums;
-using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using SixLabors.ImageSharp;
@@ -18,7 +17,6 @@ namespace SocialMedia.Application.Users.Update;
 public class UpdateUserCommandHandler(
     ILogger<UpdateUserCommandHandler> logger,
     IUserRepository userRepository,
-    IValidator<UpdateUserCommand> validator,
     IFileStorageService fileStorage,
     IUnitOfWork unitOfWork,
     IFileRepository fileRepository)
@@ -26,15 +24,6 @@ public class UpdateUserCommandHandler(
 {
     public async Task<Result<UpdateUserDto>> Handle(UpdateUserCommand request, CancellationToken ct)
     {
-        var validationResult = validator.Validate(request);
-        
-        if (!validationResult.IsValid)
-        {
-            logger.LogWarning("Validation failed for UpdateUserCommand: {Errors}", validationResult.Errors);
-            
-            return validationResult.ToFailureResult<UpdateUserDto>();
-        }
-        
         var user = await userRepository.GetByIdAsync(request.UserId, ct, tracking: true);
         
         if (user is null)
@@ -97,7 +86,7 @@ public class UpdateUserCommandHandler(
                 
                 await fileRepository.AddAsync(newProfilePic, ct);
 
-                user.CurrentProfilePic = newProfilePic;
+                user.UpdateProfilePicture(newProfilePic.Id);
             }
             catch (FileStorageException ex)
             {
@@ -107,9 +96,7 @@ public class UpdateUserCommandHandler(
             }
         }
         
-        user.Bio = request.Bio ?? user.Bio;
-        user.BirthDate = request.BirthDate ?? user.BirthDate;
-        user.UpdatedAt = DateTime.UtcNow;
+        user.UpdateProfile(request.Bio, request.BirthDate);
         
         await unitOfWork.SaveChangesAsync(ct);
 

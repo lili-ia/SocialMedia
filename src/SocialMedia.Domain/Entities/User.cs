@@ -33,6 +33,8 @@ public sealed class User : BaseEntity
     public DateTime? LastSeen { get; private set; }
 
     public Guid? CurrentProfilePicId { get; private set; }
+    
+    public ProfilePic CurrentProfilePic { get; }
 
     public DateTime? StatusChangedAt { get; private set; }
 
@@ -43,6 +45,20 @@ public sealed class User : BaseEntity
     public IReadOnlyCollection<Post> Posts => _posts.AsReadOnly();
     public IReadOnlyCollection<PostLike> PostLikes => _postLikes.AsReadOnly();
     public IReadOnlyCollection<Block> BlockedUsers => _blockedUsers.AsReadOnly();
+    
+    public IReadOnlyCollection<Block> BlockedByUsers => _blockedUsers.AsReadOnly();
+    
+    public IReadOnlyCollection<Message> Messages => _messages.AsReadOnly();
+    
+    public IReadOnlyCollection<Follow> Followees => _followees.AsReadOnly();
+    
+    public IReadOnlyCollection<Follow> Followers => _followers.AsReadOnly();
+    
+    public IReadOnlyCollection<RefreshToken> RefreshTokens => _refreshTokens.AsReadOnly();
+    
+    public IReadOnlyCollection<PostView> PostViews => _postViews.AsReadOnly();
+    
+    public IReadOnlyCollection<Notification> Notifications => _notifications.AsReadOnly();
 
     private User() { }
 
@@ -75,12 +91,24 @@ public sealed class User : BaseEntity
         return user;
     }
 
-    public void UpdateBio(string? bio)
+    public void UpdateProfile(string? bio, DateOnly? birthDate)
     {
-        Bio = bio;
+        if (bio != null)
+            Bio = bio;
+
+        if (birthDate.HasValue)
+        {
+            if (birthDate.Value > DateOnly.FromDateTime(DateTime.UtcNow))
+            {
+                throw new DomainValidationException("Birth date cannot be in future.");
+            }
+
+            BirthDate = birthDate.Value;
+        }
+
         MarkAsUpdated();
     }
-
+    
     public void UpdateLastSeen()
     {
         LastSeen = DateTime.UtcNow;
@@ -122,13 +150,17 @@ public sealed class User : BaseEntity
             return true;
         }
 
-        return DateTime.UtcNow >
-               LastEmailSentAt.Value.AddMinutes(cooldownMinutes);
+        return DateTime.UtcNow > LastEmailSentAt.Value.AddMinutes(cooldownMinutes);
     }
     
     private readonly List<Post> _posts = [];
     private readonly List<Follow> _followers = [];
     private readonly List<Follow> _followees = [];
     private readonly List<Block> _blockedUsers = [];
+    private readonly List<Block> _blockedByUsers = [];
     private readonly List<PostLike> _postLikes = [];
+    private readonly List<Message> _messages = [];
+    private readonly List<RefreshToken> _refreshTokens = [];
+    private readonly List<PostView> _postViews = [];
+    private readonly List<Notification> _notifications = [];
 }

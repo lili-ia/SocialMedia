@@ -2,15 +2,22 @@ using System.Linq.Expressions;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using SocialMedia.Application.Contracts.Repositories;
-using SocialMedia.Application.DTOs.Post;
 
 namespace SocialMedia.Persistence.Repositories;
 
 public class PostRepository(SocialMediaDbContext db) : IPostRepository
 {
-    public async Task<Post?> GetByIdAsync(Guid id, CancellationToken ct = default)
+    public async Task<Post?> GetByIdAsync(Guid id, CancellationToken ct = default, bool tracking = false)
     {
-        return await db.Posts
+        var query = db.Posts
+            .AsQueryable();
+
+        if (!tracking)
+        {
+            query = query.AsNoTracking();
+        }
+        
+        return await query
             .FirstOrDefaultAsync(p => p.Id == id, ct);
     }
 
@@ -22,106 +29,74 @@ public class PostRepository(SocialMediaDbContext db) : IPostRepository
             .FirstOrDefaultAsync(p => p.Id == id, ct);
     }
 
-    public async Task<(bool IsActive, Guid AuthorId)?> GetStatusAsync(Guid id, CancellationToken cancellationToken)
+    public async Task AddAsync(Post post, CancellationToken ct = default)
     {
-        var post = await db.Posts
-            .AsNoTracking()
-            .Where(p => p.Id == id)
-            .Select(p => new { p.IsHidden, p.UserId })
-            .FirstOrDefaultAsync(cancellationToken);
-
-        if (post == null)
-        {
-            return null;
-        }
-        
-        return (post.IsHidden, post.UserId);
-    }
-
-    public async Task AddAsync(Post post, CancellationToken cancellationToken = default)
-    {
-        await db.Posts.AddAsync(post, cancellationToken);
+        await db.Posts.AddAsync(post, ct);
     }
 
     public async Task<TResult?> GetDetailsAsync<TResult>(
         Guid postId, 
         Expression<Func<Post, TResult>> selector, 
-        CancellationToken cancellationToken = default)
+        CancellationToken ct = default)
     {
         return await db.Posts
             .AsNoTracking()
             .Where(p => p.Id == postId)
             .Select(selector)
-            .FirstOrDefaultAsync(cancellationToken);
+            .FirstOrDefaultAsync(ct);
     }
 
-    public async Task RemoveAsync(Guid id, CancellationToken ct)
+    public async Task<int> RemoveAsync(Guid id, CancellationToken ct)
     {
-        await db.Posts
+        return await db.Posts
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(p => p.IsDeleted, true)
                 .SetProperty(p => p.DeletedAt, DateTime.UtcNow), ct);
     }
 
-    public async Task<List<PostDto>> GetPublicOfAuthor(
-        Guid authorId,
-        Guid? targetUserId,
-        int? skip = null,
-        int? take = null,
-        CancellationToken ct = default)
-    {
-        IQueryable<Post> query = db.Posts
-            .AsNoTracking()
-            .Where(p => p.UserId == authorId && !p.IsHidden)
-            .OrderByDescending(p => p.CreatedAt);
-
-        if (skip.HasValue)
-        {
-            query = query.Skip(skip.Value);
-        }
-
-        if (take.HasValue)
-        {
-            query = query.Take(take.Value);
-        }
-
-        var posts = await query
-            .Select(p => new PostDto
-            {
-                PostId = p.Id,
-                Text = p.Text,
-                UserId = p.UserId,
-                Username = p.User.UsernameNormalized,
-                CreatedAt = p.CreatedAt,
-                UpdatedAt = p.UpdatedAt,
-                CommentCount = p.Comments.Count(),
-                LikeCount = p.PostLikes.Count(),
-                ViewCount = p.PostViews.Count(),
-                FileStorageKeys = p.PostFiles.Select(f => f.OriginalStorageKey).ToList(),
-                IsLikedByTargetUser = targetUserId.HasValue && p.PostLikes.Any(l => l.UserId == targetUserId.Value)
-            })
-            .ToListAsync(ct);
-
-        return posts;
-    }
-
-    public Task<List<TResult>> GetHiddenOfAuthor<TResult>(Guid authorId, Expression<Func<Post, TResult>> selector, int? skip = null, int? take = null,
-        CancellationToken ct = default)
-    {
-        throw new NotImplementedException();
-    }
-
-    public async Task<Guid?> GetUserIdByPostIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<Guid?> GetUserIdByPostIdAsync(Guid id, CancellationToken ct = default)
     {
         return await db.Posts
             .AsNoTracking()
             .Where(p => p.Id == id)
             .Select(p => p.UserId)
-            .FirstOrDefaultAsync(cancellationToken);
+            .FirstOrDefaultAsync(ct);
     }
 
-    public Task<Post?> GetByIdWithAuthorAsync(Guid id, CancellationToken ct = default)
+    public async Task<Post?> GetByIdWithAuthorAsync(Guid id, CancellationToken ct = default)
     {
-        throw new NotImplementedException();
+        return await db.Posts
+            .AsNoTracking()
+            .Include(p => p.User)
+                .ThenInclude(u => u.CurrentProfilePic)
+            .Where(p => p.Id == id)
+            .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<List<TResult>> GetListAsync<TResult>(
+        Expression<Func<Post, TResult>> selector, 
+        Expression<Func<Post, bool>>? predicate, 
+        Func<IQueryable<Post>, IOrderedQueryable<Post>>? orderBy, 
+        int? skip = null, 
+        int? take = null,
+        CancellationToken ct = default)
+    {
+        var query = db.Posts.AsQueryable();
+
+        if (predicate != null)
+            query = query.Where(predicate);
+
+        if (orderBy != null)
+            query = orderBy(query);
+
+        if (skip.HasValue)
+            query = query.Skip(skip.Value);
+
+        if (take.HasValue)
+            query = query.Take(take.Value);
+
+        return await query
+            .Select(selector)
+            .ToListAsync(ct);
     }
 }

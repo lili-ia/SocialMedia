@@ -1,6 +1,4 @@
-using FluentValidation;
 using MediatR;
-using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Common.ResultPattern;
 using SocialMedia.Application.Contracts;
 using SocialMedia.Application.Contracts.Repositories;
@@ -11,36 +9,25 @@ namespace SocialMedia.Application.Users.Search;
 
 public class SearchUsersCommandHandler(
     IUserRepository userRepository,
-    ILogger<SearchUsersCommandHandler> logger,
     IBlockRepository blockRepository,
-    IValidator<SearchUsersCommand> validator,
     IFileStorageService storageService)
     : IRequestHandler<SearchUsersCommand, Result<IReadOnlyList<UserPreviewDto>>>
 {
-    public async Task<Result<IReadOnlyList<UserPreviewDto>>> Handle(SearchUsersCommand request, CancellationToken cancellationToken)
+    public async Task<Result<IReadOnlyList<UserPreviewDto>>> Handle(SearchUsersCommand request, CancellationToken ct)
     {
-        var validationResult = validator.Validate(request);
-        
-        if (!validationResult.IsValid)
-        {
-            logger.LogWarning("Validation failed for SearchUsersCommand: {Errors}", validationResult.Errors);
-            
-            return validationResult.ToFailureResult<IReadOnlyList<UserPreviewDto>>();
-        }
-        
         IReadOnlyList<Guid>? blockedUsersIds = null;
         
         if (request.ForUserId is not null)
         {
             blockedUsersIds = await blockRepository
-                .GetBlockedByEitherIdsAsync(request.ForUserId.Value, cancellationToken);
+                .GetBlockedByEitherIdsAsync(request.ForUserId.Value, ct);
         }
 
         var searchResult = await userRepository.SearchActiveByUsernameAsync(
             username: request.Username, 
             selector: UserMapper.ToUserPreviewDto,
             excludeIds: blockedUsersIds?.ToList(), 
-            cancellationToken);
+            ct);
         
         foreach (var userDto in searchResult)
         {

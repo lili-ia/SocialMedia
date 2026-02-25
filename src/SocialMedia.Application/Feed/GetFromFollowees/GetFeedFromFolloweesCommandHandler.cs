@@ -1,7 +1,6 @@
 using System.Linq.Expressions;
 using Domain.Entities;
 using Domain.Enums;
-using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Common.ResultPattern;
@@ -11,68 +10,47 @@ using SocialMedia.Application.Mappers;
 
 namespace SocialMedia.Application.Feed.GetFromFollowees;
 
-public class GetFeedFromFolloweesCommandHandler : IRequestHandler<GetFeedFromFolloweesCommand, Result<IReadOnlyList<PostDto>>>
+public class GetFeedFromFolloweesCommandHandler(
+    ILogger<GetFeedFromFolloweesCommandHandler> logger,
+    IFollowRepository followRepository,
+    IPostRepository postRepository)
+    : IRequestHandler<GetFeedFromFolloweesCommand, Result<IReadOnlyList<PostDto>>>
 {
-    private readonly IValidator<GetFeedFromFolloweesCommand> _validator;
-    private readonly IPostRepository _postRepository;
-    private readonly ILogger<GetFeedFromFolloweesCommandHandler> _logger;
-    private readonly IFollowRepository _followRepository;
-
-    public GetFeedFromFolloweesCommandHandler(
-        IValidator<GetFeedFromFolloweesCommand> validator, 
-        IPostRepository postRepository, 
-        ILogger<GetFeedFromFolloweesCommandHandler> logger, 
-        IFollowRepository followRepository)
+    public async Task<Result<IReadOnlyList<PostDto>>> Handle(GetFeedFromFolloweesCommand request, CancellationToken ct)
     {
-        _validator = validator;
-        _postRepository = postRepository;
-        _logger = logger;
-        _followRepository = followRepository;
-    }
-
-    public async Task<Result<IReadOnlyList<PostDto>>> Handle(GetFeedFromFolloweesCommand request, CancellationToken cancellationToken)
-    {
-        _logger.LogInformation("Handling GetFeedFromFolloweesCommand {@Command}.", request);
-        
-        var validationResult = _validator.Validate(request);
-        
-        if (!validationResult.IsValid)
-        {
-            _logger.LogWarning("Validation failed for GetFeedFromFolloweesCommand: {Errors}", validationResult.Errors);
-            
-            return validationResult.ToFailureResult<IReadOnlyList<PostDto>>();
-        }
-
-        var followeesIds = await _followRepository
+        var followeesIds = await followRepository
             .GetActiveFolloweesForUserAsync(
                 userId: request.ForUserId, 
                 selector: f => f.FolloweeId, 
                 excludeIds: null, 
-                cancellationToken);
+                ct);
 
         if (followeesIds.Count == 0)
         {
-            _logger.LogInformation("User {ForUserId} has no followees.", request.ForUserId);
+            logger.LogInformation("User {ForUserId} has no followees.", request.ForUserId);
             
             return Result<IReadOnlyList<PostDto>>.Success([]);
         }
         
         Expression<Func<Post, bool>> filter = p =>
-            p.IsActive 
+            !p.IsHidden 
             && followeesIds.Contains(p.UserId) 
             && p.User.Status == UserStatus.Active;
+
+        Func<IQueryable<Post>, IOrderedQueryable<Post>> orderByCreatedAt = q => q
+            .OrderByDescending(p => p.CreatedAt);
         
         var skip = (request.Page - 1) * request.PageSize;
 
-        var posts = await _postRepository.GetListAsync(
+        var posts = await postRepository.GetListAsync(
             selector: PostMapper.ProjectToDto,
             predicate: filter,
-            orderBy: null,
+            orderBy: orderByCreatedAt,
             skip: skip,
             take: request.PageSize,
-            cancellationToken);
+            ct);
         
-        _logger.LogInformation("Retrieved {Count} posts for user {ForUserId}.", posts.Count, request.ForUserId);
+        logger.LogInformation("Retrieved {Count} posts for user {ForUserId}.", posts.Count, request.ForUserId);
         
         return Result<IReadOnlyList<PostDto>>.Success(posts);
     }

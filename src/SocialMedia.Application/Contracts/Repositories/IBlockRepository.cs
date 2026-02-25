@@ -5,11 +5,9 @@ namespace SocialMedia.Application.Contracts.Repositories;
 
 public interface IBlockRepository
 {
-    Task<bool> ExistsAsync(Guid blockerId, Guid blockedId, CancellationToken cancellationToken = default);
-
     Task AddAsync(Block block, CancellationToken cancellationToken = default);
 
-    Task RemoveAsync(Guid blockerId, Guid blockedId, CancellationToken cancellationToken = default);
+    Task<int> RemoveAsync(Guid blockerId, Guid blockedId, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<TResult>> GetUsersBlockedByAsync<TResult>(
         Guid blockerId, 

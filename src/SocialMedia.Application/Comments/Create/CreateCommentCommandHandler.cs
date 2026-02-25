@@ -1,114 +1,85 @@
 using Domain.Entities;
-using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Common.ResultPattern;
+using SocialMedia.Application.Contracts;
 using SocialMedia.Application.Contracts.Repositories;
 using SocialMedia.Application.DTOs.Comment;
 using SocialMedia.Application.Mappers;
 
 namespace SocialMedia.Application.Comments.Create;
 
-public class CreateCommentCommandHandler : IRequestHandler<CreateCommentCommand, Result<CommentDto>>
+public class CreateCommentCommandHandler(
+    IPostRepository postRepository,
+    IUnitOfWork unitOfWork,
+    ILogger<CreateCommentCommandHandler> logger,
+    IUserRepository userRepository,
+    ICommentRepository commentRepository,
+    IBlockRepository blockRepository,
+    IFileStorageService storageService)
+    : IRequestHandler<CreateCommentCommand, Result<CommentWithAuthorDto>>
 {
-    private readonly IPostRepository _postRepository;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IValidator<CreateCommentCommand> _validator;
-    private readonly ILogger<CreateCommentCommandHandler> _logger;
-    private readonly IUserRepository _userRepository;
-    private readonly ICommentRepository _commentRepository;
-    private readonly IBlockRepository _blockRepository;
-
-    public CreateCommentCommandHandler(
-        IPostRepository postRepository, 
-        IUnitOfWork unitOfWork, 
-        IValidator<CreateCommentCommand> validator, 
-        ILogger<CreateCommentCommandHandler> logger, 
-        IUserRepository userRepository, 
-        ICommentRepository commentRepository, 
-        IBlockRepository blockRepository)
+    public async Task<Result<CommentWithAuthorDto>> Handle(CreateCommentCommand request, CancellationToken cancellationToken)
     {
-        _postRepository = postRepository;
-        _unitOfWork = unitOfWork;
-        _validator = validator;
-        _logger = logger;
-        _userRepository = userRepository;
-        _commentRepository = commentRepository;
-        _blockRepository = blockRepository;
-    }
-
-    public async Task<Result<CommentDto>> Handle(CreateCommentCommand request, CancellationToken cancellationToken)
-    {
-        _logger.LogInformation("Handling CreateCommentCommand {@Command}.", request);
-
-        var validationResult = _validator.Validate(request);
+        var post = await postRepository.GetByIdAsync(request.PostId, cancellationToken);
         
-        if (!validationResult.IsValid)
+        if (post is null || !post.CanUserComment(request.UserId))
         {
-            _logger.LogWarning("Validation failed for CreateCommentCommand: {Errors}", validationResult.Errors);
+            logger.LogInformation("Post {PostId} not found or not active.", request.PostId);
             
-            return validationResult.ToFailureResult<CommentDto>();
-        }
-
-        var post = await _postRepository.GetByIdAsync(request.PostId, cancellationToken);
-        
-        if (post is null || (!post.IsActive && request.UserId != post.UserId))
-        {
-            _logger.LogInformation("Post {PostId} not found or not active.", request.PostId);
-            
-            return Result<CommentDto>.Failure("Post not found.", ErrorType.NotFound);
+            return Result<CommentWithAuthorDto>.Failure("Post not found.", ErrorType.NotFound);
         }
         
         if (request.UserId != post.UserId)
         {
-            var blockExists = await _blockRepository
+            var blockExists = await blockRepository
                 .IsBlockedByEitherAsync(post.UserId, request.UserId, cancellationToken);
 
             if (blockExists)
             {
-                _logger.LogInformation("There is a block between {PostAuthorId} and {CommentAuthorId}.", 
+                logger.LogInformation("There is a block between {PostAuthorId} and {CommentAuthorId}.", 
                     post.UserId, request.UserId);
                 
-                return Result<CommentDto>.Failure("Post not found.", ErrorType.NotFound);
+                return Result<CommentWithAuthorDto>.Failure("Post not found.", ErrorType.NotFound);
             }
         }
         
-        var username = await _userRepository.GetUsernameByIdAsync(request.UserId, cancellationToken);
+        var user = await userRepository.GetByIdAsync(request.UserId, cancellationToken);
 
-        if (username is null)
+        if (user is null)
         {
-            _logger.LogWarning("User {UserId} attempted to create a comment but has no username.", request.UserId);
+            logger.LogWarning("User {UserId} attempted to create a comment but has no username.", request.UserId);
             
-            return Result<CommentDto>.Failure("Access denied.", ErrorType.Forbidden);
+            return Result<CommentWithAuthorDto>.Failure("Access denied.", ErrorType.Forbidden);
         }
 
-        var comment = new Comment
+        var parentCommentExists = false;
+        
+        if (request.ParentCommentId is not null)
         {
-            Id = Guid.NewGuid(),
-            Text = request.Text,
-            UserId = request.UserId,
-            PostId = request.PostId,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        try
-        {
-            await _commentRepository.AddAsync(comment, cancellationToken);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-            _logger.LogInformation("Comment {CommentId} successfully created by user {UserId}.",
-                comment.Id, request.UserId);
-            
-            var commentDto = CommentMapper.ToDto(comment, username);
-            
-            return Result<CommentDto>.Success(commentDto);
+            parentCommentExists = await commentRepository.ExistsAsync(request.ParentCommentId.Value, cancellationToken);
         }
-        catch (Exception ex)
+        
+        var comment = Comment.Create(
+            request.UserId,
+            request.PostId,
+            request.Text,
+            parentCommentExists ? request.ParentCommentId : null);
+       
+        await commentRepository.AddAsync(comment, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        logger.LogInformation("Comment {CommentId} successfully created by user {UserId}.",
+            comment.Id, request.UserId);
+        
+        var commentDto = comment.ToDto(user);
+
+        if (!string.IsNullOrEmpty(commentDto.UserPreview.ThumbnailProfilePicStorageKey))
         {
-            _logger.LogError(ex, "An error occured while creating a comment by user {UserId} to post {PostId}.", 
-                request.UserId, request.PostId);
-            
-            return Result<CommentDto>.Failure("An internal error occured.", ErrorType.ServerError);
+            commentDto.UserPreview.ThumbnailProfilePicUrl = storageService
+                .GetPresignedUrl(commentDto.UserPreview.ThumbnailProfilePicStorageKey);
         }
+        
+        return Result<CommentWithAuthorDto>.Success(commentDto);
     }
 }

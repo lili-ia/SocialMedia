@@ -9,10 +9,9 @@ public static class BlockMapper
     public static Expression<Func<Block, BlockedUserDto>> ProjectToBlockedUserDto =>
         block => new BlockedUserDto
         {
-            BlockedUserId = block.Blocked.Id,
-            BlockedUsername = block.Blocked.Status != Domain.Enums.UserStatus.Deactivated
-                ? block.Blocked.UsernameNormalized 
-                : "deleted",
+            Id = block.BlockedId,
+            Username = block.Blocked.UsernameNormalized,
+            ThumbnailProfilePicStorageKey = block.Blocked.CurrentProfilePic.ThumbnailStorageKey,
             BlockedAt = block.CreatedAt
         };
 }

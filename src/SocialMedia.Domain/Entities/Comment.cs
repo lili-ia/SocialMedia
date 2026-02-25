@@ -2,19 +2,79 @@
 
 public class Comment : BaseEntity
 {
-    public Guid UserId { get; set; }
+    public Guid UserId { get; private set; }
+    
+    public User User { get; private set; } = null!;
 
-    public User User { get; set; } = null!;
+    public Guid PostId { get; private set; }
     
-    public Guid PostId { get; set; }
+    public Post Post { get; private set; } = null!;
+
+    public string Text { get; private set; } = null!;
+
+    public Guid? ParentCommentId { get; private set; }
     
-    public Post Post { get; set; } = null!;
+    public Comment? ParentComment { get; private set; }
+
+    public IReadOnlyCollection<Comment> Replies => _replies.AsReadOnly();
+
+    private Comment() { }
+
+    private Comment(
+        Guid userId,
+        Guid postId,
+        string text,
+        Guid? parentCommentId = null)
+    {
+        UserId = userId;
+        PostId = postId;
+        Text = text;
+        ParentCommentId = parentCommentId;
+    }
+
+    public static Comment Create(
+        Guid userId,
+        Guid postId,
+        string text,
+        Guid? parentCommentId = null)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            throw new ArgumentException("Comment text cannot be empty");
+        }
+
+        if (text.Length > 500)
+        {
+            throw new ArgumentException("Comment text too long");
+        }
+
+        return new Comment(userId, postId, text, parentCommentId);
+    }
+
+    public void UpdateText(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            throw new ArgumentException("Comment text cannot be empty");
+        }
+
+        Text = text;
+    }
+
+    public void AddReply(Comment reply)
+    {
+        if (reply is null)
+        {
+            throw new ArgumentNullException(nameof(reply));
+        }
+
+        _replies.Add(reply);
+    }
     
-    public string Text { get; set; } = null!;
+    public bool CanUserDelete(Guid userId)
+    {
+        return UserId == userId || Post.UserId == userId;
+    }
     
-    public Guid? ParentCommentId { get; set; }
-    
-    public Comment? ParentComment { get; set; }
-    
-    public ICollection<Comment> Replies { get; set; } = [];
+    private readonly List<Comment> _replies = [];
 }

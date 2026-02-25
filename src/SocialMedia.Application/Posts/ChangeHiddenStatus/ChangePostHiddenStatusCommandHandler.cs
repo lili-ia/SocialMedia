@@ -1,6 +1,5 @@
 using MediatR;
 using Microsoft.Extensions.Logging;
-using SocialMedia.Application.Common;
 using SocialMedia.Application.Common.ResultPattern;
 using SocialMedia.Application.Contracts.Repositories;
 
@@ -37,9 +36,8 @@ public class ChangePostHiddenStatusCommandHandler(
             return Result.Failure($"Post is already {status}.", ErrorType.Conflict);
         }
 
-        post.IsHidden = request.MustBeHidden;
-        post.UpdatedAt = DateTime.UtcNow;
-
+        post.SetHiddenStatus(request.MustBeHidden);
+        
         await unitOfWork.SaveChangesAsync(ct);
         
         return Result.Success();

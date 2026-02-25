@@ -1,12 +1,12 @@
+using SocialMedia.Application.DTOs.User;
+
 namespace SocialMedia.Application.DTOs.Comment;
 
-public class CommentDto
+public class CommentWithAuthorDto
 {
+    public UserPreviewDto UserPreview { get; set; } = null!;
+    
     public string Text { get; set; } = null!;
-
-    public Guid? UserId { get; set; }
-
-    public string? Username { get; set; }
     
     public Guid PostId { get; set; }
 

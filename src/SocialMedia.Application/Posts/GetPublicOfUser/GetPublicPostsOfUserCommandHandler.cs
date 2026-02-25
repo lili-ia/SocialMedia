@@ -1,5 +1,6 @@
+using System.Linq.Expressions;
+using Domain.Entities;
 using Domain.Enums;
-using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Common.ResultPattern;
@@ -15,19 +16,11 @@ public class GetPublicPostsOfUserCommandHandler(
     IPostRepository postRepository,
     IBlockRepository blockRepository,
     IUserRepository userRepository,
-    IValidator<GetPublicPostsOfUserCommand> validator,
     IFileStorageService fileStorage)
     : IRequestHandler<GetPublicPostsOfUserCommand, Result<IReadOnlyList<PostDto>>>
 {
     public async Task<Result<IReadOnlyList<PostDto>>> Handle(GetPublicPostsOfUserCommand request, CancellationToken ct)
     {
-        var validationResult = validator.Validate(request);
-        
-        if (!validationResult.IsValid)
-        {
-            return validationResult.ToFailureResult<IReadOnlyList<PostDto>>();
-        }
-        
         var authorId = request.AuthorUserId;
         
         if (authorId is not null)
@@ -69,11 +62,18 @@ public class GetPublicPostsOfUserCommandHandler(
         
         var skip = (request.Page - 1) * request.PageSize;
 
-        var posts = await postRepository.GetPublicOfAuthor(
-            authorId.Value,
-            request.TargetUserId,
-            skip,
-            request.PageSize,
+        Expression<Func<Post, bool>> mustBelongToUserAndBeActive = p =>
+            p.UserId == request.AuthorUserId && !p.IsHidden;
+
+        Func<IQueryable<Post>, IOrderedQueryable<Post>> orderByCreatedAt = q => q
+            .OrderByDescending(p => p.CreatedAt);
+        
+        var posts = await postRepository.GetListAsync(
+            PostMapper.ProjectToDto, 
+            mustBelongToUserAndBeActive, 
+            orderByCreatedAt, 
+            skip, 
+            request.PageSize, 
             ct);
         
         foreach (var post in posts)

@@ -18,4 +18,14 @@ public interface ICommentRepository
         int skip = 0,
         int take = 20,
         CancellationToken cancellationToken = default);
+    
+    Task<IReadOnlyList<TResult>> GetAllByNotBlockedUsersForPostIdAsync<TResult>(
+        Guid postId,
+        Guid targetUserId,
+        Expression<Func<Comment, TResult>> selector,
+        int skip = 0,
+        int take = 20,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> ExistsAsync(Guid id, CancellationToken ct = default);
 }

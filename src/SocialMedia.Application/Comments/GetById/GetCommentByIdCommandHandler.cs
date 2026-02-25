@@ -7,48 +7,38 @@ using SocialMedia.Application.Mappers;
 
 namespace SocialMedia.Application.Comments.GetById;
 
-public class GetCommentByIdCommandHandler : IRequestHandler<GetCommentByIdCommand, Result<CommentDto>>
+public class GetCommentByIdCommandHandler(
+    ILogger<GetCommentByIdCommandHandler> logger,
+    ICommentRepository commentRepository,
+    IBlockRepository blockRepository)
+    : IRequestHandler<GetCommentByIdCommand, Result<CommentWithAuthorDto>>
 {
-    private readonly ILogger<GetCommentByIdCommandHandler> _logger;
-    private readonly ICommentRepository _commentRepository;
-    private readonly IBlockRepository _blockRepository;
-
-    public GetCommentByIdCommandHandler(
-        ILogger<GetCommentByIdCommandHandler> logger,
-        ICommentRepository commentRepository,
-        IBlockRepository blockRepository)
+    public async Task<Result<CommentWithAuthorDto>> Handle(GetCommentByIdCommand request, CancellationToken cancellationToken)
     {
-        _logger = logger;
-        _commentRepository = commentRepository;
-        _blockRepository = blockRepository;
-    }
+        logger.LogInformation("Handling GetCommentByIdCommand {@Command}.", request);
 
-    public async Task<Result<CommentDto>> Handle(GetCommentByIdCommand request, CancellationToken cancellationToken)
-    {
-        _logger.LogInformation("Handling GetCommentByIdCommand {@Command}.", request);
-
-        var comment = await _commentRepository.GetByIdWithPostAsync(request.CommentId, cancellationToken);
+        var comment = await commentRepository.GetByIdWithPostAsync(request.CommentId, cancellationToken);
 
         if (comment is null)
         {
-            _logger.LogWarning("Comment {CommentId} not found.", request.CommentId);
+            logger.LogWarning("Comment {CommentId} not found.", request.CommentId);
 
-            return Result<CommentDto>.Failure("Comment not found.", ErrorType.NotFound);
+            return Result<CommentWithAuthorDto>.Failure("Comment not found.", ErrorType.NotFound);
         }
         
-        var blockExists = await _blockRepository
+        var blockExists = await blockRepository
             .IsBlockedByEitherAsync(comment.UserId, request.TargetUserId, cancellationToken);
 
         if (blockExists)
         {
-            _logger.LogInformation("There is a block between {PostAuthorId} and {CommentAuthorId}.",
+            logger.LogInformation("There is a block between {PostAuthorId} and {CommentAuthorId}.",
                 comment.Post.UserId, request.TargetUserId);
 
-            return Result<CommentDto>.Failure("Post not found.", ErrorType.NotFound);
+            return Result<CommentWithAuthorDto>.Failure("Post not found.", ErrorType.NotFound);
         }
 
         var commentDto = comment.ToDto();
         
-        return Result<CommentDto>.Success(commentDto);
+        return Result<CommentWithAuthorDto>.Success(commentDto);
     }
 }

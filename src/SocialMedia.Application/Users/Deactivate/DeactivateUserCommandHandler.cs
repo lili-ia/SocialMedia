@@ -23,7 +23,8 @@ public class DeactivateUserCommandHandler(
             return Result.Failure("User not found.", ErrorType.NotFound);
         }
         
-        user.Status = UserStatus.Deactivated;
+        user.ChangeStatus(UserStatus.Deactivated, "User voluntarily deactivated their account.");
+        
         await unitOfWork.SaveChangesAsync(ct);
         
         logger.LogInformation("User {UserId} successfully deactivated their profile.", request.UserId);

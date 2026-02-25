@@ -1,91 +1,69 @@
-using System.Linq.Expressions;
-using Domain.Entities;
-using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Common.ResultPattern;
+using SocialMedia.Application.Contracts;
 using SocialMedia.Application.Contracts.Repositories;
 using SocialMedia.Application.DTOs.Comment;
 using SocialMedia.Application.Mappers;
 
 namespace SocialMedia.Application.Comments.GetAllForPost;
 
-public class GetAllCommentsForPostCommandHandler : IRequestHandler<GetAllCommentsForPostCommand, Result<IReadOnlyList<CommentDto>>>
+public class GetAllCommentsForPostCommandHandler(
+    ILogger<GetAllCommentsForPostCommandHandler> logger,
+    ICommentRepository commentRepository,
+    IPostRepository postRepository,
+    IBlockRepository blockRepository,
+    IFileStorageService storageService)
+    : IRequestHandler<GetAllCommentsForPostCommand, Result<IReadOnlyList<CommentWithAuthorDto>>>
 {
-    private readonly ILogger<GetAllCommentsForPostCommandHandler> _logger;
-    private readonly ICommentRepository _commentRepository;
-    private readonly IValidator<GetAllCommentsForPostCommand> _validator;
-    private readonly IPostRepository _postRepository;
-    private readonly IBlockRepository _blockRepository;
-    
-    public GetAllCommentsForPostCommandHandler(
-        ILogger<GetAllCommentsForPostCommandHandler> logger, 
-        ICommentRepository commentRepository, 
-        IValidator<GetAllCommentsForPostCommand> validator, 
-        IPostRepository postRepository, IBlockRepository blockRepository)
+    public async Task<Result<IReadOnlyList<CommentWithAuthorDto>>> Handle(GetAllCommentsForPostCommand request, CancellationToken ct)
     {
-        _logger = logger;
-        _commentRepository = commentRepository;
-        _validator = validator;
-        _postRepository = postRepository;
-        _blockRepository = blockRepository;
-    }
-
-    public async Task<Result<IReadOnlyList<CommentDto>>> Handle(GetAllCommentsForPostCommand request, CancellationToken cancellationToken)
-    {
-        _logger.LogInformation("Handling GetAllCommentsForPostCommand {@Command}.", request);
-
-        var validationResult = _validator.Validate(request);
+        var post = await postRepository.GetByIdWithAuthorAsync(request.PostId, ct);
         
-        if (!validationResult.IsValid)
+        if (post is null || !post.CanUserAccess(request.TargetUserId))
         {
-            _logger.LogWarning("Validation failed for GetAllCommentsForPostCommand: {Errors}", validationResult.Errors);
+            logger.LogWarning("Post {PostId} not found or user can not access it.", request.PostId);
             
-            return validationResult.ToFailureResult<IReadOnlyList<CommentDto>>();
+            return Result<IReadOnlyList<CommentWithAuthorDto>>.Failure("Post not found.", ErrorType.NotFound);
         }
 
-        var postStatus = await _postRepository.GetStatusAsync(request.PostId, cancellationToken);
-
-        if (postStatus is null || !postStatus.Value.IsActive)
+        if (request.TargetUserId != post.UserId)
         {
-            _logger.LogWarning("Post {PostId} not found or not active.", request.PostId);
-            
-            return Result<IReadOnlyList<CommentDto>>.Failure("Post not found.", ErrorType.NotFound);
-        }
-
-        if (request.TargetUserId != postStatus.Value.AuthorId)
-        {
-            var blockExists = await _blockRepository
-                .IsBlockedByEitherAsync(postStatus.Value.AuthorId, request.TargetUserId, cancellationToken);
+            var blockExists = await blockRepository.IsBlockedByEitherAsync(post.UserId, request.TargetUserId, ct);
 
             if (blockExists)
             {
-                _logger.LogInformation("There is a block between {PostAuthorId} and {TargetUserId}.", 
-                    postStatus.Value.AuthorId, request.TargetUserId);
+                logger.LogInformation("There is a block between {PostAuthorId} and {TargetUserId}.", 
+                    post.UserId, request.TargetUserId);
                 
-                return Result<IReadOnlyList<CommentDto>>.Failure("Post not found.", ErrorType.NotFound);
+                return Result<IReadOnlyList<CommentWithAuthorDto>>.Failure("Post not found.", ErrorType.NotFound);
             }
         }
-        
-        Expression<Func<Comment, bool>> eitherBlockedFilter = comment => !comment.User.BlockedUsers
-            .Any(b =>
-                (b.BlockerId == request.TargetUserId && b.BlockedId == comment.UserId) ||
-                (b.BlockerId == comment.UserId && b.BlockedId == request.TargetUserId));
 
         var skip = (request.Page - 1) * request.PageSize;
         
-        var comments = await _commentRepository
-            .GetAllByPostIdAsync(
+        var comments = await commentRepository
+            .GetAllByNotBlockedUsersForPostIdAsync(
                 postId: request.PostId, 
-                predicate: eitherBlockedFilter, 
-                selector: CommentMapper.ProjectToDto, 
+                targetUserId: request.TargetUserId, 
+                selector: CommentMapper.ProjectToCommentWithAuthorDto, 
                 skip: skip,
                 take: request.PageSize,
-                cancellationToken);
+                ct);
         
-        _logger.LogInformation("Retrieved {Count} comments to post {PostId} for user {TargetUserId}.", 
+        foreach (var comment in comments)
+        {
+            var user = comment.UserPreview;
+            
+            if (!string.IsNullOrEmpty(user.ThumbnailProfilePicStorageKey))
+            {
+                user.ThumbnailProfilePicUrl = storageService.GetPresignedUrl(user.ThumbnailProfilePicStorageKey);
+            }
+        }
+        
+        logger.LogInformation("Retrieved {Count} comments to post {PostId} for user {TargetUserId}.", 
             comments.Count, request.PostId, request.TargetUserId);
         
-        return Result<IReadOnlyList<CommentDto>>.Success(comments);
+        return Result<IReadOnlyList<CommentWithAuthorDto>>.Success(comments);
     }
 }

@@ -8,4 +8,4 @@ public sealed record GetAllCommentsForPostCommand(
     Guid PostId, 
     Guid TargetUserId,
     int Page,
-    int PageSize) : IRequest<Result<IReadOnlyList<CommentDto>>>;
+    int PageSize) : IRequest<Result<IReadOnlyList<CommentWithAuthorDto>>>;

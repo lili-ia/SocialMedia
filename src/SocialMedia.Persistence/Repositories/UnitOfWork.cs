@@ -91,11 +91,19 @@ public class UnitOfWork(SocialMediaDbContext db, IDomainEventDispatcher domainEv
 
         if (ex.InnerException is PostgresException { SqlState: "23505" } pgEx)
         {
-            if (pgEx.ConstraintName == "IX_PostLikes_UserId_PostId")
+            switch (pgEx.ConstraintName)
             {
-                duplicateException = new DuplicatePostLikeException(pgEx.ConstraintName);
+                case "IX_PostLikes_UserId_PostId":
+                    duplicateException = new DuplicatePostLikeException(pgEx.ConstraintName);
+                    return true;
                 
-                return true;
+                case "IX_Blocks_BlockerId_BlockedId":
+                    duplicateException = new DuplicateBlockException(pgEx.ConstraintName);
+                    return true;
+                
+                case "IX_Follows_FollowerId_FolloweeId":
+                    duplicateException = new DuplicateFollowException(pgEx.ConstraintName);
+                    return true;
             }
         }
 

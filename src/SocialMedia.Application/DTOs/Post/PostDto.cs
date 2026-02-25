@@ -28,5 +28,6 @@ public record PostDto
     
     public List<string>? FileUrls { get; set; }
     
+    [JsonIgnore]
     public List<string>? FileStorageKeys { get; set; }
 }

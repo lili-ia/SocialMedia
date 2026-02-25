@@ -1,5 +1,4 @@
 using Domain.Entities;
-using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using SixLabors.ImageSharp;
@@ -17,7 +16,6 @@ namespace SocialMedia.Application.Posts.Create;
 public class CreatePostCommandHandler(
     IPostRepository postRepository,
     IUnitOfWork unitOfWork,
-    IValidator<CreatePostCommand> validator,
     ILogger<CreatePostCommandHandler> logger,
     IFileStorageService fileStorage,
     IFileRepository fileRepository)
@@ -25,20 +23,8 @@ public class CreatePostCommandHandler(
 {
     public async Task<Result<PostDto>> Handle(CreatePostCommand request, CancellationToken ct)
     {
-        var validationResult = validator.Validate(request);
-        
-        if (!validationResult.IsValid)
-        {
-            return validationResult.ToFailureResult<PostDto>();
-        }
+        var post = Post.Create(request.UserId, request.Text);
 
-        var post = new Post
-        {
-            Text = request.Text,
-            IsHidden = false,
-            UserId = request.UserId
-        };
-        
         await postRepository.AddAsync(post, ct);
 
         List<string> presignedUrls = [];
@@ -57,7 +43,11 @@ public class CreatePostCommandHandler(
                         bytes = ms.ToArray();
                     }
                     
-                    var storageKey = await fileStorage.UploadFileAsync(f.FileName, new MemoryStream(bytes), MediaFolder.PostFiles, ct);
+                    var storageKey = await fileStorage.UploadFileAsync(
+                        f.FileName, 
+                        new MemoryStream(bytes), 
+                        MediaFolder.PostFiles, 
+                        ct);
                     
                     var info = await Image.IdentifyAsync(new MemoryStream(bytes), ct);
                     

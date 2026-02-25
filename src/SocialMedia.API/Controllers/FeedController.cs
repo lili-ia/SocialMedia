@@ -11,18 +11,9 @@ namespace SocialMedia.Controllers;
 [Produces("application/json")]
 [ApiController]
 [Route("api/feed")]
-public class FeedController : ControllerBase
+public class FeedController(IUserContext userContext, ISender sender) : ControllerBase
 {
-    private readonly IUserContext _userContext;
-    private readonly ISender _sender;
-
-    public FeedController(IUserContext userContext, ISender sender)
-    {
-        _userContext = userContext;
-        _sender = sender;
-    }
-    
-     /// <summary>
+    /// <summary>
     /// Retrieves the feed for the authenticated user based on their followees.
     /// </summary>
     /// <param name="page">Page number for pagination (default: 1).</param>
@@ -38,11 +29,11 @@ public class FeedController : ControllerBase
         CancellationToken cancellationToken = default)
     {
         var command = new GetFeedFromFolloweesCommand(
-            _userContext.UserId, 
+            userContext.UserId, 
             page, 
             pageSize);
 
-        var result = await _sender.Send(command, cancellationToken);
+        var result = await sender.Send(command, cancellationToken);
 
         return result.ToActionResult();
     }
@@ -63,11 +54,11 @@ public class FeedController : ControllerBase
         CancellationToken cancellationToken = default)
     {
         var command = new GetFeedFromPopularCommand(
-            _userContext.UserId, 
+            userContext.UserId, 
             page, 
             pageSize);
 
-        var result = await _sender.Send(command, cancellationToken);
+        var result = await sender.Send(command, cancellationToken);
 
         return result.ToActionResult();
     }

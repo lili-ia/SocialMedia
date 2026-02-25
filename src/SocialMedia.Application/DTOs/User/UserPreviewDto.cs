@@ -5,8 +5,8 @@ namespace SocialMedia.Application.DTOs.User;
 public class UserPreviewDto
 {
     public Guid Id { get; set; }
-    
-    public string Username { get; set; }
+
+    public string Username { get; set; } = null!;
     
     public string? ThumbnailProfilePicUrl { get; set; }
     

@@ -5,23 +5,16 @@ using SocialMedia.Application.Contracts.Repositories;
 
 namespace SocialMedia.Persistence.Repositories;
 
-public class CommentRepository : ICommentRepository
+public class CommentRepository(SocialMediaDbContext db) : ICommentRepository
 {
-    private readonly SocialMediaDbContext _db;
-    
-    public CommentRepository(SocialMediaDbContext db)
-    {
-        _db = db;
-    }
-    
     public async Task AddAsync(Comment comment, CancellationToken cancellationToken = default)
     {
-        await _db.Comments.AddAsync(comment, cancellationToken);
+        await db.Comments.AddAsync(comment, cancellationToken);
     }
 
     public async Task<Comment?> GetByIdWithPostAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        return await _db.Comments
+        return await db.Comments
             .Include(c => c.Post)
             .AsNoTracking()
             .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
@@ -29,7 +22,7 @@ public class CommentRepository : ICommentRepository
 
     public async Task RemoveAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        await _db.Comments
+        await db.Comments
             .Where(c => c.Id == id)
             .ExecuteDeleteAsync(cancellationToken);
     }
@@ -42,7 +35,7 @@ public class CommentRepository : ICommentRepository
         int take = 20,
         CancellationToken cancellationToken = default)
     {
-        var query = _db.Comments.AsNoTracking()
+        var query = db.Comments.AsNoTracking()
             .Where(c => c.PostId == postId);
 
         if (predicate != null)
@@ -58,5 +51,33 @@ public class CommentRepository : ICommentRepository
             .ToListAsync(cancellationToken);
 
         return comments.AsReadOnly();
+    }
+
+    public async Task<IReadOnlyList<TResult>> GetAllByNotBlockedUsersForPostIdAsync<TResult>(
+        Guid postId, 
+        Guid targetUserId,
+        Expression<Func<Comment, TResult>> selector, 
+        int skip = 0, 
+        int take = 20,
+        CancellationToken cancellationToken = default)
+    {
+        var comments = await db.Comments.AsNoTracking()
+            .Include(c => c.User)
+            .Where(c => c.PostId == postId && !c.User.BlockedUsers
+                .Any(b =>
+                    (b.BlockerId == targetUserId && b.BlockedId == c.UserId) ||
+                    (b.BlockerId == c.UserId && b.BlockedId == targetUserId)))
+            .OrderBy(c => c.CreatedAt)
+            .Select(selector)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+
+        return comments.AsReadOnly();
+    }
+
+    public Task<bool> ExistsAsync(Guid id, CancellationToken ct = default)
+    {
+        return db.Comments.AnyAsync(c => c.Id == id, ct);
     }
 }

@@ -10,15 +10,15 @@ public static class FollowMapper
         follow => new UserPreviewDto
         {
             Id = follow.Followee.Id,
-            Username = follow.Followee.Username,
-            ProfilePicUrl = follow.Followee.ProfilePic.Url
+            Username = follow.Followee.UsernameNormalized,
+            ThumbnailProfilePicUrl = follow.Followee.CurrentProfilePic.ThumbnailStorageKey
         };
     
     public static Expression<Func<Follow, UserPreviewDto>> ToFollowerUserPreviewDto => 
         follow => new UserPreviewDto
         {
             Id = follow.Follower.Id,
-            Username = follow.Follower.Username,
-            ProfilePicUrl = follow.Follower.ProfilePic.Url
+            Username = follow.Follower.UsernameNormalized,
+            ThumbnailProfilePicUrl = follow.Follower.CurrentProfilePic.ThumbnailStorageKey
         };
 }
