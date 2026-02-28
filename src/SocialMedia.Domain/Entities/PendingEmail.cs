@@ -52,7 +52,7 @@ public sealed class PendingEmail : BaseEntity
         LastAttemptAt = DateTime.UtcNow;
     }
 
-    public void MarkAsFailed(string error)
+    public void MarkAsFailed(string? error)
     {
         RetryCount++;
         LastAttemptAt = DateTime.UtcNow;

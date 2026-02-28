@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Common.ResultPattern;
+using SocialMedia.Application.Contracts;
 using SocialMedia.Application.Contracts.Repositories;
 using SocialMedia.Application.DTOs.Comment;
 using SocialMedia.Application.Mappers;
@@ -10,7 +11,7 @@ namespace SocialMedia.Application.Comments.GetById;
 public class GetCommentByIdCommandHandler(
     ILogger<GetCommentByIdCommandHandler> logger,
     ICommentRepository commentRepository,
-    IBlockRepository blockRepository)
+    IBlockCacheService blockCacheService)
     : IRequestHandler<GetCommentByIdCommand, Result<CommentWithAuthorDto>>
 {
     public async Task<Result<CommentWithAuthorDto>> Handle(GetCommentByIdCommand request, CancellationToken cancellationToken)
@@ -26,10 +27,9 @@ public class GetCommentByIdCommandHandler(
             return Result<CommentWithAuthorDto>.Failure("Comment not found.", ErrorType.NotFound);
         }
         
-        var blockExists = await blockRepository
-            .IsBlockedByEitherAsync(comment.UserId, request.TargetUserId, cancellationToken);
+        var blockedIds = await blockCacheService.GetBlockedAndBlockerIdsAsync(request.TargetUserId, cancellationToken);
 
-        if (blockExists)
+        if (blockedIds.Contains(comment.UserId))
         {
             logger.LogInformation("There is a block between {PostAuthorId} and {CommentAuthorId}.",
                 comment.Post.UserId, request.TargetUserId);

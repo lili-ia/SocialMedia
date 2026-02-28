@@ -16,4 +16,12 @@ public class FileRepository(SocialMediaDbContext db) : IFileRepository
         await db.Set<T>()
             .AddRangeAsync(files, ct);
     }
+
+    public Task RemoveAsync<T>(T file, CancellationToken ct = default) where T : MediaFile
+    {
+        db.Set<MediaFile>()
+            .Remove(file);
+        
+        return Task.CompletedTask;
+    }
 }

@@ -12,8 +12,8 @@ public class GetAllCommentsForPostCommandHandler(
     ILogger<GetAllCommentsForPostCommandHandler> logger,
     ICommentRepository commentRepository,
     IPostRepository postRepository,
-    IBlockRepository blockRepository,
-    IFileStorageService storageService)
+    IFileStorageService storageService,
+    IBlockCacheService blockCacheService)
     : IRequestHandler<GetAllCommentsForPostCommand, Result<IReadOnlyList<CommentWithAuthorDto>>>
 {
     public async Task<Result<IReadOnlyList<CommentWithAuthorDto>>> Handle(GetAllCommentsForPostCommand request, CancellationToken ct)
@@ -29,9 +29,9 @@ public class GetAllCommentsForPostCommandHandler(
 
         if (request.TargetUserId != post.UserId)
         {
-            var blockExists = await blockRepository.IsBlockedByEitherAsync(post.UserId, request.TargetUserId, ct);
+            var blockedIds = await blockCacheService.GetBlockedAndBlockerIdsAsync(request.TargetUserId, ct);
 
-            if (blockExists)
+            if (blockedIds.Contains(post.UserId))
             {
                 logger.LogInformation("There is a block between {PostAuthorId} and {TargetUserId}.", 
                     post.UserId, request.TargetUserId);

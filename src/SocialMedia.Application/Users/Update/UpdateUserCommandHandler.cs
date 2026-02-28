@@ -19,7 +19,8 @@ public class UpdateUserCommandHandler(
     IUserRepository userRepository,
     IFileStorageService fileStorage,
     IUnitOfWork unitOfWork,
-    IFileRepository fileRepository)
+    IFileRepository fileRepository,
+    ICacheService cache)
     : IRequestHandler<UpdateUserCommand, Result<UpdateUserDto>>
 {
     public async Task<Result<UpdateUserDto>> Handle(UpdateUserCommand request, CancellationToken ct)
@@ -106,6 +107,9 @@ public class UpdateUserCommandHandler(
         {
             dto.ProfilePicUrl = fileStorage.GetPresignedUrl(newOriginalKey);
         }
+
+        var cacheKey = $"user:{request.UserId}:profile";
+        await cache.RemoveAsync(cacheKey);
         
         return Result<UpdateUserDto>.Success(dto);
     }

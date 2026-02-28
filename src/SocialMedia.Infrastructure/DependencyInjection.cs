@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using SocialMedia.Application.Contracts;
+using StackExchange.Redis;
 
 namespace Infrastructure;
 
@@ -68,5 +69,13 @@ public static class DependencyInjection
             config.GetSection(AmazonS3StorageOptions.SectionName).Bind(options));
         
         services.AddSingleton<IFileStorageService, AmazonS3StorageService>();
+    }
+
+    private static void AddRedis(IServiceCollection services, IConfiguration config)
+    {
+        var connectionString = config.GetConnectionString("Redis") ?? "localhost:6379";
+
+        services.AddSingleton<IConnectionMultiplexer>(sp =>
+            ConnectionMultiplexer.Connect(connectionString));
     }
 }

@@ -2,6 +2,7 @@ using Domain.Enums;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Common.ResultPattern;
+using SocialMedia.Application.Contracts;
 using SocialMedia.Application.Contracts.Repositories;
 
 namespace SocialMedia.Application.Users.Deactivate;
@@ -9,7 +10,8 @@ namespace SocialMedia.Application.Users.Deactivate;
 public class DeactivateUserCommandHandler(
     ILogger<DeactivateUserCommandHandler> logger,
     IUserRepository userRepository,
-    IUnitOfWork unitOfWork)
+    IUnitOfWork unitOfWork,
+    ICacheService cache)
     : IRequestHandler<DeactivateUserCommand, Result>
 {
     public async Task<Result> Handle(DeactivateUserCommand request, CancellationToken ct)
@@ -28,6 +30,9 @@ public class DeactivateUserCommandHandler(
         await unitOfWork.SaveChangesAsync(ct);
         
         logger.LogInformation("User {UserId} successfully deactivated their profile.", request.UserId);
+        
+        var cacheKey = $"user:{request.UserId}:profile";
+        await cache.RemoveAsync(cacheKey);
         
         return Result.Success();
     }

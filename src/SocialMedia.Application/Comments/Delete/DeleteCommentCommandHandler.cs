@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Common;
 using SocialMedia.Application.Common.ResultPattern;
+using SocialMedia.Application.Contracts;
 using SocialMedia.Application.Contracts.Repositories;
 
 namespace SocialMedia.Application.Comments.Delete;
@@ -9,7 +10,7 @@ namespace SocialMedia.Application.Comments.Delete;
 public class DeleteCommentCommandHandler(
     ILogger<DeleteCommentCommandHandler> logger,
     ICommentRepository commentRepository,
-    IBlockRepository blockRepository)
+    IBlockCacheService blockCacheService)
     : IRequestHandler<DeleteCommentCommand, Result<MessageResponse>>
 {
     public async Task<Result<MessageResponse>> Handle(DeleteCommentCommand request, CancellationToken cancellationToken)
@@ -38,14 +39,13 @@ public class DeleteCommentCommandHandler(
             return Result<MessageResponse>.Failure("Access denied.", ErrorType.Forbidden);
         }
         
-        var blockExists = await blockRepository
-            .IsBlockedByEitherAsync(comment.UserId, request.UserId, cancellationToken);
+        var blockedIds = await blockCacheService.GetBlockedAndBlockerIdsAsync(request.UserId, cancellationToken);
 
-        if (blockExists)
+        if (blockedIds.Contains(comment.Post.UserId))
         {
             logger.LogInformation("There is a block between {PostAuthorId} and {CommentAuthorId}.", 
                 comment.Post.UserId, request.UserId);
-                
+        
             return Result<MessageResponse>.Failure("Post not found.", ErrorType.NotFound);
         }
         

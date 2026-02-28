@@ -14,7 +14,7 @@ public interface IFollowRepository
 
     Task<int> GetActiveFollowerCountForUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
 
-    Task RemoveAsync(Guid followerId, Guid followeeId, CancellationToken cancellationToken = default);
+    Task<int> RemoveAsync(Guid followerId, Guid followeeId, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<TResult>> GetActiveFolloweesForUserAsync<TResult>(
         Guid userId, 

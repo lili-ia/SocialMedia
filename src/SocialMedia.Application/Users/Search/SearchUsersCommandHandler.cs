@@ -9,7 +9,7 @@ namespace SocialMedia.Application.Users.Search;
 
 public class SearchUsersCommandHandler(
     IUserRepository userRepository,
-    IBlockRepository blockRepository,
+    IBlockCacheService blockCache,
     IFileStorageService storageService)
     : IRequestHandler<SearchUsersCommand, Result<IReadOnlyList<UserPreviewDto>>>
 {
@@ -19,8 +19,8 @@ public class SearchUsersCommandHandler(
         
         if (request.ForUserId is not null)
         {
-            blockedUsersIds = await blockRepository
-                .GetBlockedByEitherIdsAsync(request.ForUserId.Value, ct);
+            var blockedSet = await blockCache.GetBlockedAndBlockerIdsAsync(request.ForUserId.Value, ct);
+            blockedUsersIds = blockedSet.ToList();
         }
 
         var searchResult = await userRepository.SearchActiveByUsernameAsync(

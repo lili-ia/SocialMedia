@@ -55,25 +55,22 @@ public class EmailBackgroundWorker(
 
             if (result.IsSuccess)
             {
-                email.IsSent = true;
+                email.MarkAsSent();
                 logger.LogInformation("Successfully sent pending email to {To}", email.To);
-
-                await emailRepository.RemoveByIdAsync(email.Id, ct);
             }
             else
             {
-                email.RetryCount++;
-                email.LastError = result.ErrorMessage;
+                email.MarkAsFailed(result.ErrorMessage);
 
-                if (email.RetryCount < MaxRetries)
+                if (email.CanRetry(MaxRetries))
                 {
                     continue;
                 }
                 
                 logger.LogError("Email to {To} failed after 5 attempts. Giving up.", email.To);
-                    
-                await emailRepository.RemoveByIdAsync(email.Id, ct);
             }
+
+            await emailRepository.RemoveByIdAsync(email.Id, ct);
         }
 
         await unitOfWork.SaveChangesAsync(ct);

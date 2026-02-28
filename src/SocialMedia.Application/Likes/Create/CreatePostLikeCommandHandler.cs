@@ -5,6 +5,7 @@ using MediatR;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Common.Exceptions;
 using SocialMedia.Application.Common.ResultPattern;
+using SocialMedia.Application.Contracts;
 using SocialMedia.Application.Contracts.Repositories;
 using SocialMedia.Application.DTOs.Like;
 using SocialMedia.Application.Notifications.Models;
@@ -16,8 +17,9 @@ public class CreatePostLikeCommandHandler(
     IUnitOfWork unitOfWork,
     IPostLikeRepository postLikeRepository,
     IPostRepository postRepository,
-    IBlockRepository blockRepository,
-    INotificationRepository notificationRepository)
+    IBlockCacheService blockCache,
+    INotificationRepository notificationRepository,
+    ICacheService cache)
     : IRequestHandler<CreatePostLikeCommand, Result<PostLikeResponse>>
 {
     public async Task<Result<PostLikeResponse>> Handle(CreatePostLikeCommand request, CancellationToken ct)
@@ -31,10 +33,9 @@ public class CreatePostLikeCommandHandler(
             return Result<PostLikeResponse>.Failure("Post not found.", ErrorType.NotFound);
         }
 
-        var blockExists = await blockRepository
-            .IsBlockedByEitherAsync(request.LikerId, post.UserId, ct);
+        var blockedIds = await blockCache.GetBlockedAndBlockerIdsAsync(request.LikerId, ct);
 
-        if (blockExists)
+        if (blockedIds.Contains(post.UserId))
         {
             logger.LogWarning("There is a block between {LikerId} and {PostAuthorId}.", 
                 request.LikerId, post.UserId);
@@ -69,6 +70,9 @@ public class CreatePostLikeCommandHandler(
                 request.LikerId, request.PostId, post.UserId);
 
             var likeCount = await postLikeRepository.GetLikeCountAsync(request.PostId, ct);
+            
+            var cacheKey = $"post:{request.PostId}:likers";
+            await cache.RemoveAsync(cacheKey);
             
             return Result<PostLikeResponse>.Success(new PostLikeResponse
             {

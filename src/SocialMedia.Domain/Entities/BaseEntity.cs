@@ -43,7 +43,9 @@ public abstract class BaseEntity
     public void SoftDelete()
     {
         if (IsDeleted)
+        {
             return;
+        }
 
         IsDeleted = true;
         DeletedAt = DateTime.UtcNow;

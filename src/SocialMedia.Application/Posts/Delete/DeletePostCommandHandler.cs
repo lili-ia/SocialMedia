@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Common.ResultPattern;
+using SocialMedia.Application.Contracts;
 using SocialMedia.Application.Contracts.Repositories;
 
 namespace SocialMedia.Application.Posts.Delete;
@@ -8,7 +9,8 @@ namespace SocialMedia.Application.Posts.Delete;
 public class DeletePostCommandHandler(
     ILogger<DeletePostCommandHandler> logger,
     IPostRepository postRepository,
-    IUnitOfWork unitOfWork)
+    IUnitOfWork unitOfWork,
+    ICacheService cache)
     : IRequestHandler<DeletePostCommand, Result>
 {
     public async Task<Result> Handle(DeletePostCommand request, CancellationToken cancellationToken)
@@ -28,22 +30,17 @@ public class DeletePostCommandHandler(
 
             return Result.Failure("Access denied.", ErrorType.Forbidden);
         }
+        
+        await postRepository.RemoveAsync(post.Id, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        
+        logger.LogInformation("Post {PostId} successfully deleted by user {UserId}.", post.Id, request.UserId);
 
-        try
-        {
-            await postRepository.RemoveAsync(post.Id, cancellationToken);
-            await unitOfWork.SaveChangesAsync(cancellationToken);
-            
-            logger.LogInformation("Post {PostId} successfully deleted by user {UserId}.", post.Id, request.UserId);
-            
-            return Result.Success();
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "An error occured while deleting post {PostId} by user {UserId}.", 
-                request.PostId, request.UserId);
-            
-            return Result.InternalError();
-        }
+        await cache.RemoveByPrefixAsync("feed:popular");
+        var cacheKey = $"posts:user:{request.UserId}";
+        await cache.RemoveAsync(cacheKey);
+        await cache.RemoveAsync($"posts:{request.PostId}");
+        
+        return Result.Success();
     }
 }

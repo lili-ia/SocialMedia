@@ -1,55 +1,58 @@
 using MediatR;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Common.ResultPattern;
+using SocialMedia.Application.Contracts;
 using SocialMedia.Application.Contracts.Repositories;
 using SocialMedia.Application.DTOs.User;
 using SocialMedia.Application.Mappers;
 
 namespace SocialMedia.Application.Follows.GetFolloweesOfUser;
 
-public class GetFolloweesOfUserCommandHandler : IRequestHandler<GetFolloweesOfUserCommand, Result<IReadOnlyList<UserPreviewDto>>>
+public class GetFolloweesOfUserCommandHandler(
+    IFollowRepository followRepository,
+    IBlockCacheService blockCacheService,
+    ILogger<GetFolloweesOfUserCommandHandler> logger,
+    ICacheService cache)
+    : IRequestHandler<GetFolloweesOfUserCommand, Result<IReadOnlyList<UserPreviewDto>>>
 {
-    private readonly IFollowRepository _followRepository;
-    private readonly IBlockRepository _blockRepository;
-    private readonly ILogger<GetFolloweesOfUserCommandHandler> _logger;
-
-    public GetFolloweesOfUserCommandHandler(
-        IFollowRepository followRepository, 
-        IBlockRepository blockRepository, 
-        ILogger<GetFolloweesOfUserCommandHandler> logger)
+    private static readonly TimeSpan Ttl = TimeSpan.FromMinutes(10);
+    
+    public async Task<Result<IReadOnlyList<UserPreviewDto>>> Handle(GetFolloweesOfUserCommand request, CancellationToken ct)
     {
-        _followRepository = followRepository;
-        _blockRepository = blockRepository;
-        _logger = logger;
-    }
+        List<Guid>? excludeIds = null;
 
-    public async Task<Result<IReadOnlyList<UserPreviewDto>>> Handle(GetFolloweesOfUserCommand request, CancellationToken cancellationToken)
-    {
-        _logger.LogInformation("Handling GetFolloweesForUserCommand {@Command}.", request);
-
-        IReadOnlyList<Guid>? blockedUserIds = null;
-        
-        if (request.UserId != request.ForUserId && request.ForUserId is not null)
+        if (request.ForUserId is not null)
         {
-            blockedUserIds = await _blockRepository.
-                GetBlockedByEitherIdsAsync(request.ForUserId.Value, cancellationToken);
-            
-            if (blockedUserIds.Contains(request.UserId))
+            var blockedIds = await blockCacheService.GetBlockedAndBlockerIdsAsync(request.ForUserId.Value, ct);
+
+            if (request.UserId != request.ForUserId && blockedIds.Contains(request.UserId))
             {
-                _logger.LogInformation("There is a block between {UserId} and {RequestUserId}.",
+                logger.LogInformation("There is a block between {UserId} and {ForUserId}.",
                     request.UserId, request.ForUserId);
-            
+
                 return Result<IReadOnlyList<UserPreviewDto>>.Failure("User not found.", ErrorType.NotFound);
             }
+
+            excludeIds = blockedIds.ToList();
+        }
+
+        var cacheKey = $"followees:user:{request.ForUserId}";
+        var cachedFollowees = await cache.GetAsync<IReadOnlyList<UserPreviewDto>>(cacheKey);
+        
+        if (cachedFollowees is not null)
+        {
+            return Result<IReadOnlyList<UserPreviewDto>>.Success(cachedFollowees);
         }
         
-        var followees = await _followRepository.GetActiveFolloweesForUserAsync(
-            userId: request.UserId, 
-            selector: FollowMapper.ToFolloweeUserPreviewDto, 
-            excludeIds: blockedUserIds?.ToList(), 
-            cancellationToken);
+        var followees = await followRepository.GetActiveFolloweesForUserAsync(
+            userId: request.UserId,
+            selector: FollowMapper.ToFolloweeUserPreviewDto,
+            excludeIds: excludeIds,
+            ct);
+
+        await cache.SetAsync(cacheKey, followees, Ttl, ct);
         
-        _logger.LogInformation("Successfully retrieved {Count} followees of user {UserId} for user {ForUserId}.", 
+        logger.LogInformation("Successfully retrieved {Count} followees of user {UserId} for user {ForUserId}.",
             followees.Count, request.UserId, request.ForUserId?.ToString() ?? "Anonymous");
 
         return Result<IReadOnlyList<UserPreviewDto>>.Success(followees);

@@ -15,13 +15,13 @@ public class CreateCommentCommandHandler(
     ILogger<CreateCommentCommandHandler> logger,
     IUserRepository userRepository,
     ICommentRepository commentRepository,
-    IBlockRepository blockRepository,
-    IFileStorageService storageService)
+    IFileStorageService storageService,
+    IBlockCacheService blockCacheService)
     : IRequestHandler<CreateCommentCommand, Result<CommentWithAuthorDto>>
 {
-    public async Task<Result<CommentWithAuthorDto>> Handle(CreateCommentCommand request, CancellationToken cancellationToken)
+    public async Task<Result<CommentWithAuthorDto>> Handle(CreateCommentCommand request, CancellationToken ct)
     {
-        var post = await postRepository.GetByIdAsync(request.PostId, cancellationToken);
+        var post = await postRepository.GetByIdAsync(request.PostId, ct);
         
         if (post is null || !post.CanUserComment(request.UserId))
         {
@@ -32,19 +32,18 @@ public class CreateCommentCommandHandler(
         
         if (request.UserId != post.UserId)
         {
-            var blockExists = await blockRepository
-                .IsBlockedByEitherAsync(post.UserId, request.UserId, cancellationToken);
+            var blockedIds = await blockCacheService.GetBlockedAndBlockerIdsAsync(request.UserId, ct);
 
-            if (blockExists)
+            if (blockedIds.Contains(post.UserId))
             {
                 logger.LogInformation("There is a block between {PostAuthorId} and {CommentAuthorId}.", 
                     post.UserId, request.UserId);
-                
+        
                 return Result<CommentWithAuthorDto>.Failure("Post not found.", ErrorType.NotFound);
             }
         }
         
-        var user = await userRepository.GetByIdAsync(request.UserId, cancellationToken);
+        var user = await userRepository.GetByIdAsync(request.UserId, ct);
 
         if (user is null)
         {
@@ -57,7 +56,7 @@ public class CreateCommentCommandHandler(
         
         if (request.ParentCommentId is not null)
         {
-            parentCommentExists = await commentRepository.ExistsAsync(request.ParentCommentId.Value, cancellationToken);
+            parentCommentExists = await commentRepository.ExistsAsync(request.ParentCommentId.Value, ct);
         }
         
         var comment = Comment.Create(
@@ -66,8 +65,8 @@ public class CreateCommentCommandHandler(
             request.Text,
             parentCommentExists ? request.ParentCommentId : null);
        
-        await commentRepository.AddAsync(comment, cancellationToken);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        await commentRepository.AddAsync(comment, ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         logger.LogInformation("Comment {CommentId} successfully created by user {UserId}.",
             comment.Id, request.UserId);

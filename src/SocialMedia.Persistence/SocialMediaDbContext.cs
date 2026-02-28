@@ -27,8 +27,7 @@ public class SocialMediaDbContext : DbContext
             entry.State = EntityState.Modified;
 
             var entity = (BaseEntity)entry.Entity;
-            entity.IsDeleted = true;
-            entity.DeletedAt = DateTime.UtcNow;
+            entity.SoftDelete();
         }
         
         return base.SaveChangesAsync(cancellationToken);

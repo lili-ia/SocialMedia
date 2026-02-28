@@ -32,27 +32,24 @@ public class BlockRepository(SocialMediaDbContext db) : IBlockRepository
 
         return blocks.AsReadOnly();
     }
-
-    public async Task<bool> IsBlockedByEitherAsync(
-        Guid userId, 
-        Guid otherUserId, 
-        CancellationToken cancellationToken = default)
-    {
-        return await db.Blocks
-            .AnyAsync(b =>
-                b.BlockerId == userId && b.BlockedId == otherUserId ||
-                b.BlockerId == otherUserId && b.BlockedId == userId, 
-                cancellationToken);
-    }
-
-    public async Task<IReadOnlyList<Guid>> GetBlockedByEitherIdsAsync(
-        Guid userId, 
-        CancellationToken cancellationToken = default)
+    
+    public async Task<IReadOnlyList<Guid>> GetBlockedIdsAsync(Guid blockerId, CancellationToken cancellationToken = default)
     {
         var ids = await db.Blocks
             .AsNoTracking()
-            .Where(b => b.BlockerId == userId || b.BlockedId == userId)
-            .Select(b => b.BlockerId == userId ? b.BlockedId : b.BlockerId)
+            .Where(b => b.BlockerId == blockerId)
+            .Select(b => b.BlockedId)
+            .ToListAsync(cancellationToken);
+
+        return ids.AsReadOnly();
+    }
+
+    public async Task<IReadOnlyList<Guid>> GetBlockerIdsAsync(Guid blockedId, CancellationToken cancellationToken = default)
+    {
+        var ids = await db.Blocks
+            .AsNoTracking()
+            .Where(b => b.BlockedId == blockedId)
+            .Select(b => b.BlockerId)
             .ToListAsync(cancellationToken);
 
         return ids.AsReadOnly();

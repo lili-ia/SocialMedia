@@ -1,57 +1,60 @@
 using MediatR;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Common.ResultPattern;
+using SocialMedia.Application.Contracts;
 using SocialMedia.Application.Contracts.Repositories;
 using SocialMedia.Application.DTOs.User;
 using SocialMedia.Application.Mappers;
 
 namespace SocialMedia.Application.Follows.GetFollowersOfUser;
 
-public class GetFollowersOfUserCommandHandler : IRequestHandler<GetFollowersOfUserCommand, Result<IReadOnlyList<UserPreviewDto>>>
+public class GetFollowersOfUserCommandHandler(
+    IFollowRepository followRepository,
+    IBlockCacheService blockCache,
+    ILogger<GetFollowersOfUserCommandHandler> logger,
+    ICacheService cache)
+    : IRequestHandler<GetFollowersOfUserCommand, Result<IReadOnlyList<UserPreviewDto>>>
 {
-    private readonly IFollowRepository _followRepository;
-    private readonly IBlockRepository _blockRepository;
-    private readonly ILogger<GetFollowersOfUserCommandHandler> _logger;
-
-    public GetFollowersOfUserCommandHandler(
-        IFollowRepository followRepository, 
-        IBlockRepository blockRepository, 
-        ILogger<GetFollowersOfUserCommandHandler> logger)
+    private static readonly TimeSpan Ttl = TimeSpan.FromMinutes(10);
+    
+    public async Task<Result<IReadOnlyList<UserPreviewDto>>> Handle(GetFollowersOfUserCommand request, CancellationToken ct)
     {
-        _followRepository = followRepository;
-        _blockRepository = blockRepository;
-        _logger = logger;
-    }
-
-    public async Task<Result<IReadOnlyList<UserPreviewDto>>> Handle(GetFollowersOfUserCommand request, CancellationToken cancellationToken)
-    {
-        _logger.LogInformation("Handling GetFollowersOfUserCommand {@Command}.", request);
-
         IReadOnlyList<Guid>? blockedUserIds = null;
         
         if (request.UserId != request.ForUserId && request.ForUserId is not null)
         {
-            blockedUserIds = await _blockRepository.
-                GetBlockedByEitherIdsAsync(request.ForUserId.Value, cancellationToken);
+            var blockedSet = await blockCache.GetBlockedAndBlockerIdsAsync(request.ForUserId.Value, ct);
             
-            if (blockedUserIds.Contains(request.UserId))
+            if (blockedSet.Contains(request.UserId))
             {
-                _logger.LogInformation("There is a block between {UserId} and {RequestUserId}.",
+                logger.LogInformation("There is a block between {UserId} and {RequestUserId}.",
                     request.UserId, request.ForUserId);
             
                 return Result<IReadOnlyList<UserPreviewDto>>.Failure("User not found.", ErrorType.NotFound);
             }
+
+            blockedUserIds = blockedSet.ToList();
+        }
+
+        var cacheKey = $"followers:user:{request.ForUserId}";
+        var cachedFollowers = await cache.GetAsync<IReadOnlyList<UserPreviewDto>>(cacheKey);
+
+        if (cachedFollowers is not null)
+        {
+            return Result<IReadOnlyList<UserPreviewDto>>.Success(cachedFollowers);
         }
         
-        var followees = await _followRepository.GetActiveFollowersForUserAsync(
+        var followers = await followRepository.GetActiveFollowersForUserAsync(
             request.UserId, 
             FollowMapper.ToFollowerUserPreviewDto, 
             excludeIds: blockedUserIds?.ToList(), 
-            cancellationToken);
-        
-        _logger.LogInformation("Successfully retrieved {Count} followers of user {UserId} for user {ForUserId}.", 
-            followees.Count, request.UserId, request.ForUserId?.ToString() ?? "Anonymous");
+            ct);
 
-        return Result<IReadOnlyList<UserPreviewDto>>.Success(followees);
+        await cache.SetAsync(cacheKey, followers, Ttl, ct);
+        
+        logger.LogInformation("Successfully retrieved {Count} followers of user {UserId} for user {ForUserId}.", 
+            followers.Count, request.UserId, request.ForUserId?.ToString() ?? "Anonymous");
+
+        return Result<IReadOnlyList<UserPreviewDto>>.Success(followers);
     }
 }

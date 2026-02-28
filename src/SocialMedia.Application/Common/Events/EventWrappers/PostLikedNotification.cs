@@ -3,7 +3,7 @@ using MediatR;
 
 namespace SocialMedia.Application.Common.Events.EventWrappers;
 
-public sealed class PostLikedEventNotification(PostLikedEvent domainEvent) : INotification
+public sealed class PostLikedNotification(PostLikedEvent domainEvent) : INotification
 {
     public PostLikedEvent DomainEvent { get; } = domainEvent;
 }

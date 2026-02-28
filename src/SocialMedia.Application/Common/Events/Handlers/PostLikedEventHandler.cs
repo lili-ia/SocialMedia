@@ -12,9 +12,9 @@ namespace SocialMedia.Application.Common.Events.Handlers;
 public class PostLikedEventHandler(
     INotificationRepository notificationRepository,
     ILogger<PostLikedEventHandler> logger)
-    : INotificationHandler<PostLikedEventNotification>
+    : INotificationHandler<PostLikedNotification>
 {
-    public async Task Handle(PostLikedEventNotification notification, CancellationToken ct)
+    public async Task Handle(PostLikedNotification notification, CancellationToken ct)
     {
         try
         {

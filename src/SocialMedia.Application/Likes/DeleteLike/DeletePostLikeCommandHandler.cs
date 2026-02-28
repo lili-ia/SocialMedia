@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Common.ResultPattern;
+using SocialMedia.Application.Contracts;
 using SocialMedia.Application.Contracts.Repositories;
 
 namespace SocialMedia.Application.Likes.DeleteLike;
@@ -9,7 +10,8 @@ public class DeletePostLikeCommandHandler(
     ILogger<DeletePostLikeCommandHandler> logger,
     IPostLikeRepository postLikeRepository,
     IPostRepository postRepository,
-    IBlockRepository blockRepository)
+    IBlockCacheService blockCache,
+    ICacheService cache)
     : IRequestHandler<DeletePostLikeCommand, Result>
 {
     public async Task<Result> Handle(DeletePostLikeCommand request, CancellationToken cancellationToken)
@@ -22,11 +24,10 @@ public class DeletePostLikeCommandHandler(
             
             return Result.Failure("Post not found.", ErrorType.NotFound);
         }
+        
+        var blockedIds = await blockCache.GetBlockedAndBlockerIdsAsync(request.LikerId, cancellationToken);
 
-        var blockExists = await blockRepository
-            .IsBlockedByEitherAsync(request.LikerId, postAuthorId.Value, cancellationToken);
-
-        if (blockExists)
+        if (blockedIds.Contains(postAuthorId.Value))
         {
             logger.LogWarning("There is a block between {LikerId} and {PostAuthorId}.", 
                 request.LikerId, postAuthorId.Value);
@@ -42,6 +43,9 @@ public class DeletePostLikeCommandHandler(
             
             return Result.Failure("Like not found.", ErrorType.NotFound);
         }
+        
+        var cacheKey = $"post:{request.PostId}:likers";
+        await cache.RemoveAsync(cacheKey);
 
         logger.LogInformation("User {LikerId} successfully unliked post {PostId} by user {PostAuthorId}.",
             request.LikerId, request.PostId, postAuthorId);

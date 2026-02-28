@@ -18,7 +18,8 @@ public class CreatePostCommandHandler(
     IUnitOfWork unitOfWork,
     ILogger<CreatePostCommandHandler> logger,
     IFileStorageService fileStorage,
-    IFileRepository fileRepository)
+    IFileRepository fileRepository,
+    ICacheService cache)
     : IRequestHandler<CreatePostCommand, Result<PostDto>>
 {
     public async Task<Result<PostDto>> Handle(CreatePostCommand request, CancellationToken ct)
@@ -81,6 +82,9 @@ public class CreatePostCommandHandler(
         await unitOfWork.SaveChangesAsync(ct);
         
         logger.LogInformation("Post {PostId} created by user {UserId}.", post.Id, request.UserId);
+        
+        var cacheKey = $"posts:user:{request.UserId}";
+        await cache.RemoveAsync(cacheKey);
 
         return Result<PostDto>.Success(post.ToDto(null, presignedUrls));
     }
