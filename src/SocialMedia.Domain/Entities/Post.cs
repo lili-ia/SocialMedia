@@ -83,7 +83,14 @@ public sealed class Post : BaseEntity
 
         return UserId == userId;
     }
-    
+
+    public override void SoftDelete()
+    {
+        base.SoftDelete();
+        
+        AddDomainEvent(new PostDeletedEvent(Id, UserId));
+    }
+
     private readonly List<Comment> _comments = [];
     private readonly List<PostLike> _likes = [];
     private readonly List<PostFile> _files = [];

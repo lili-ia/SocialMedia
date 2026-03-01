@@ -1,5 +1,6 @@
 using MediatR;
 using SocialMedia.Application.Common.ResultPattern;
+using SocialMedia.Application.Contracts;
 
 namespace SocialMedia.Application.Posts.Delete;
 

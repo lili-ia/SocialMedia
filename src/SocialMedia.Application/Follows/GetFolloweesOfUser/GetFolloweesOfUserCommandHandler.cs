@@ -11,8 +11,7 @@ namespace SocialMedia.Application.Follows.GetFolloweesOfUser;
 public class GetFolloweesOfUserCommandHandler(
     IFollowRepository followRepository,
     IBlockCacheService blockCacheService,
-    ILogger<GetFolloweesOfUserCommandHandler> logger,
-    ICacheService cache)
+    ILogger<GetFolloweesOfUserCommandHandler> logger)
     : IRequestHandler<GetFolloweesOfUserCommand, Result<IReadOnlyList<UserPreviewDto>>>
 {
     private static readonly TimeSpan Ttl = TimeSpan.FromMinutes(10);
@@ -35,22 +34,12 @@ public class GetFolloweesOfUserCommandHandler(
 
             excludeIds = blockedIds.ToList();
         }
-
-        var cacheKey = $"followees:user:{request.ForUserId}";
-        var cachedFollowees = await cache.GetAsync<IReadOnlyList<UserPreviewDto>>(cacheKey);
         
-        if (cachedFollowees is not null)
-        {
-            return Result<IReadOnlyList<UserPreviewDto>>.Success(cachedFollowees);
-        }
-        
-        var followees = await followRepository.GetActiveFolloweesForUserAsync(
+        var followees = await followRepository.GetActiveFolloweesForUserAsync( // todo pagination
             userId: request.UserId,
             selector: FollowMapper.ToFolloweeUserPreviewDto,
             excludeIds: excludeIds,
             ct);
-
-        await cache.SetAsync(cacheKey, followees, Ttl, ct);
         
         logger.LogInformation("Successfully retrieved {Count} followees of user {UserId} for user {ForUserId}.",
             followees.Count, request.UserId, request.ForUserId?.ToString() ?? "Anonymous");

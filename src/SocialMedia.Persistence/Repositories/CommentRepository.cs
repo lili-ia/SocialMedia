@@ -12,19 +12,19 @@ public class CommentRepository(SocialMediaDbContext db) : ICommentRepository
         await db.Comments.AddAsync(comment, cancellationToken);
     }
 
-    public async Task<Comment?> GetByIdWithPostAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<Comment?> GetByIdWithPostAsync(Guid id, CancellationToken ct = default, bool tracking = false)
     {
-        return await db.Comments
+        var query = db.Comments
             .Include(c => c.Post)
-            .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
-    }
+            .AsQueryable();
 
-    public async Task RemoveAsync(Guid id, CancellationToken cancellationToken = default)
-    {
-        await db.Comments
-            .Where(c => c.Id == id)
-            .ExecuteDeleteAsync(cancellationToken);
+        if (!tracking)
+        {
+            query = query.AsNoTracking();
+        }
+        
+        return await query
+            .FirstOrDefaultAsync(c => c.Id == id, ct);
     }
 
     public async Task<IReadOnlyList<TResult>> GetAllByPostIdAsync<TResult>(

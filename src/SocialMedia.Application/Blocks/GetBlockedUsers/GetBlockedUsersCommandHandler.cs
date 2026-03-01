@@ -14,9 +14,7 @@ public class GetBlockedUsersCommandHandler(
     IFileStorageService storageService)
     : IRequestHandler<GetBlockedUsersCommand, Result<IReadOnlyList<BlockedUserDto>>>
 {
-    public async Task<Result<IReadOnlyList<BlockedUserDto>>> Handle(
-        GetBlockedUsersCommand request, 
-        CancellationToken ct)
+    public async Task<Result<IReadOnlyList<BlockedUserDto>>> Handle(GetBlockedUsersCommand request, CancellationToken ct)
     {
         var blockedUsers = await 
             blockRepository.GetUsersBlockedByAsync(request.BlockerId, BlockMapper.ProjectToBlockedUserDto, ct);

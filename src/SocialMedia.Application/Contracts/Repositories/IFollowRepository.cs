@@ -7,9 +7,7 @@ namespace SocialMedia.Application.Contracts.Repositories;
 public interface IFollowRepository
 {
     Task RemoveMutualAsync(Guid followerId, Guid followeeId, CancellationToken cancellationToken = default);
-
-    Task<bool> ExistsAsync(Guid followerId, Guid followeeId, CancellationToken cancellationToken = default);
-
+    
     Task AddAsync(Follow follow, CancellationToken cancellationToken = default);
 
     Task<int> GetActiveFollowerCountForUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
@@ -27,4 +25,6 @@ public interface IFollowRepository
         Expression<Func<Follow, TResult>> selector,
         IList<Guid>? excludeIds,
         CancellationToken cancellationToken = default);
+
+    Task<Follow?> GetByFollowerAndFolloweeIdsAsync(Guid followerId, Guid followeeId, CancellationToken ct = default);
 }

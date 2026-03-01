@@ -1,10 +1,17 @@
 ﻿namespace Domain.Events;
 
-public class FollowedEvent : NotificationEvent
+public class FollowedEvent : DomainEvent
 {
-    public Guid FollowerId { get; set; }
+    public Guid FollowId { get; set; }
     
-    public string FollowerUsername { get; set; }
+    public Guid FollowerId { get; }
     
-    public Guid FolloweeId { get; set; }
+    public Guid FolloweeId { get; }
+    
+    public FollowedEvent(Guid followId, Guid followerId, Guid followeeId)
+    {
+        FollowId = followId;
+        FollowerId = followerId;
+        FolloweeId = followeeId;
+    }
 }

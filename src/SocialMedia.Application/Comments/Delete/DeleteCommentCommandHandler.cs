@@ -10,12 +10,13 @@ namespace SocialMedia.Application.Comments.Delete;
 public class DeleteCommentCommandHandler(
     ILogger<DeleteCommentCommandHandler> logger,
     ICommentRepository commentRepository,
-    IBlockCacheService blockCacheService)
+    IBlockCacheService blockCacheService,
+    IUnitOfWork unitOfWork)
     : IRequestHandler<DeleteCommentCommand, Result<MessageResponse>>
 {
-    public async Task<Result<MessageResponse>> Handle(DeleteCommentCommand request, CancellationToken cancellationToken)
+    public async Task<Result<MessageResponse>> Handle(DeleteCommentCommand request, CancellationToken ct)
     {
-        var comment = await commentRepository.GetByIdWithPostAsync(request.CommentId, cancellationToken);
+        var comment = await commentRepository.GetByIdWithPostAsync(request.CommentId, ct, tracking: true);
         
         if (comment is null)
         {
@@ -39,7 +40,7 @@ public class DeleteCommentCommandHandler(
             return Result<MessageResponse>.Failure("Access denied.", ErrorType.Forbidden);
         }
         
-        var blockedIds = await blockCacheService.GetBlockedAndBlockerIdsAsync(request.UserId, cancellationToken);
+        var blockedIds = await blockCacheService.GetBlockedAndBlockerIdsAsync(request.UserId, ct);
 
         if (blockedIds.Contains(comment.Post.UserId))
         {
@@ -49,10 +50,10 @@ public class DeleteCommentCommandHandler(
             return Result<MessageResponse>.Failure("Post not found.", ErrorType.NotFound);
         }
         
-        await commentRepository.RemoveAsync(request.CommentId, cancellationToken);
-
-        logger.LogInformation("Comment {CommentId} successfully deleted by user {UserId}.",
-            request.CommentId, request.UserId);
+        comment.SoftDelete();
+        await unitOfWork.SaveChangesAsync(ct);
+        
+        logger.LogInformation("Comment {CommentId} successfully deleted by user {UserId}.", request.CommentId, request.UserId);
         
         return Result<MessageResponse>.Success(new MessageResponse("You successfully deleted comment."));
     }

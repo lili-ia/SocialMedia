@@ -15,8 +15,7 @@ public class CreateFollowCommandHandler(
     ILogger<CreateFollowCommandHandler> logger,
     IUserRepository userRepository,
     IUnitOfWork unitOfWork,
-    IBlockCacheService blockCacheService,
-    ICacheService cache)
+    IBlockCacheService blockCacheService)
     : IRequestHandler<CreateFollowCommand, Result<FollowResponse>>
 {
     public async Task<Result<FollowResponse>> Handle(CreateFollowCommand request, CancellationToken ct)
@@ -52,12 +51,6 @@ public class CreateFollowCommandHandler(
 
             var followerCount = await followRepository
                 .GetActiveFollowerCountForUserIdAsync(request.FolloweeId, ct);
-
-            var cacheKey = $"followers:user:{request.FolloweeId}";
-            await cache.RemoveAsync(cacheKey);
-            await cache.RemoveAsync($"feed:followees:user:{request.FollowerId}");
-            await cache.RemoveAsync($"followers:user:{request.FolloweeId}");
-            await cache.RemoveAsync($"followees:user:{request.FollowerId}");
             
             return Result<FollowResponse>.Success(new FollowResponse
             {

@@ -15,7 +15,6 @@ public class GetFeedFromFolloweesCommandHandler(
     ILogger<GetFeedFromFolloweesCommandHandler> logger,
     IFollowRepository followRepository,
     IPostRepository postRepository,
-    ICacheService cache,
     IBlockCacheService blockCacheService)
     : IRequestHandler<GetFeedFromFolloweesCommand, Result<IReadOnlyList<PostDto>>>
 {
@@ -23,14 +22,6 @@ public class GetFeedFromFolloweesCommandHandler(
     
     public async Task<Result<IReadOnlyList<PostDto>>> Handle(GetFeedFromFolloweesCommand request, CancellationToken ct)
     {
-        var cacheKey = $"feed:followees:user:{request.ForUserId}:page:{request.Page}:size:{request.PageSize}";
-        var cached = await cache.GetAsync<IReadOnlyList<PostDto>>(cacheKey);
-        
-        if (cached is not null)
-        {
-            return Result<IReadOnlyList<PostDto>>.Success(cached);
-        }
-        
         var followeesIds = await followRepository
             .GetActiveFolloweesForUserAsync(
                 userId: request.ForUserId, 
@@ -65,8 +56,6 @@ public class GetFeedFromFolloweesCommandHandler(
             skip: skip,
             take: request.PageSize,
             ct);
-        
-        await cache.SetAsync(cacheKey, posts, Ttl, ct);
         
         logger.LogInformation("Retrieved {Count} posts for user {ForUserId}.", posts.Count, request.ForUserId);
         

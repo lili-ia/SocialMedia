@@ -5,18 +5,11 @@ using SocialMedia.Application.Contracts.Repositories;
 
 namespace SocialMedia.Persistence.Repositories;
 
-public class FollowRepository : IFollowRepository
+public class FollowRepository(SocialMediaDbContext db) : IFollowRepository
 {
-    private readonly SocialMediaDbContext _db;
-
-    public FollowRepository(SocialMediaDbContext db)
-    {
-        _db = db;
-    }
-
     public async Task RemoveMutualAsync(Guid followerId, Guid followeeId, CancellationToken cancellationToken = default)
     {
-        await _db.Follows
+        await db.Follows
             .Where(f =>
                 f.FollowerId == followerId && f.FolloweeId == followeeId ||
                 f.FollowerId == followeeId && f.FolloweeId == followerId)
@@ -25,26 +18,26 @@ public class FollowRepository : IFollowRepository
 
     public async Task<bool> ExistsAsync(Guid followerId, Guid followeeId, CancellationToken cancellationToken = default)
     {
-        return await _db.Follows
+        return await db.Follows
             .AnyAsync(f => f.FollowerId == followerId && f.FolloweeId == followeeId,
                 cancellationToken);
     }
 
     public async Task AddAsync(Follow follow, CancellationToken cancellationToken = default)
     {
-        await _db.Follows.AddAsync(follow, cancellationToken);
+        await db.Follows.AddAsync(follow, cancellationToken);
     }
 
     public async Task<int> GetActiveFollowerCountForUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        return await _db.Follows
+        return await db.Follows
             .AsNoTracking()
             .CountAsync(f => f.FolloweeId == userId, cancellationToken);
     }
 
     public async Task<int> RemoveAsync(Guid followerId, Guid followeeId, CancellationToken cancellationToken = default)
     {
-        return await _db.Follows
+        return await db.Follows
             .Where(f => f.FollowerId == followerId && f.FolloweeId == followeeId)
             .ExecuteDeleteAsync(cancellationToken);
     }
@@ -55,7 +48,7 @@ public class FollowRepository : IFollowRepository
         IList<Guid>? excludeIds,
         CancellationToken cancellationToken = default)
     {
-        var query = _db.Follows
+        var query = db.Follows
             .AsNoTracking()
             .Where(f => f.FollowerId == userId);
 
@@ -77,7 +70,7 @@ public class FollowRepository : IFollowRepository
         IList<Guid>? excludeIds,
         CancellationToken cancellationToken = default)
     {
-        var query = _db.Follows
+        var query = db.Follows
             .AsNoTracking()
             .Where(f => f.FolloweeId == userId);
         
@@ -92,5 +85,11 @@ public class FollowRepository : IFollowRepository
             .ToListAsync(cancellationToken);
 
         return followers.AsReadOnly();
+    }
+
+    public Task<Follow?> GetByFollowerAndFolloweeIdsAsync(Guid followerId, Guid followeeId, CancellationToken ct = default)
+    {
+        return db.Follows
+            .FirstOrDefaultAsync(f => f.FollowerId == followerId && f.FolloweeId == followeeId, ct);
     }
 }

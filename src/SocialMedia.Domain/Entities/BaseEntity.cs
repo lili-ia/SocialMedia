@@ -40,7 +40,7 @@ public abstract class BaseEntity
     public void MarkAsUpdated()
         => UpdatedAt = DateTime.UtcNow;
 
-    public void SoftDelete()
+    public virtual void SoftDelete()
     {
         if (IsDeleted)
         {

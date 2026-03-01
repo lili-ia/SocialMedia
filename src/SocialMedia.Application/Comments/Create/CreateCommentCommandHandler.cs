@@ -68,8 +68,7 @@ public class CreateCommentCommandHandler(
         await commentRepository.AddAsync(comment, ct);
         await unitOfWork.SaveChangesAsync(ct);
 
-        logger.LogInformation("Comment {CommentId} successfully created by user {UserId}.",
-            comment.Id, request.UserId);
+        logger.LogInformation("Comment {CommentId} successfully created by user {UserId}.", comment.Id, request.UserId);
         
         var commentDto = comment.ToDto(user);
 

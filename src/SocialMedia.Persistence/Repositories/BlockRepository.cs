@@ -16,7 +16,9 @@ public class BlockRepository(SocialMediaDbContext db) : IBlockRepository
     {
         return await db.Blocks
             .Where(b => b.BlockerId == blockerId && b.BlockedId == blockedId)
-            .ExecuteDeleteAsync(cancellationToken);
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(b => b.IsDeleted, true)
+                .SetProperty(b => b.DeletedAt, DateTime.UtcNow), cancellationToken);
     }
 
     public async Task<IReadOnlyList<TResult>> GetUsersBlockedByAsync<TResult>(

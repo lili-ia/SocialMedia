@@ -15,8 +15,6 @@ public interface IPostRepository
         Guid postId, 
         Expression<Func<Post, TResult>> selector, 
         CancellationToken cancellationToken = default);
-
-    Task<int> RemoveAsync(Guid id, CancellationToken cancellationToken);
     
     Task<Guid?> GetUserIdByPostIdAsync(Guid id, CancellationToken cancellationToken = default);
 

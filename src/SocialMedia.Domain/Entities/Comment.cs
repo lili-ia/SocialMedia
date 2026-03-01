@@ -1,4 +1,6 @@
-﻿namespace Domain.Entities;
+﻿using Domain.Events;
+
+namespace Domain.Entities;
 
 public class Comment : BaseEntity
 {
@@ -48,7 +50,10 @@ public class Comment : BaseEntity
             throw new ArgumentException("Comment text too long");
         }
 
-        return new Comment(userId, postId, text, parentCommentId);
+        var comment = new Comment(userId, postId, text, parentCommentId);
+        comment.AddDomainEvent(new PostCommentedEvent(comment.Id, postId, userId, text));
+
+        return comment;
     }
 
     public void UpdateText(string text)
@@ -75,6 +80,13 @@ public class Comment : BaseEntity
     {
         return UserId == userId || Post.UserId == userId;
     }
-    
+
+    public override void SoftDelete()
+    {
+        base.SoftDelete();
+        
+        AddDomainEvent(new CommentDeletedEvent(Id));
+    }
+
     private readonly List<Comment> _replies = [];
 }

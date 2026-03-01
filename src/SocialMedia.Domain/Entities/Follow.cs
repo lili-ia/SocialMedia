@@ -1,4 +1,5 @@
-﻿using Domain.Exceptions;
+﻿using Domain.Events;
+using Domain.Exceptions;
 
 namespace Domain.Entities;
 
@@ -28,6 +29,17 @@ public sealed class Follow : BaseEntity
 
     public static Follow Create(Guid followerId, Guid followeeId)
     {
-        return new Follow(followerId, followeeId);
+        var follow = new Follow(followerId, followeeId);
+        
+        follow.AddDomainEvent(new FollowedEvent(follow.Id, followerId, followeeId));
+
+        return follow;
+    }
+
+    public override void SoftDelete()
+    {
+        base.SoftDelete();
+        
+        AddDomainEvent(new UnfollowedEvent(FollowerId, FolloweeId));
     }
 }

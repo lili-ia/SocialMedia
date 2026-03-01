@@ -7,10 +7,8 @@ public interface ICommentRepository
 {
     Task AddAsync(Comment comment, CancellationToken cancellationToken = default);
 
-    Task<Comment?> GetByIdWithPostAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<Comment?> GetByIdWithPostAsync(Guid id, CancellationToken cancellationToken = default, bool tracking = false);
     
-    Task RemoveAsync(Guid id, CancellationToken cancellationToken = default);
-
     Task<IReadOnlyList<TResult>> GetAllByPostIdAsync<TResult>(
         Guid postId,
         Expression<Func<Comment, bool>>? predicate,

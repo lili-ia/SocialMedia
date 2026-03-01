@@ -11,8 +11,7 @@ namespace SocialMedia.Application.Follows.GetFollowersOfUser;
 public class GetFollowersOfUserCommandHandler(
     IFollowRepository followRepository,
     IBlockCacheService blockCache,
-    ILogger<GetFollowersOfUserCommandHandler> logger,
-    ICacheService cache)
+    ILogger<GetFollowersOfUserCommandHandler> logger)
     : IRequestHandler<GetFollowersOfUserCommand, Result<IReadOnlyList<UserPreviewDto>>>
 {
     private static readonly TimeSpan Ttl = TimeSpan.FromMinutes(10);
@@ -35,22 +34,12 @@ public class GetFollowersOfUserCommandHandler(
 
             blockedUserIds = blockedSet.ToList();
         }
-
-        var cacheKey = $"followers:user:{request.ForUserId}";
-        var cachedFollowers = await cache.GetAsync<IReadOnlyList<UserPreviewDto>>(cacheKey);
-
-        if (cachedFollowers is not null)
-        {
-            return Result<IReadOnlyList<UserPreviewDto>>.Success(cachedFollowers);
-        }
         
-        var followers = await followRepository.GetActiveFollowersForUserAsync(
+        var followers = await followRepository.GetActiveFollowersForUserAsync( // todo pagination
             request.UserId, 
             FollowMapper.ToFollowerUserPreviewDto, 
             excludeIds: blockedUserIds?.ToList(), 
             ct);
-
-        await cache.SetAsync(cacheKey, followers, Ttl, ct);
         
         logger.LogInformation("Successfully retrieved {Count} followers of user {UserId} for user {ForUserId}.", 
             followers.Count, request.UserId, request.ForUserId?.ToString() ?? "Anonymous");
