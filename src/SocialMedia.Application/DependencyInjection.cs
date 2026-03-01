@@ -21,9 +21,8 @@ public static class DependencyInjection
         
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
         
-        services.AddTransient(
-            typeof(IPipelineBehavior<,>),
-            typeof(ValidationBehavior<,>));
+        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(CachingBehavior<,>));
 
         services.AddLogging();
 
