@@ -11,20 +11,7 @@ public class PostLikeRepository(SocialMediaDbContext db) : IPostLikeRepository
     {
         await db.PostLikes.AddAsync(postLike, ct);
     }
-
-    public async Task<bool> ExistsAsync(Guid likerId, Guid postId, CancellationToken ct = default)
-    {
-        return await db.PostLikes
-            .AnyAsync(pl => pl.UserId == likerId && pl.PostId == postId, ct);
-    }
-
-    public async Task<int> RemoveAsync(Guid likerId, Guid postId, CancellationToken ct = default)
-    {
-        return await db.PostLikes
-            .Where(pl => pl.UserId == likerId && pl.PostId == postId)
-            .ExecuteDeleteAsync(ct);
-    }
-
+    
     public async Task<IReadOnlyList<TResult>> GetNotBlockedPostLikersAsync<TResult>(
         Guid postId, 
         Guid targetUserId,
@@ -62,5 +49,11 @@ public class PostLikeRepository(SocialMediaDbContext db) : IPostLikeRepository
         return await db.PostLikes
             .AsNoTracking()
             .CountAsync(pl => pl.PostId == postId, ct);
+    }
+
+    public async Task<PostLike?> GetByPostAndLikerAsync(Guid postId, Guid likerId, CancellationToken ct = default)
+    {
+        return await db.PostLikes
+            .FirstOrDefaultAsync(l => l.PostId == postId && l.UserId == likerId, ct);
     }
 }

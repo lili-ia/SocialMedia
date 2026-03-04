@@ -1,6 +1,6 @@
 ﻿namespace Domain.Events;
 
-public class MessageReceivedEvent : NotificationEvent
+public class MessageReceivedEvent : DomainEvent
 {
     
 }

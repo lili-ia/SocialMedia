@@ -94,7 +94,9 @@ public sealed class User : BaseEntity
     public void UpdateProfile(string? bio, DateOnly? birthDate)
     {
         if (bio != null)
+        {
             Bio = bio;
+        }
 
         if (birthDate.HasValue)
         {
@@ -107,6 +109,7 @@ public sealed class User : BaseEntity
         }
 
         MarkAsUpdated();
+        AddDomainEvent(new ProfileUpdatedEvent(Id));
     }
     
     public void UpdateLastSeen()
@@ -123,6 +126,8 @@ public sealed class User : BaseEntity
     {
         Status = status;
         StatusReason = reason;
+        
+        AddDomainEvent(new ProfileUpdatedEvent(Id));
     }
 
     public void UpdateProfilePicture(Guid pictureId)
@@ -130,7 +135,7 @@ public sealed class User : BaseEntity
         CurrentProfilePicId = pictureId;
         MarkAsUpdated();
 
-        AddDomainEvent(new UserProfilePictureUpdatedEvent(Id, pictureId));
+        AddDomainEvent(new ProfileUpdatedEvent(Id));
     }
     
     public void RecordEmailSent()

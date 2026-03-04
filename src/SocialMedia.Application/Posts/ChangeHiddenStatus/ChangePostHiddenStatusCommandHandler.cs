@@ -1,7 +1,6 @@
 using MediatR;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Common.ResultPattern;
-using SocialMedia.Application.Contracts;
 using SocialMedia.Application.Contracts.Repositories;
 
 namespace SocialMedia.Application.Posts.ChangeHiddenStatus;
@@ -9,8 +8,7 @@ namespace SocialMedia.Application.Posts.ChangeHiddenStatus;
 public class ChangePostHiddenStatusCommandHandler(
     ILogger<ChangePostHiddenStatusCommandHandler> logger,
     IPostRepository postRepository,
-    IUnitOfWork unitOfWork,
-    ICacheService cache)
+    IUnitOfWork unitOfWork)
     : IRequestHandler<ChangePostHiddenStatusCommand, Result>
 {
     public async Task<Result> Handle(ChangePostHiddenStatusCommand request, CancellationToken ct)
@@ -39,10 +37,7 @@ public class ChangePostHiddenStatusCommandHandler(
         }
 
         post.SetHiddenStatus(request.MustBeHidden);
-        
         await unitOfWork.SaveChangesAsync(ct);
-        await cache.RemoveByPrefixAsync("feed:popular");
-        await cache.RemoveAsync($"posts:{request.PostId}");
         
         return Result.Success();
     }

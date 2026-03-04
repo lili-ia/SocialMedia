@@ -8,10 +8,10 @@ namespace SocialMedia.Application.Likes.DeleteLike;
 
 public class DeletePostLikeCommandHandler(
     ILogger<DeletePostLikeCommandHandler> logger,
-    IPostLikeRepository postLikeRepository,
+    IUnitOfWork unitOfWork,
     IPostRepository postRepository,
-    IBlockCacheService blockCache,
-    ICacheService cache)
+    IPostLikeRepository likeRepository,
+    IBlockCacheService blockCache)
     : IRequestHandler<DeletePostLikeCommand, Result>
 {
     public async Task<Result> Handle(DeletePostLikeCommand request, CancellationToken cancellationToken)
@@ -34,18 +34,18 @@ public class DeletePostLikeCommandHandler(
                 
             return Result.Failure("Post not found.", ErrorType.NotFound);
         }
-        
-        var rows = await postLikeRepository.RemoveAsync(request.LikerId, request.PostId, cancellationToken);
 
-        if (rows == 0)
+        var like = await likeRepository.GetByPostAndLikerAsync(request.PostId, request.LikerId, cancellationToken);
+
+        if (like is null)
         {
             logger.LogInformation("User {LikerId} haven't liked post {PostId}.", request.LikerId, request.PostId);
             
             return Result.Failure("Like not found.", ErrorType.NotFound);
         }
         
-        var cacheKey = $"post:{request.PostId}:likers";
-        await cache.RemoveAsync(cacheKey);
+        like.SoftDelete();
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation("User {LikerId} successfully unliked post {PostId} by user {PostAuthorId}.",
             request.LikerId, request.PostId, postAuthorId);

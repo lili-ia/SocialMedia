@@ -7,10 +7,6 @@ public interface IPostLikeRepository
 {
     Task AddAsync(PostLike postLike, CancellationToken cancellationToken = default);
 
-    Task<bool> ExistsAsync(Guid likerId, Guid postId, CancellationToken cancellationToken = default);
-
-    Task<int> RemoveAsync(Guid likerId, Guid postId, CancellationToken cancellationToken = default);
-
     Task<IReadOnlyList<TResult>> GetNotBlockedPostLikersAsync<TResult>(
         Guid postId, 
         Guid targetUserId,
@@ -22,4 +18,6 @@ public interface IPostLikeRepository
     Task<bool> IsLikedByUserAsync(Guid postId, Guid userId, CancellationToken cancellationToken = default);
 
     Task<int> GetLikeCountAsync(Guid postId, CancellationToken cancellationToken = default);
+
+    Task<PostLike?> GetByPostAndLikerAsync(Guid postId, Guid likerId, CancellationToken ct = default);
 }

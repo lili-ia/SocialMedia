@@ -18,8 +18,7 @@ public class UpdatePostCommandHandler(
     IPostRepository postRepository,
     IUnitOfWork unitOfWork,
     IFileStorageService fileStorage,
-    IFileRepository fileRepository,
-    ICacheService cache)
+    IFileRepository fileRepository)
     : IRequestHandler<UpdatePostCommand, Result<PostDto>>
 {
     public async Task<Result<PostDto>> Handle(UpdatePostCommand request, CancellationToken ct)
@@ -107,11 +106,7 @@ public class UpdatePostCommandHandler(
         }
 
         dto.FileUrls = dto.FileStorageKeys?.Select(key => fileStorage.GetPresignedUrl(key, 60)).ToList();
-        
-        var cacheKey = $"posts:user:{request.UserId}";
-        await cache.RemoveAsync(cacheKey);
-        await cache.RemoveAsync($"posts:{request.PostId}");
-        
+
         return Result<PostDto>.Success(dto);
     }
 }

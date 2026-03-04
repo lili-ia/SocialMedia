@@ -12,22 +12,11 @@ public class GetPostByIdCommandHandler(
     ILogger<GetPostByIdCommandHandler> logger,
     IBlockCacheService blockCache,
     IPostRepository postRepository,
-    IPostLikeRepository postLikeRepository,
-    ICacheService cache)
+    IPostLikeRepository postLikeRepository)
     : IRequestHandler<GetPostByIdCommand, Result<PostDto>>
 {
-    private readonly TimeSpan Ttl = TimeSpan.FromMinutes(10);
-    
     public async Task<Result<PostDto>> Handle(GetPostByIdCommand request, CancellationToken ct)
     {
-        var cacheKey = $"posts:{request.PostId}";
-        var cachedPost = await cache.GetAsync<PostDto>(cacheKey);
-
-        if (cachedPost is not null)
-        {
-            return Result<PostDto>.Success(cachedPost);
-        }
-        
         var post = await postRepository.GetDetailsAsync(request.PostId, PostMapper.ProjectToDto, ct);
         
         if (post is null || (post.IsHidden && post.UserId != request.TargetUserId))
@@ -66,8 +55,6 @@ public class GetPostByIdCommandHandler(
         }
         
         logger.LogInformation("There is a block between {AuthorId} and {TargetUserId}.", post.UserId, request.TargetUserId.Value);
-
-        await cache.SetAsync(cacheKey, post, Ttl, ct);
         
         return Result<PostDto>.Failure("Post not found.", ErrorType.NotFound);
     }

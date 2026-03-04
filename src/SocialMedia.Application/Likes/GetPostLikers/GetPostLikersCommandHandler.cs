@@ -12,12 +12,9 @@ public class GetPostLikersCommandHandler(
     ILogger<GetPostLikersCommandHandler> logger,
     IPostLikeRepository postLikeRepository,
     IPostRepository postRepository,
-    IBlockCacheService blockCache,
-    ICacheService cache)
+    IBlockCacheService blockCache)
     : IRequestHandler<GetPostLikersCommand, Result<IReadOnlyList<UserPreviewDto>>>
 {
-    private static readonly TimeSpan Ttl = TimeSpan.FromMinutes(10);
-    
     public async Task<Result<IReadOnlyList<UserPreviewDto>>> Handle(GetPostLikersCommand request, CancellationToken ct)
     {
         var postAuthorId = await postRepository.GetUserIdByPostIdAsync(request.PostId, ct);
@@ -39,14 +36,6 @@ public class GetPostLikersCommandHandler(
             return Result<IReadOnlyList<UserPreviewDto>>.Failure("Post not found.", ErrorType.NotFound);
         }
 
-        var cacheKey = $"post:{request.PostId}:likers";
-        var cachedLikers = await cache.GetAsync<IReadOnlyList<UserPreviewDto>>(cacheKey);
-
-        if (cachedLikers is not null)
-        {
-            return Result<IReadOnlyList<UserPreviewDto>>.Success(cachedLikers);
-        }
-        
         var skip = (request.Page - 1) * request.PageSize;
         
         var postLikers = await postLikeRepository
@@ -57,8 +46,6 @@ public class GetPostLikersCommandHandler(
                 skip: skip, 
                 take: request.PageSize,
                 ct);
-
-        await cache.SetAsync(cacheKey, postLikers, Ttl, ct);
         
         logger.LogInformation("Retrieved {Count} likes for post {PostId} for user {TargetUserId}.", 
             postLikers.Count, request.PostId, request.TargetUserId);

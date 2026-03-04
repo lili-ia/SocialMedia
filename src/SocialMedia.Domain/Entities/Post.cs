@@ -49,7 +49,10 @@ public sealed class Post : BaseEntity
             throw new DomainValidationException("Post text is too long.");
         }
 
-        return new Post(userId, text);
+        var post = new Post(userId, text);
+        post.AddDomainEvent(new PostCreatedEvent(post.Id, post.UserId));
+
+        return post;
     }
     
     public void UpdateText(string? text)
@@ -61,12 +64,16 @@ public sealed class Post : BaseEntity
 
         Text = text;
         UpdatedAt = DateTime.UtcNow;
+        
+        AddDomainEvent(new PostUpdatedEvent(Id, UserId));        
     }
 
     public void SetHiddenStatus(bool mustBeHidden)
     {
         IsHidden = mustBeHidden;
         UpdatedAt = DateTime.UtcNow;
+        
+        AddDomainEvent(new PostHiddenStatusChangedEvent(Id, UserId, IsHidden));
     }
     
     public bool CanUserComment(Guid userId)

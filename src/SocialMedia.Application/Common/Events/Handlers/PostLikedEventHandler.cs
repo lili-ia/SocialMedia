@@ -4,6 +4,7 @@ using Domain.Enums;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Common.Events.EventWrappers;
+using SocialMedia.Application.Contracts;
 using SocialMedia.Application.Contracts.Repositories;
 using SocialMedia.Application.Notifications.Models;
 
@@ -11,35 +12,32 @@ namespace SocialMedia.Application.Common.Events.Handlers;
 
 public class PostLikedEventHandler(
     INotificationRepository notificationRepository,
-    ILogger<PostLikedEventHandler> logger)
+    ICacheService cache,
+    IUnitOfWork unitOfWork)
     : INotificationHandler<PostLikedNotification>
 {
     public async Task Handle(PostLikedNotification notification, CancellationToken ct)
     {
-        try
+        var e = notification.DomainEvent;
+
+        await cache.RemoveByPrefixAsync($"post:{e.PostId}:likers");
+        
+        var notificationData = new PostLikedNotificationData
         {
-            var notificationData = new PostLikedNotificationData
-            {
-                LikerId = notification.DomainEvent.FromUserId,
-                LikerUsername = notification.DomainEvent.FromUsername,
-                PostId = notification.DomainEvent.PostId
-            };
+            LikerId = e.LikerId,
+            LikerUsername = e.LikerUsername,
+            PostId = e.PostId
+        };
 
-            var entity = new Notification
-            {
-                Type = NotificationType.Like,
-                RecipientId = notification.DomainEvent.ToUserId,
-                IsRead = false,
-                Data = JsonSerializer.Serialize(notificationData)
-            };
+        var entity = Notification.Create(
+            NotificationType.Like,
+            JsonSerializer.Serialize(notificationData), 
+            e.ToUserId,
+            e.LikerId,
+            e.PostId);
 
-            await notificationRepository.AddAsync(entity, ct);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to create notification for post like {PostId}", notification.DomainEvent.PostId);
-
-            throw;
-        }
+        await notificationRepository.AddAsync(entity, ct);
+        await unitOfWork.SaveChangesAsync(ct);
+        // TODO SEND NOTIFICATION VIA SIGNALR HUB
     }
 }

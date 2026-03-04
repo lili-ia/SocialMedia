@@ -5,9 +5,11 @@ namespace Domain.Entities;
 public sealed class PostLike : BaseEntity
 {
     public Guid UserId { get; private set; }
+    
     public Guid PostId { get; private set; }
 
     public User User { get; private set; } = null!;
+    
     public Post Post { get; private set; } = null!;
 
     private PostLike() { } 
@@ -29,5 +31,12 @@ public sealed class PostLike : BaseEntity
         like.AddDomainEvent(new PostLikedEvent(likerId, likerUsername, postAuthorId, postId));
 
         return like;
+    }
+
+    public override void SoftDelete()
+    {
+        base.SoftDelete();
+        
+        AddDomainEvent(new PostUnlikedEvent(PostId, UserId));
     }
 }

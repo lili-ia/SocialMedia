@@ -2,19 +2,22 @@
 
 public sealed class PostLikedEvent : DomainEvent
 {
-    public Guid FromUserId { get; }
-    public string FromUsername { get; }
+    public Guid LikerId { get; }
+    
+    public string LikerUsername { get; }
+    
     public Guid ToUserId { get; }
+    
     public Guid PostId { get; }
 
     public PostLikedEvent(
-        Guid fromUserId,
-        string fromUsername,
+        Guid likerId,
+        string likerUsername,
         Guid toUserId,
         Guid postId)
     {
-        FromUserId = fromUserId;
-        FromUsername = fromUsername;
+        LikerId = likerId;
+        LikerUsername = likerUsername;
         ToUserId = toUserId;
         PostId = postId;
     }

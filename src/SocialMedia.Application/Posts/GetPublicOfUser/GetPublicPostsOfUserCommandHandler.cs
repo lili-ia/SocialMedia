@@ -16,23 +16,12 @@ public class GetPublicPostsOfUserCommandHandler(
     IPostRepository postRepository,
     IUserRepository userRepository,
     IFileStorageService fileStorage,
-    ICacheService cache,
     IBlockCacheService blockCache)
     : IRequestHandler<GetPublicPostsOfUserCommand, Result<IReadOnlyList<PostDto>>>
 {
-    private static readonly TimeSpan Ttl = TimeSpan.FromMinutes(10);
-    
     public async Task<Result<IReadOnlyList<PostDto>>> Handle(GetPublicPostsOfUserCommand request, CancellationToken ct)
     {
-        var authorId = request.AuthorUserId;
-
-        var cacheKey = $"posts:user:{authorId}";
-        var cachedPosts = await cache.GetAsync<IReadOnlyList<PostDto>>(cacheKey);
-
-        if (cachedPosts is not null)
-        {
-            return Result<IReadOnlyList<PostDto>>.Success(cachedPosts);
-        }
+        var authorId = request.AuthorId;
         
         if (authorId is not null)
         {
@@ -64,7 +53,7 @@ public class GetPublicPostsOfUserCommandHandler(
             if (blockedIds.Contains(authorId.Value))
             {
                 logger.LogInformation("There is a block between {AuthorId} and {TargetUserId}.", 
-                    request.AuthorUserId, request.TargetUserId.Value);
+                    request.AuthorId, request.TargetUserId.Value);
             
                 return Result<IReadOnlyList<PostDto>>.Failure("Author not found.", ErrorType.NotFound);
             }
@@ -73,7 +62,7 @@ public class GetPublicPostsOfUserCommandHandler(
         var skip = (request.Page - 1) * request.PageSize;
 
         Expression<Func<Post, bool>> mustBelongToUserAndBeActive = p =>
-            p.UserId == request.AuthorUserId && !p.IsHidden;
+            p.UserId == request.AuthorId && !p.IsHidden;
 
         Func<IQueryable<Post>, IOrderedQueryable<Post>> orderByCreatedAt = q => q
             .OrderByDescending(p => p.CreatedAt);
@@ -97,9 +86,7 @@ public class GetPublicPostsOfUserCommandHandler(
         }
         
         logger.LogInformation("Retrieved {Count} posts by author {AuthorId} for user {TargetUserId}.", 
-            posts.Count, request.AuthorUserId, request.TargetUserId?.ToString() ?? "Anonymous");
-
-        await cache.SetAsync(cacheKey, posts, Ttl, ct);
+            posts.Count, request.AuthorId, request.TargetUserId?.ToString() ?? "Anonymous");
         
         return Result<IReadOnlyList<PostDto>>.Success(posts);
     }

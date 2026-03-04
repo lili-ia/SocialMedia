@@ -19,8 +19,7 @@ public class PostDeletedEventHandler(
         
         await Task.WhenAll(
             cache.RemoveByPrefixAsync("feed:popular"),
-            cache.RemoveByPrefixAsync($"user:{e.UserId}:posts"),
-            cache.RemoveByPrefixAsync($"user:{e.PostId}:posts"));
+            cache.RemoveByPrefixAsync($"user:{e.UserId}:posts"));
         
         Expression<Func<Notification, bool>> notRead = n =>
             n.EntityId == e.PostId && (n.Type == NotificationType.Comment || n.Type == NotificationType.Like) && !n.IsRead;

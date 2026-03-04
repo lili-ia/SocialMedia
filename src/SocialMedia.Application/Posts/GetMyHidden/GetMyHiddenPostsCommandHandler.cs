@@ -13,8 +13,7 @@ namespace SocialMedia.Application.Posts.GetMyHidden;
 public class GetMyHiddenPostsCommandHandler(
     ILogger<GetMyHiddenPostsCommandHandler> logger,
     IPostRepository postRepository,
-    IFileStorageService fileStorage,
-    ICacheService cache)
+    IFileStorageService fileStorage)
     : IRequestHandler<GetMyHiddenPostsCommand, Result<List<PostDto>>>
 {
     public async Task<Result<List<PostDto>>> Handle(GetMyHiddenPostsCommand request, CancellationToken ct)
@@ -46,9 +45,6 @@ public class GetMyHiddenPostsCommandHandler(
         }
         
         logger.LogInformation("Retrieved {Count} inactive posts by author {UserId}.", posts.Count, request.UserId);
-        
-        var cacheKey = $"posts:user:{request.UserId}";
-        await cache.RemoveAsync(cacheKey);
         
         return Result<List<PostDto>>.Success(posts);
     }

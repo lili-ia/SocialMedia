@@ -1,4 +1,3 @@
-using System.Text.Json;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Common.ResultPattern;
@@ -13,23 +12,11 @@ public class GetPublicUserInfoCommandHandler(
     IUserRepository userRepository,
     ILogger<GetPublicUserInfoCommandHandler> logger,
     IFileStorageService storageService,
-    ICacheService cache,
     IBlockCacheService blockCache)
     : IRequestHandler<GetPublicUserInfoCommand, Result<UserPublicDto>>
 {
-    private readonly TimeSpan Ttl = TimeSpan.FromMinutes(10);
-    
     public async Task<Result<UserPublicDto>> Handle(GetPublicUserInfoCommand request, CancellationToken cancellationToken)
     {
-        var cacheKey = $"user:{request.UserId}:profile";
-
-        var profile = await cache.GetAsync<UserPublicDto>(cacheKey);
-
-        if (profile is not null)
-        {
-            return Result<UserPublicDto>.Success(profile);
-        }
-        
         if (request.ForUserId is not null)
         {
             var blockedIds = await blockCache.GetBlockedAndBlockerIdsAsync(request.ForUserId.Value, cancellationToken);
@@ -57,8 +44,6 @@ public class GetPublicUserInfoCommandHandler(
             user.ProfilePicUrl = storageService.GetPresignedUrl(user.ProfilePicStorageKey);
         }
         
-        await cache.SetAsync(cacheKey, JsonSerializer.Serialize(profile), Ttl, cancellationToken);
-
         logger.LogInformation("Successfully retrieved user {UserId} public profile details for user {ForUserId}.", 
             request.UserId, request.ForUserId?.ToString() ?? "Anonymous");
         

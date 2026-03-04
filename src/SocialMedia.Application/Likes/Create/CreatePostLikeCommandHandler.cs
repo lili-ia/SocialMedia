@@ -1,6 +1,4 @@
-using System.Text.Json;
 using Domain.Entities;
-using Domain.Enums;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using SocialMedia.Application.Common.Exceptions;
@@ -8,7 +6,6 @@ using SocialMedia.Application.Common.ResultPattern;
 using SocialMedia.Application.Contracts;
 using SocialMedia.Application.Contracts.Repositories;
 using SocialMedia.Application.DTOs.Like;
-using SocialMedia.Application.Notifications.Models;
 
 namespace SocialMedia.Application.Likes.Create;
 
@@ -17,9 +14,7 @@ public class CreatePostLikeCommandHandler(
     IUnitOfWork unitOfWork,
     IPostLikeRepository postLikeRepository,
     IPostRepository postRepository,
-    IBlockCacheService blockCache,
-    INotificationRepository notificationRepository,
-    ICacheService cache)
+    IBlockCacheService blockCache)
     : IRequestHandler<CreatePostLikeCommand, Result<PostLikeResponse>>
 {
     public async Task<Result<PostLikeResponse>> Handle(CreatePostLikeCommand request, CancellationToken ct)
@@ -44,35 +39,16 @@ public class CreatePostLikeCommandHandler(
         }
 
         var like = PostLike.Create(request.PostId, post.UserId, request.LikerId, post.User.UsernameNormalized);
-        
-        var notificationData = new PostLikedNotificationData
-        {
-            LikerId = request.LikerId,
-            LikerUsername =  post.User.UsernameNormalized,
-            PostId = request.PostId
-        };
-        
-        var notification = new Notification
-        {
-            Type = NotificationType.Like,
-            IsRead = false,
-            Data = JsonSerializer.Serialize(notificationData),  
-            RecipientId = post.UserId,
-        };
 
         try
         {
             await postLikeRepository.AddAsync(like, ct);
-            await notificationRepository.AddAsync(notification, ct);
             await unitOfWork.SaveChangesAsync(ct);
 
             logger.LogInformation("User {LikerId} successfully liked post {PostId} by user {PostAuthorId}.",
                 request.LikerId, request.PostId, post.UserId);
 
             var likeCount = await postLikeRepository.GetLikeCountAsync(request.PostId, ct);
-            
-            var cacheKey = $"post:{request.PostId}:likers";
-            await cache.RemoveAsync(cacheKey);
             
             return Result<PostLikeResponse>.Success(new PostLikeResponse
             {
