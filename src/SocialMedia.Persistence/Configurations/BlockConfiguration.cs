@@ -8,9 +8,6 @@ public class BlockConfiguration : IEntityTypeConfiguration<Block>
 {
     public void Configure(EntityTypeBuilder<Block> builder)
     {
-        builder.Property(u => u.Version)
-            .IsRowVersion();
-        
         builder.HasIndex(b => new { b.BlockerId, b.BlockedId })
             .IsUnique(); 
         

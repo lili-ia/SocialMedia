@@ -8,9 +8,6 @@ public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
 {
     public void Configure(EntityTypeBuilder<Notification> builder)
     {
-        builder.Property(u => u.Version)
-            .IsRowVersion();
-        
         builder.Property(n => n.Data)
             .HasColumnType("jsonb");
         

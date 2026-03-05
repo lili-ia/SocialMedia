@@ -8,9 +8,6 @@ public class PostConfiguration : IEntityTypeConfiguration<Post>
 {
     public void Configure(EntityTypeBuilder<Post> builder)
     {
-        builder.Property(u => u.Version)
-            .IsRowVersion();
-        
         builder.Property(p => p.Text)
             .HasMaxLength(2000);
         
@@ -35,5 +32,9 @@ public class PostConfiguration : IEntityTypeConfiguration<Post>
         builder.HasMany(p => p.PostViews)
             .WithOne(v => v.Post)
             .HasForeignKey(v => v.PostId);
+        
+        builder.Ignore(p => p.CommentCount);
+        builder.Ignore(p => p.LikeCount);
+        builder.Ignore(p => p.ViewCount);
     }
 }

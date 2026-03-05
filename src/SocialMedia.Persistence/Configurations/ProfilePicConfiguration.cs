@@ -8,14 +8,11 @@ public class ProfilePicConfiguration : IEntityTypeConfiguration<ProfilePic>
 {
     public void Configure(EntityTypeBuilder<ProfilePic> builder)
     {
-        builder.Property(u => u.Version)
-            .IsRowVersion();
-        
-        builder.Property(p => p.OriginalFileName)
+        builder.Property(p => p.FileName)
             .IsRequired()
             .HasMaxLength(255);
     
-        builder.Property(p => p.OriginalStorageKey)
+        builder.Property(p => p.StorageKey)
             .IsRequired()
             .HasMaxLength(500);
         
@@ -30,7 +27,7 @@ public class ProfilePicConfiguration : IEntityTypeConfiguration<ProfilePic>
 
         builder.HasIndex(p => p.UserId);
         
-        builder.HasIndex(p => p.OriginalStorageKey)
+        builder.HasIndex(p => p.StorageKey)
             .IsUnique();
         
         builder.HasIndex(p => p.ThumbnailStorageKey)

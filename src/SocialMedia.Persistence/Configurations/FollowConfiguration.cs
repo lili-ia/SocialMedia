@@ -8,9 +8,6 @@ public class FollowConfiguration : IEntityTypeConfiguration<Follow>
 {
     public void Configure(EntityTypeBuilder<Follow> builder)
     {
-        builder.Property(u => u.Version)
-            .IsRowVersion();
-        
         builder.HasIndex(f => new { f.FollowerId, f.FolloweeId })
             .IsUnique();
     }

@@ -8,9 +8,6 @@ public class EmailConfirmationTokenConfiguration : IEntityTypeConfiguration<Emai
 {
     public void Configure(EntityTypeBuilder<EmailConfirmationToken> builder)
     {
-        builder.Property(u => u.Version)
-            .IsRowVersion();
-        
         builder.Property(t => t.Token)
             .IsRequired()
             .HasMaxLength(200);

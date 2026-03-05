@@ -8,9 +8,6 @@ public class ChatParticipantConfiguration : IEntityTypeConfiguration<ChatPartici
 {
     public void Configure(EntityTypeBuilder<ChatParticipant> builder)
     {
-        builder.Property(u => u.Version)
-            .IsRowVersion();
-        
         builder.HasIndex(cp => new { cp.UserId, cp.ChatId })
             .IsUnique();
 
@@ -18,7 +15,7 @@ public class ChatParticipantConfiguration : IEntityTypeConfiguration<ChatPartici
             .IncludeProperties(cp => cp.IsAdmin);
 
         builder.HasOne(cp => cp.Chat)
-            .WithMany(c => c.ChatParticipants)
+            .WithMany(c => c.Participants)
             .HasForeignKey(cp => cp.ChatId);
 
         builder.HasOne(cp => cp.User)

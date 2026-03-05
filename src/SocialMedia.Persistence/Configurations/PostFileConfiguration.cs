@@ -8,14 +8,11 @@ public class PostFileConfiguration : IEntityTypeConfiguration<PostFile>
 {
     public void Configure(EntityTypeBuilder<PostFile> builder)
     {
-        builder.Property(u => u.Version)
-            .IsRowVersion();
-        
-        builder.Property(f => f.OriginalFileName)
+        builder.Property(f => f.FileName)
             .IsRequired()
             .HasMaxLength(255);
     
-        builder.Property(f => f.OriginalStorageKey)
+        builder.Property(f => f.StorageKey)
             .IsRequired()
             .HasMaxLength(500);
         
@@ -25,7 +22,7 @@ public class PostFileConfiguration : IEntityTypeConfiguration<PostFile>
             .WithMany(p => p.PostFiles)
             .HasForeignKey(f => f.PostId);
         
-        builder.HasIndex(f => f.OriginalStorageKey)
+        builder.HasIndex(f => f.StorageKey)
             .IsUnique();
     }
 }

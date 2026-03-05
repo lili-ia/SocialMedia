@@ -24,9 +24,6 @@ public abstract class BaseEntity
 
     public DateTime? DeletedAt { get; private set; }
 
-    [ConcurrencyCheck]
-    public uint Version { get; private set; }
-
     [NotMapped]
     public IReadOnlyCollection<IDomainEvent> DomainEvents =>
         _domainEvents.AsReadOnly();

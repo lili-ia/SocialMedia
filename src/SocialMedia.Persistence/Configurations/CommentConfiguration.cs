@@ -8,9 +8,6 @@ public class CommentConfiguration : IEntityTypeConfiguration<Comment>
 {
     public void Configure(EntityTypeBuilder<Comment> builder)
     {
-        builder.Property(u => u.Version)
-            .IsRowVersion();
-        
         builder.Property(c => c.Text)
             .IsRequired()
             .HasMaxLength(1000);

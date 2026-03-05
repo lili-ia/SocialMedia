@@ -8,9 +8,6 @@ public class PasswordResetTokenConfiguration : IEntityTypeConfiguration<Password
 {
     public void Configure(EntityTypeBuilder<PasswordResetToken> builder)
     {
-        builder.Property(u => u.Version)
-            .IsRowVersion();
-        
         builder.Property(t => t.Token)
             .IsRequired()
             .HasMaxLength(200);
