@@ -20,7 +20,7 @@ public static class PostMapper
             LikeCount = post.LikeCount,
             ViewCount = post.ViewCount,
             FileStorageKeys = post.PostFiles
-                .Select(f => f.OriginalStorageKey)
+                .Select(f => f.StorageKey)
                 .ToList()
         };
 

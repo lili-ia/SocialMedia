@@ -7,9 +7,9 @@ public class GetPublicPostsOfUserCommandValidator : AbstractValidator<GetPublicP
     public GetPublicPostsOfUserCommandValidator()
     {
         RuleFor(x => x)
-            .Must(x => (x.AuthorUserId.HasValue && string.IsNullOrEmpty(x.AuthorUsername)) ||
-                       (!x.AuthorUserId.HasValue && !string.IsNullOrEmpty(x.AuthorUsername)))
-            .WithMessage("Exactly one of AuthorUserId or AuthorUsername must be provided.");
+            .Must(x => (x.AuthorId.HasValue && string.IsNullOrEmpty(x.AuthorUsername)) ||
+                       (!x.AuthorId.HasValue && !string.IsNullOrEmpty(x.AuthorUsername)))
+            .WithMessage("Exactly one of AuthorId or AuthorUsername must be provided.");
 
         When(x => !string.IsNullOrEmpty(x.AuthorUsername), () =>
         {
@@ -17,10 +17,10 @@ public class GetPublicPostsOfUserCommandValidator : AbstractValidator<GetPublicP
                 .MaximumLength(50).WithMessage("AuthorUsername must not exceed 50 characters.");
         });
 
-        When(x => x.AuthorUserId.HasValue, () =>
+        When(x => x.AuthorId.HasValue, () =>
         {
-            RuleFor(x => x.AuthorUserId)
-                .NotEmpty().WithMessage("AuthorUserId must be provided.");
+            RuleFor(x => x.AuthorId)
+                .NotEmpty().WithMessage("AuthorId must be provided.");
         });
         
         RuleFor(x => x.Page)

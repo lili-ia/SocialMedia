@@ -68,19 +68,17 @@ public class UpdateUserCommandHandler(
                     $"thumb_{request.ProfilePic.FileName}", 
                     thumbMs, 
                     MediaFolder.ProfilePics, ct);
-                
-                var newProfilePic = new ProfilePic
-                {
-                    UserId = user.Id,
-                    OriginalFileName = request.ProfilePic.FileName,
-                    ContentType = ContentType.Image,
-                    OriginalStorageKey = originalKey,
-                    ThumbnailStorageKey = thumbKey,
-                    ThumbnailFileSize = thumbnailSize,
-                    OriginalFileSize = bytes.Length,
-                    Width = originalWidth,
-                    Height = originalHeight,
-                };
+
+                var newProfilePic = ProfilePic.Create(
+                    user.Id, 
+                    request.ProfilePic.FileName,
+                    ContentType.Image, 
+                    originalKey, 
+                    bytes.Length,
+                    thumbKey,
+                    thumbnailSize,
+                    originalWidth,
+                    originalHeight);
 
                 newOriginalKey = originalKey;
                 
@@ -97,7 +95,6 @@ public class UpdateUserCommandHandler(
         }
         
         user.UpdateProfile(request.Bio, request.BirthDate);
-        
         await unitOfWork.SaveChangesAsync(ct);
 
         var dto = user.ToUpdateUserDto();

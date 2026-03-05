@@ -50,24 +50,22 @@ public class CreatePostCommandHandler(
                         ct);
                     
                     var info = await Image.IdentifyAsync(new MemoryStream(bytes), ct);
-                    
-                    return new PostFile 
-                    {
-                        UserId = request.UserId,
-                        OriginalFileName = f.FileName,
-                        ContentType = ContentType.Image,
-                        OriginalStorageKey = storageKey,
-                        OriginalFileSize = bytes.Length,
-                        PostId = post.Id,
-                        Width = info.Width,
-                        Height = info.Height
-                    };
+
+                    return PostFile.Create(
+                        request.UserId,
+                        post.Id,
+                        f.FileName,
+                        ContentType.Image,
+                        storageKey,
+                        bytes.Length,
+                        info.Width,
+                        info.Height);
                 }));
                 
                 await fileRepository.AddRangeAsync(postFiles, ct);
 
                 presignedUrls = postFiles
-                    .Select(f => fileStorage.GetPresignedUrl(f.OriginalStorageKey, 60))
+                    .Select(f => fileStorage.GetPresignedUrl(f.StorageKey))
                     .ToList();
             }
             catch (FileStorageException ex) // todo implement a background job that will cleanup orphaned files

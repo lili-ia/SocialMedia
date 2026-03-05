@@ -30,9 +30,6 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.Bio)
             .HasMaxLength(500);
 
-        builder.Property(u => u.Version)
-            .IsRowVersion();
-
         builder.HasOne(u => u.CurrentProfilePic)
             .WithMany()
             .HasForeignKey(u => u.CurrentProfilePicId) 

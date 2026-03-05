@@ -88,7 +88,7 @@ public class PostsController(IUserContext userContext, ISender sender) : Control
         var targetUserId = userContext.UserIdOrNull;
 
         var command = new GetPublicPostsOfUserCommand(
-            AuthorUserId: userId,
+            AuthorId: userId,
             AuthorUsername: username,
             TargetUserId: targetUserId,
             Page: page, 

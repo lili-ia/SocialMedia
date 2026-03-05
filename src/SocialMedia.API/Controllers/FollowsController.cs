@@ -58,21 +58,29 @@ public class FollowsController(ISender sender, IUserContext userContext) : Contr
         
         return result.ToActionResult();
     }
-    
+
     /// <summary>
     /// Retrieves the list of users followed by a given user.
     /// </summary>
     /// <param name="userId">ID of the user whose followees to retrieve.</param>
+    /// <param name="page">Page number to retrieve.</param>
+    /// <param name="pageSize">Followees count to retrieve.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>List of user previews representing followees.</returns>
     [HttpGet("{userId:guid}/followees")]
     [ProducesResponseType(typeof(IReadOnlyList<UserPreviewDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetFollowees([FromRoute] Guid userId, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> GetFollowees(
+        [FromRoute] Guid userId, 
+        [FromRoute] int page = 1,
+        [FromRoute] int pageSize = 20,
+        CancellationToken cancellationToken = default)
     {
         var command = new GetFolloweesOfUserCommand(
             UserId: userId, 
-            ForUserId: userContext.UserIdOrNull);
+            ForUserId: userContext.UserIdOrNull,
+            Page: page,
+            PageSize: pageSize);
         
         var result = await sender.Send(command, cancellationToken);
         
@@ -83,16 +91,24 @@ public class FollowsController(ISender sender, IUserContext userContext) : Contr
     /// Retrieves the list of users who follow a given user.
     /// </summary>
     /// <param name="userId">ID of the user whose followers to retrieve.</param>
+    /// <param name="page">Page number to retrieve.</param>
+    /// <param name="pageSize">Followees count to retrieve.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>List of user previews representing followers.</returns>
     [HttpGet("{userId:guid}/followers")]
     [ProducesResponseType(typeof(IReadOnlyList<UserPreviewDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetFollowers([FromRoute] Guid userId, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> GetFollowers(
+        [FromRoute] Guid userId, 
+        [FromRoute] int page = 1,
+        [FromRoute] int pageSize = 20,
+        CancellationToken cancellationToken = default)
     {
         var command = new GetFollowersOfUserCommand(
             UserId: userId, 
-            ForUserId: userContext.UserIdOrNull);
+            ForUserId: userContext.UserIdOrNull, 
+            Page: page,
+            PageSize: pageSize);
         
         var result = await sender.Send(command, cancellationToken);
         

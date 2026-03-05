@@ -42,13 +42,13 @@ public class UpdatePostCommandHandler(
         var keptKeys = request.KeptStorageKeys ?? [];
         
         var filesToRemove = post.PostFiles
-            .Where(f => !keptKeys.Contains(f.OriginalStorageKey))
+            .Where(f => !keptKeys.Contains(f.StorageKey))
             .ToList();
 
         foreach (var file in filesToRemove)
         {
             await fileRepository.RemoveAsync(file, ct);
-            await fileStorage.DeleteFileAsync(file.OriginalStorageKey, ct);
+            await fileStorage.DeleteFileAsync(file.StorageKey, ct);
         }
         
         if (request.NewFiles is { Count: > 0 })
@@ -65,21 +65,23 @@ public class UpdatePostCommandHandler(
                         bytes = ms.ToArray();
                     }
                     
-                    var storageKey = await fileStorage.UploadFileAsync(f.FileName, new MemoryStream(bytes), MediaFolder.PostFiles, ct);
+                    var storageKey = await fileStorage.UploadFileAsync(
+                        f.FileName, 
+                        new MemoryStream(bytes),
+                        MediaFolder.PostFiles, 
+                        ct);
                     
                     var info = await Image.IdentifyAsync(new MemoryStream(bytes), ct);
                     
-                    return new PostFile 
-                    {
-                        UserId = request.UserId,
-                        OriginalFileName = f.FileName,
-                        ContentType = ContentType.Image,
-                        OriginalStorageKey = storageKey,
-                        OriginalFileSize = bytes.Length,
-                        PostId = post.Id,
-                        Width = info.Width,
-                        Height = info.Height
-                    };
+                    return PostFile.Create(
+                        request.UserId,
+                        post.Id,
+                        f.FileName,
+                        ContentType.Image,
+                        storageKey,
+                        bytes.Length,
+                        info.Width,
+                        info.Height);
                 }));
                 
                 await fileRepository.AddRangeAsync(postFiles, ct);

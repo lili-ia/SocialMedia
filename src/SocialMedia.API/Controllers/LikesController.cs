@@ -77,12 +77,10 @@ public class LikesController(IUserContext userContext, ISender sender) : Control
         [FromQuery] int pageSize = 20,
         CancellationToken cancellationToken = default)
     {
-        var userId = userContext.UserId;
-        
         var command = new GetPostLikersCommand(
             PostId: postId, 
-            TargetUserId: userId, 
-            Page: page, 
+            TargetUserId: userContext.UserId,
+            Page: page,
             PageSize: pageSize);
         
         var result = await sender.Send(command, cancellationToken);

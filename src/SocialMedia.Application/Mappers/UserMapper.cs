@@ -23,7 +23,7 @@ public static class UserMapper
         {
             Username = user.UsernameNormalized,
             ProfilePicStorageKey = user.CurrentProfilePic != null 
-                ? user.CurrentProfilePic.OriginalStorageKey 
+                ? user.CurrentProfilePic.StorageKey 
                 : null,
             Bio = user.Bio,
             PostsCount = user.Posts.Count,
@@ -39,7 +39,7 @@ public static class UserMapper
         {
             Username = user.UsernameNormalized,
             ProfilePicStorageKey = user.CurrentProfilePic != null 
-                ? user.CurrentProfilePic.OriginalStorageKey 
+                ? user.CurrentProfilePic.StorageKey 
                 : null,
             Bio = user.Bio,
             PostsCount = user.Posts.Count,
