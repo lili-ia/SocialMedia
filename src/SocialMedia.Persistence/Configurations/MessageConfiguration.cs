@@ -8,11 +8,17 @@ public class MessageConfiguration : IEntityTypeConfiguration<Message>
 {
     public void Configure(EntityTypeBuilder<Message> builder)
     {
-        builder.Property(u => u.Version)
-            .IsRowVersion();
-        
         builder.Property(m => m.Content)
             .HasMaxLength(2000);
+
+        builder.Property(m => m.Status)
+            .HasConversion<string>()
+            .IsRequired();
+
+        builder.HasOne(m => m.Sender)
+            .WithMany()
+            .HasForeignKey(m => m.SenderId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(m => m.ParentMessage)
             .WithMany()
@@ -21,11 +27,9 @@ public class MessageConfiguration : IEntityTypeConfiguration<Message>
 
         builder.HasMany(m => m.Attachments)
             .WithOne(a => a.Message)
-            .HasForeignKey(a => a.MessageId);
+            .HasForeignKey(a => a.MessageId)
+            .OnDelete(DeleteBehavior.Cascade);
         
         builder.HasIndex(m => new { m.ChatId, m.CreatedAt });
-
-        builder.HasIndex(m => new { m.ChatId, m.IsRead })
-            .HasFilter("\"IsRead\" = false");
     }
 }

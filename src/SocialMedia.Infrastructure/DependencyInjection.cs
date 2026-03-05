@@ -2,6 +2,7 @@ using System.Text;
 using Amazon.S3;
 using Infrastructure.AmazonS3Storage;
 using Infrastructure.BackgroundJobs;
+using Infrastructure.Caching;
 using Infrastructure.Email;
 using Infrastructure.Security;
 using Microsoft.AspNetCore.Identity;
@@ -26,6 +27,8 @@ public static class DependencyInjection
         services.AddHostedService<TokenBackgroundWorker>();
         AddAuthentication(services, config);
         AddAmazonS3Storage(services, config);
+        AddRedis(services, config);
+        services.AddScoped<IBlockCacheService, BlockCacheService>();
         
         return services;
     }
@@ -44,7 +47,6 @@ public static class DependencyInjection
                     ValidateLifetime = true,
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(config["Jwt:Key"])),
                     ValidateIssuerSigningKey = true
-                
                 };
             });
         
@@ -77,5 +79,7 @@ public static class DependencyInjection
 
         services.AddSingleton<IConnectionMultiplexer>(sp =>
             ConnectionMultiplexer.Connect(connectionString));
+        
+        services.AddSingleton<ICacheService, RedisCacheService>();
     }
 }

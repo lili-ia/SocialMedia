@@ -2,21 +2,32 @@ using Domain.Enums;
 
 namespace Domain.Entities;
 
-public class MediaFile : BaseEntity
+public abstract class MediaFile : BaseEntity
 {
-    public Guid UserId { get; set; }
+    public Guid UserId { get; protected set; }
+    
+    public User User { get; protected set; } = null!;
+    
+    public string FileName { get; protected set; } = null!;
+    
+    public ContentType ContentType { get; protected set; }
+    
+    public string StorageKey { get; protected set; } = null!;
+    
+    public long FileSizeBytes { get; protected set; }
+    
+    public int? Width { get; protected set; }
+    
+    public int? Height { get; protected set; }
 
-    public User User { get; set; } = null!;
-    
-    public string OriginalFileName { get; set; } = null!;
-    
-    public ContentType ContentType { get; set; }
-    
-    public string OriginalStorageKey { get; set; } = null!;
-    
-    public long OriginalFileSize { get; set; }
-    
-    public int? Width { get; set; }
-    
-    public int? Height { get; set; }
+    protected MediaFile() { }
+
+    protected MediaFile(Guid userId, string fileName, ContentType contentType, string storageKey, long fileSizeBytes)
+    {
+        UserId = userId;
+        FileName = fileName;
+        ContentType = contentType;
+        StorageKey = storageKey;
+        FileSizeBytes = fileSizeBytes;
+    }
 }

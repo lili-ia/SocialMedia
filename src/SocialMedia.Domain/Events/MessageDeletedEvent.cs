@@ -1,8 +1,8 @@
 namespace Domain.Events;
 
-public class MessageSentEvent : DomainEvent
+public class MessageDeletedEvent : DomainEvent
 {
-    public MessageSentEvent(Guid chatId, Guid messageId, Guid senderId)
+    public MessageDeletedEvent(Guid chatId, Guid messageId, Guid senderId)
     {
         ChatId = chatId;
         MessageId = messageId;

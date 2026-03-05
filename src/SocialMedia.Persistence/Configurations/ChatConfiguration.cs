@@ -8,24 +8,26 @@ public class ChatConfiguration : IEntityTypeConfiguration<Chat>
 {
     public void Configure(EntityTypeBuilder<Chat> builder)
     {
-        builder.Property(u => u.Version)
-            .IsRowVersion();
-        
-        builder.Property(c => c.Title)
-            .HasMaxLength(200);
+        builder.Property(c => c.Type)
+            .HasConversion<string>()
+            .IsRequired();
 
-        builder.HasOne(c => c.LastMessage)
-            .WithMany()
-            .HasForeignKey(c => c.LastMessageId);
+        builder.Property(c => c.Name)
+            .HasMaxLength(100);
 
-        builder.HasIndex(c => c.LastActivityAt);
+        builder.HasMany(c => c.Participants)
+            .WithOne(p => p.Chat)
+            .HasForeignKey(p => p.ChatId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasMany(c => c.Messages)
             .WithOne(m => m.Chat)
-            .HasForeignKey(m => m.ChatId);
+            .HasForeignKey(m => m.ChatId)
+            .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasMany(c => c.ChatParticipants)
-            .WithOne(cp => cp.Chat)
-            .HasForeignKey(cp => cp.ChatId);
+        builder.HasOne(c => c.Creator)
+            .WithMany()
+            .HasForeignKey(c => c.CreatorId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

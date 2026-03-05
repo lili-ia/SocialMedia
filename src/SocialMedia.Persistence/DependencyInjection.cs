@@ -36,6 +36,9 @@ public static class DependencyInjection
         services.AddScoped<ITokenRepository, TokenRepository>();
         services.AddScoped<IPendingEmailRepository, PendingEmailRepository>(); 
         services.AddScoped<IFileRepository, FileRepository>(); 
+        services.AddScoped<INotificationRepository, NotificationRepository>(); 
+        services.AddScoped<IChatRepository, ChatRepository>(); 
+        services.AddScoped<IMessageRepository, MessageRepository>(); 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
     }
 }

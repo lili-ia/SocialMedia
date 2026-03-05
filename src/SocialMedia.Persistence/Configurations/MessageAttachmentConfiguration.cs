@@ -8,14 +8,11 @@ public class MessageAttachmentConfiguration : IEntityTypeConfiguration<MessageAt
 {
     public void Configure(EntityTypeBuilder<MessageAttachment> builder)
     {
-        builder.Property(u => u.Version)
-            .IsRowVersion();
-        
-        builder.Property(a => a.OriginalFileName)
+        builder.Property(a => a.FileName)
             .IsRequired()
             .HasMaxLength(255);
     
-        builder.Property(a => a.OriginalStorageKey)
+        builder.Property(a => a.StorageKey)
             .IsRequired()
             .HasMaxLength(500);
         
@@ -25,7 +22,7 @@ public class MessageAttachmentConfiguration : IEntityTypeConfiguration<MessageAt
             .WithMany(m => m.Attachments)
             .HasForeignKey(a => a.MessageId);
         
-        builder.HasIndex(f => f.OriginalStorageKey)
+        builder.HasIndex(f => f.StorageKey)
             .IsUnique();
     }
 }
