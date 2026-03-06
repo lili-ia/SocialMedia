@@ -26,15 +26,14 @@ public class FollowedEventHandler(
 
         var followerUsername = await userRepository.GetUsernameByIdAsync(notification.DomainEvent.FollowerId, ct);
         
-        var notificationData = new FollowedNotificationData
-        {
-            FollowerId = e.FollowerId,
-            FollowerUsername = followerUsername ?? "",
-            FollowedAt = e.Timestamp
-        };
+        var notificationData = new FollowedNotificationData(
+            e.FollowerId,
+            followerUsername ?? "",
+            e.Timestamp
+        );
         
         var entity = Notification.Create(
-            NotificationType.Follow, 
+            NotificationType.NewFollow, 
             JsonSerializer.Serialize(notificationData),
             e.FolloweeId,
             e.FollowerId,

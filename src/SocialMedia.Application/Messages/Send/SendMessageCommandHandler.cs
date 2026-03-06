@@ -31,14 +31,14 @@ public class SendMessageCommandHandler(
 
             return Result<MessageDto>.Failure("Chat not found.", ErrorType.NotFound);
         }
-        
-        var message = Message.Create(request.ChatId, request.SenderId, request.Text!, request.ParentMessageId);
+
+        Message message;
         
         if (request.Attachments is { Count: > 0 })
         {
             try
             {
-                var postFiles = await Task.WhenAll(request.Attachments.Select(async f =>
+                var attachments = await Task.WhenAll(request.Attachments.Select(async f =>
                 {
                     byte[] bytes;
                     
@@ -53,17 +53,16 @@ public class SendMessageCommandHandler(
                         new MemoryStream(bytes), 
                         MediaFolder.PostFiles, 
                         ct);
-                    
-                    return MessageAttachment.Create(
-                        request.SenderId,
-                        message.Id,
-                        f.FileName,
-                        ContentType.Image, 
-                        storageKey, 
-                        bytes.Length);
+
+                    return new AttachmentData(f.FileName, ContentType.Image, storageKey, bytes.Length);
                 }));
                 
-                message.AddAttachments(postFiles);
+                message = Message.CreateWithAttachments(
+                    request.ChatId, 
+                    request.SenderId, 
+                    request.Text,
+                    attachments.ToList(),
+                    request.ParentMessageId);
             }
             catch (FileStorageException ex) // todo implement a background job that will cleanup orphaned files
             {
@@ -72,7 +71,11 @@ public class SendMessageCommandHandler(
                 return Result<MessageDto>.InternalError("An error occurred while uploading images.");
             }
         }
-
+        else
+        {
+            message = Message.Create(request.ChatId, request.SenderId, request.Text, request.ParentMessageId);
+        }
+        
         await messageRepository.AddAsync(message, ct);
         await unitOfWork.SaveChangesAsync(ct);
 

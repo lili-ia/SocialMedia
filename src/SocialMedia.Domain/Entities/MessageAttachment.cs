@@ -5,6 +5,7 @@ namespace Domain.Entities;
 public class MessageAttachment : MediaFile
 {
     public Guid MessageId { get; private set; }
+    
     public Message Message { get; private set; } = null!;
 
     private MessageAttachment() : base() { }

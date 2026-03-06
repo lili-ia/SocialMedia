@@ -22,15 +22,14 @@ public class PostLikedEventHandler(
 
         await cache.RemoveByPrefixAsync($"post:{e.PostId}:likers");
         
-        var notificationData = new PostLikedNotificationData
-        {
-            LikerId = e.LikerId,
-            LikerUsername = e.LikerUsername,
-            PostId = e.PostId
-        };
+        var notificationData = new PostLikedNotificationData(
+            e.LikerId,
+            e.LikerUsername,
+            e.PostId
+        );
 
         var entity = Notification.Create(
-            NotificationType.Like,
+            NotificationType.PostLiked,
             JsonSerializer.Serialize(notificationData), 
             e.ToUserId,
             e.LikerId,

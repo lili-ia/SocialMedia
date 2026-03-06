@@ -15,15 +15,9 @@ public class CommentDeletedEventHandler(INotificationRepository notificationRepo
         var e = notification.DomainEvent;
         
         Expression<Func<Notification, bool>> notRead = n =>
-            n.EntityId == e.CommentId && n.Type == NotificationType.Comment && !n.IsRead;
+            n.EntityId == e.CommentId && n.Type == NotificationType.PostCommented && !n.IsRead;
 
-        var unreadFollowNotifications = await notificationRepository.GetAll(notRead, ct);
-
-        foreach (var n in unreadFollowNotifications)
-        {
-            n.SoftDelete();
-        }
-
+        await notificationRepository.RemoveAsync(notRead, ct);
         await unitOfWork.SaveChangesAsync(ct);
     }
 }

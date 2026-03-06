@@ -27,13 +27,7 @@ public class UserBlockedEventHandler(
         Expression<Func<Notification, bool>> notRead = n =>
             n.RecipientId == e.BlockerId && n.ActorId == e.BlockedId && !n.IsRead;
 
-        var unreadFollowNotifications = await notificationRepository.GetAll(notRead, ct);
-
-        foreach (var n in unreadFollowNotifications)
-        {
-            n.SoftDelete();
-        }
-
+        await notificationRepository.RemoveAsync(notRead, ct);
         await unitOfWork.SaveChangesAsync(ct);
     }
 }

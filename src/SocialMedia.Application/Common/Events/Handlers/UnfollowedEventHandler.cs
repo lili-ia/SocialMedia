@@ -24,15 +24,9 @@ public class UnfollowedEventHandler(
             cache.RemoveByPrefixAsync($"user:{e.FollowerId}:followees"));
 
         Expression<Func<Notification, bool>> notRead = n =>
-            n.RecipientId == e.FolloweeId && n.Type == NotificationType.Follow && n.ActorId == e.FollowerId && !n.IsRead;
+            n.RecipientId == e.FolloweeId && n.Type == NotificationType.NewFollow && n.ActorId == e.FollowerId && !n.IsRead;
 
-        var unreadFollowNotifications = await notificationRepository.GetAll(notRead, ct);
-
-        foreach (var n in unreadFollowNotifications)
-        {
-            n.SoftDelete();
-        }
-
+        await notificationRepository.RemoveAsync(notRead, ct);
         await unitOfWork.SaveChangesAsync(ct);
     }
 }

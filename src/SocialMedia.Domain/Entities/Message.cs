@@ -43,34 +43,37 @@ public class Message : BaseEntity
 
         var message = new Message(chatId, senderId, content, parentMessageId);
         
-        message.AddDomainEvent(new MessageSentEvent(message.Id, chatId, senderId));
+        message.AddDomainEvent(new MessageSentEvent(message.Id, chatId, senderId, content, 0));
 
         return message;
     }
-
-    public void AddAttachments(IEnumerable<MessageAttachment> attachments)
-    {
-        _attachments.AddRange(attachments.ToList());
-    }
-
+    
     public static Message CreateWithAttachments(
         Guid chatId, 
         Guid senderId, 
         string? content,
-        IEnumerable<MessageAttachment> attachments,
+        List<AttachmentData> attachments,
         Guid? parentMessageId = null)
     {
-        var attachmentList = attachments.ToList();
-        
-        if (string.IsNullOrWhiteSpace(content) && !attachmentList.Any())
+        if (string.IsNullOrWhiteSpace(content) && !attachments.Any())
         {
             throw new DomainValidationException("Message must have text or at least one attachment.");
         }
 
         var message = new Message(chatId, senderId, content, parentMessageId);
 
-        message._attachments.AddRange(attachmentList);
-        message.AddDomainEvent(new MessageSentEvent(message.Id, chatId, senderId));
+        var messageAttachments = attachments.Select(a =>
+            MessageAttachment.Create(
+                message.SenderId, 
+                message.Id, 
+                a.FileName,
+                ContentType.Image,
+                a.StorageKey,
+                a.FileSizeBytes))
+            .ToList();
+        
+        message._attachments.AddRange(messageAttachments);
+        message.AddDomainEvent(new MessageSentEvent(message.Id, chatId, senderId, content, messageAttachments.Count));
 
         return message;
     }

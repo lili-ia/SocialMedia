@@ -20,15 +20,14 @@ public class PostCommentedEventHandler(
 
         var commenterUsername = await userRepository.GetUsernameByIdAsync(e.CommenterId, ct);
         
-        var notificationData = new PostCommentedNotificationData
-        {
-            CommenterId = e.CommenterId,
-            CommenterUsername = commenterUsername ?? "",
-            Text = e.Text,
-            PostId = e.PostId,
-            CommentedAt = e.Timestamp
-        };
-
+        var notificationData = new PostCommentedNotificationData(
+            e.CommenterId,
+            commenterUsername ?? "",
+            e.Text,
+            e.PostId,
+            e.Timestamp
+        );
+        
         var postAuthorId = await postRepository.GetUserIdByPostIdAsync(e.PostId, ct);
 
         if (postAuthorId is null)
@@ -37,7 +36,7 @@ public class PostCommentedEventHandler(
         }
         
         var entity = Notification.Create
-            (NotificationType.Like,
+            (NotificationType.PostLiked,
             JsonSerializer.Serialize(notificationData),
             postAuthorId.Value,
             e.CommenterId,

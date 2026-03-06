@@ -2,10 +2,10 @@ namespace Domain.Enums;
 
 public enum NotificationType
 {
-    Like = 0,          
-    Comment = 1,       
-    Follow = 2,        
-    Message = 3,  
-    Mention = 4,         
+    PostLiked = 0,          
+    PostCommented = 1,       
+    NewFollow = 2,        
+    NewMessage = 3,  
+    AddedToGroupChat = 4,         
     System = 5       
 }

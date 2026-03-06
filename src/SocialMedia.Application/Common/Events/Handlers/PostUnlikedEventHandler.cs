@@ -20,17 +20,11 @@ public class PostUnlikedEventHandler(
         await cache.RemoveByPrefixAsync($"post:{e.PostId}:likers");
         
         Expression<Func<Notification, bool>> notRead = n =>
-            n.Type == NotificationType.Like 
+            n.Type == NotificationType.PostLiked 
             && n.ActorId == e.LikerId && n.EntityId == e.PostId
             && !n.IsRead;
 
-        var unreadLikeNotifications = await notificationRepository.GetAll(notRead, ct);
-
-        foreach (var n in unreadLikeNotifications)
-        {
-            n.SoftDelete();
-        }
-
+        await notificationRepository.RemoveAsync(notRead, ct);
         await unitOfWork.SaveChangesAsync(ct);
     }
 }

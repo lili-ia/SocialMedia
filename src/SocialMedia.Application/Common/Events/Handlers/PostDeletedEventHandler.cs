@@ -22,15 +22,10 @@ public class PostDeletedEventHandler(
             cache.RemoveByPrefixAsync($"user:{e.UserId}:posts"));
         
         Expression<Func<Notification, bool>> notRead = n =>
-            n.EntityId == e.PostId && (n.Type == NotificationType.Comment || n.Type == NotificationType.Like) && !n.IsRead;
+            n.EntityId == e.PostId && 
+            (n.Type == NotificationType.PostCommented || n.Type == NotificationType.PostLiked) && !n.IsRead;
 
-        var unreadFollowNotifications = await notificationRepository.GetAll(notRead, ct);
-
-        foreach (var n in unreadFollowNotifications)
-        {
-            n.SoftDelete();
-        }
-
+        await notificationRepository.RemoveAsync(notRead, ct);
         await unitOfWork.SaveChangesAsync(ct);
     }
 }
