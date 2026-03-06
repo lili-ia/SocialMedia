@@ -17,4 +17,6 @@ public interface INotificationRepository
         CancellationToken ct = default);
 
     Task RemoveAsync(Expression<Func<Notification, bool>> predicate, CancellationToken ct = default);
+
+    Task AddRangeAsync(IEnumerable<Notification> notifications, CancellationToken ct = default);
 }

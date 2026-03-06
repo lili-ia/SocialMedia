@@ -21,7 +21,6 @@ public class DeleteMessageCommandHandler(
         }
 
         message.Delete(request.RequesterId);
-
         await unitOfWork.SaveChangesAsync(ct);
 
         logger.LogInformation("Message {MessageId} deleted by {RequesterId}.", request.MessageId, request.RequesterId);

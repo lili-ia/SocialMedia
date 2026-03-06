@@ -3,7 +3,9 @@ using Domain.Entities;
 using Domain.Enums;
 using MediatR;
 using SocialMedia.Application.Common.Events.EventWrappers;
+using SocialMedia.Application.Contracts;
 using SocialMedia.Application.Contracts.Repositories;
+using SocialMedia.Application.DTOs.Notification;
 using SocialMedia.Application.Notifications.Models;
 
 namespace SocialMedia.Application.Common.Events.Handlers;
@@ -12,7 +14,8 @@ public sealed class ChatParticipantAddedEventHandler(
     INotificationRepository notificationRepository,
     IChatRepository chatRepository,
     IUserRepository userRepository,
-    IUnitOfWork unitOfWork)
+    IUnitOfWork unitOfWork,
+    IRealtimeService realtimeService)  
     : INotificationHandler<ChatParticipantAddedEventNotification>
 {
     public async Task Handle(ChatParticipantAddedEventNotification notification, CancellationToken ct)
@@ -50,5 +53,14 @@ public sealed class ChatParticipantAddedEventHandler(
         
         await notificationRepository.AddAsync(notif, ct);
         await unitOfWork.SaveChangesAsync(ct);
+
+        await realtimeService.PushNotificationAsync(notif.Id, new NotificationDto
+        {
+            Id = notif.Id,
+            Type = notif.Type,
+            Payload = notif.Data,
+            IsRead = false,
+            CreatedAt = notif.CreatedAt
+        }, ct);
     }
 }

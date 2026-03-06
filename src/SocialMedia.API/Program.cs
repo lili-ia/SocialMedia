@@ -1,4 +1,5 @@
 using Infrastructure;
+using Infrastructure.Hubs;
 using Scalar.AspNetCore;
 using SocialMedia.Application;
 using SocialMedia.Extensions;
@@ -30,6 +31,8 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
     app.MapScalarApiReference();
 }
+
+app.MapHub<ChatHub>("/hubs/chat");
 
 app.Run();
 

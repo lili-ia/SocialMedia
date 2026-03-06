@@ -47,4 +47,9 @@ public class NotificationRepository(SocialMediaDbContext db) : INotificationRepo
             n.SoftDelete();
         }
     }
+
+    public async Task AddRangeAsync(IEnumerable<Notification> notifications, CancellationToken ct = default)
+    {
+        await db.AddRangeAsync(notifications, ct);
+    }
 }

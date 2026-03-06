@@ -9,7 +9,19 @@ public class MessageRepository(SocialMediaDbContext db) : IMessageRepository
 {
     public async Task<Message?> GetByIdAsync(Guid messageId, CancellationToken ct = default)
     {
-        return await db.Messages.FirstOrDefaultAsync(m => m.Id == messageId, ct);
+        return await db.Messages
+            .FirstOrDefaultAsync(m => m.Id == messageId, ct);
+    }
+
+    public async Task<TResult?> GetByIdAsync<TResult>(
+        Guid messageId, 
+        Expression<Func<Message, TResult>> selector, 
+        CancellationToken ct = default)
+    {
+        return await db.Messages
+            .Where(m => m.Id == messageId)
+            .Select(selector)
+            .FirstOrDefaultAsync(ct);
     }
 
     public async Task<IReadOnlyList<TResult>> GetMessagesForChatAsync<TResult>(

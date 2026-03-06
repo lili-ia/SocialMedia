@@ -5,6 +5,8 @@ using MediatR;
 using SocialMedia.Application.Common.Events.EventWrappers;
 using SocialMedia.Application.Contracts;
 using SocialMedia.Application.Contracts.Repositories;
+using SocialMedia.Application.DTOs.Notification;
+using SocialMedia.Application.Mappers;
 using SocialMedia.Application.Notifications.Models;
 
 namespace SocialMedia.Application.Common.Events.Handlers;
@@ -14,7 +16,9 @@ public sealed class MessageSentEventHandler(
     IChatRepository chatRepository,
     IUserRepository userRepository,
     INotificationRepository notificationRepository,
-    IUnitOfWork unitOfWork) : INotificationHandler<MessageSentNotification>
+    IUnitOfWork unitOfWork,
+    IMessageRepository messageRepository,
+    IRealtimeService realtimeService) : INotificationHandler<MessageSentNotification>
 {
     public async Task Handle(MessageSentNotification notification, CancellationToken ct)
     {
@@ -74,6 +78,8 @@ public sealed class MessageSentEventHandler(
             .Where(p => p.IsActive && p.UserId != e.SenderId)
             .Select(p => p.UserId);
 
+        List<Notification> notifications = [];
+        
         foreach (var recipientId in recipients)
         {
             var notif = Notification.Create(
@@ -83,9 +89,31 @@ public sealed class MessageSentEventHandler(
                 e.SenderId, 
                 e.MessageId);
             
-            await notificationRepository.AddAsync(notif, ct);
+            notifications.Add(notif);
         }
 
+        await notificationRepository.AddRangeAsync(notifications, ct);
         await unitOfWork.SaveChangesAsync(ct);
+
+        var messageDto = await messageRepository.GetByIdAsync(e.MessageId, MessageMapper.ProjectToMessageDto, ct);
+
+        if (messageDto is null)
+        {
+            return;
+        }
+        
+        await realtimeService.PushMessageAsync(e.ChatId, messageDto, ct);
+
+        foreach (var notif in notifications)
+        {
+            await realtimeService.PushNotificationAsync(notif.RecipientId, new NotificationDto
+            {
+                Id = notif.Id,
+                Type = notif.Type,
+                Payload = notif.Data,
+                IsRead = false,
+                CreatedAt = notif.CreatedAt
+            }, ct);
+        }
     } 
 }

@@ -4,6 +4,7 @@ using Infrastructure.AmazonS3Storage;
 using Infrastructure.BackgroundJobs;
 using Infrastructure.Caching;
 using Infrastructure.Email;
+using Infrastructure.Hubs;
 using Infrastructure.Security;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
@@ -29,6 +30,7 @@ public static class DependencyInjection
         AddAmazonS3Storage(services, config);
         AddRedis(services, config);
         services.AddScoped<IBlockCacheService, BlockCacheService>();
+        AddSignalR(services, config);
         
         return services;
     }
@@ -81,5 +83,12 @@ public static class DependencyInjection
             ConnectionMultiplexer.Connect(connectionString));
         
         services.AddSingleton<ICacheService, RedisCacheService>();
+    }
+
+    private static void AddSignalR(IServiceCollection services, IConfiguration config)
+    {
+        services.AddSignalR();
+        services.AddSingleton<PresenceTracker>();
+        services.AddScoped<IRealtimeService, SignalRNotificationService>();
     }
 }
